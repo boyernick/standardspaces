@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ImageCarouselProps {
@@ -10,13 +10,8 @@ interface ImageCarouselProps {
 
 export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
   const [current, setCurrent] = useState(0);
-  const [loaded, setLoaded] = useState<Set<number>>(new Set());
 
   const count = images.length;
-
-  const onLoad = useCallback((i: number) => {
-    setLoaded((prev) => new Set(prev).add(i));
-  }, []);
 
   const prev = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -43,19 +38,12 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
             className="relative w-full h-full shrink-0 bg-neutral-100 dark:bg-neutral-800"
             aria-label={`${alt} image ${i + 1}`}
           >
-            {/* Shimmer skeleton */}
-            {!loaded.has(i) && src !== "/placeholder.jpg" && (
-              <div className="absolute inset-0 bg-neutral-100 dark:bg-neutral-800 animate-pulse" />
-            )}
             {src !== "/placeholder.jpg" && (
               <img
                 src={src}
                 alt={`${alt} ${i + 1}`}
                 loading={i === 0 ? "eager" : "lazy"}
-                onLoad={() => onLoad(i)}
-                className={`w-full h-full object-cover spot-img transition-opacity duration-500 ${
-                  loaded.has(i) ? "opacity-100" : "opacity-0"
-                }`}
+                className="w-full h-full object-cover spot-img"
               />
             )}
           </div>

@@ -219,7 +219,6 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
                     <div className="mt-3">
                       <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
                       <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">{CATEGORY_LABELS[spot.category]} · {spot.neighborhood}</p>
-                      <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 truncate">{spot.description.split(". ")[0]}.</p>
                     </div>
                   </div>
                 ))}

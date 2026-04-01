@@ -36,7 +36,7 @@ export default function Navbar() {
     <header className="bg-white dark:bg-neutral-950 shrink-0" style={{ position: "relative", zIndex: 40 }}>
       <div className="px-4 py-2.5 flex items-center">
         {/* Left: Logo + City */}
-        <div className="flex-1 flex items-center gap-2">
+        <div className="flex-1 flex items-center gap-5">
           <Link href="/" className="flex items-center gap-1">
             <img src="/logo.svg" alt="Standard Spaces" className="h-5 w-5 dark:invert" />
             <span className="text-lg tracking-tight whitespace-nowrap" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
@@ -44,7 +44,6 @@ export default function Navbar() {
             </span>
           </Link>
 
-          <div className="w-px h-5 bg-neutral-200 dark:bg-neutral-700 shrink-0" />
 
           <div ref={dropdownRef} className="relative">
             <button

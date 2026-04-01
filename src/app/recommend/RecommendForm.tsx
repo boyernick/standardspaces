@@ -50,7 +50,7 @@ export default function RecommendForm() {
     setSubmitting(true);
     setError("");
 
-    const { error: insertError } = await supabase
+    const { data: insertData, error: insertError } = await supabase
       .from("recommendations")
       .insert({
         url: url.trim(),
@@ -58,16 +58,25 @@ export default function RecommendForm() {
         category: category || null,
         neighborhood: neighborhood.trim() || null,
         notes: notes.trim() || null,
-      });
+      })
+      .select("id")
+      .single();
 
     setSubmitting(false);
 
-    if (insertError) {
+    if (insertError || !insertData) {
       setError("Something went wrong. Please try again.");
       return;
     }
 
     setStep("success");
+
+    // Trigger background processing (don't await — let it run async)
+    fetch("/api/recommend/process", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recommendationId: insertData.id }),
+    }).catch(() => {});
   }
 
   if (step === "success") {
