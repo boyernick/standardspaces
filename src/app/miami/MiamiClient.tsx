@@ -6,7 +6,7 @@ import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, Category, Spot } from "
 import Map from "@/components/Map";
 import ImageCarousel from "@/components/ImageCarousel";
 import Navbar from "@/components/Navbar";
-import { ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, X, MapPin } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, X, MapPin, Search } from "lucide-react";
 
 interface MiamiClientProps {
   spots: Spot[];
@@ -191,7 +191,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
           </div>}
 
           {/* Scrollable content */}
-          <div ref={panelRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+          <div ref={panelRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-20 md:pb-0">
           {/* Cards */}
           {allSpots.length === 0 ? (
             <div className="px-6 py-20 text-center">
@@ -246,18 +246,74 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
         </div>
 
         {/* Map — right */}
-        <div className={`md:flex-1 md:block relative p-4 ${mobileView === "map" ? "flex-1" : "hidden"}`}>
-          <div className="w-full h-full rounded-2xl overflow-hidden">
+        <div className={`md:flex-1 md:block relative px-3 pt-1.5 pb-3 md:p-4 ${mobileView === "map" ? "flex-1 pb-[5rem]" : "hidden"}`}>
+          <div className="w-full h-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative">
             <Map spots={filtered} activeSpot={activeSpot} onSpotSelect={handleSpotSelect} />
+
+            {/* Mobile map card */}
+            {activeSpot && mobileView === "map" && (
+              <div className="md:hidden absolute bottom-3 left-3 right-3 z-10">
+                <div
+                  className="bg-white dark:bg-neutral-950 rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
+                  style={{ animation: "map-card-in 0.2s ease-out" }}
+                >
+                  <Link
+                    href={`/miami/${activeSpot.id}`}
+                    className="flex gap-3 p-3"
+                    onClick={() => setActiveSpot(null)}
+                  >
+                    {activeSpot.images[0] && (
+                      <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                        <img src={activeSpot.images[0]} alt={activeSpot.name} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0 py-0.5">
+                      <h3 className="text-sm font-medium truncate">{activeSpot.name}</h3>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                        {CATEGORY_LABELS[activeSpot.category]} · {activeSpot.neighborhood}
+                      </p>
+                      {activeSpot.priceRange && (
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">{activeSpot.priceRange}</p>
+                      )}
+                    </div>
+                  </Link>
+                  <button
+                    onClick={() => setActiveSpot(null)}
+                    className="absolute top-2 right-2 p-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                  >
+                    <X size={12} strokeWidth={2} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
+
+          <style>{`
+            @keyframes map-card-in {
+              from { transform: translateY(16px); opacity: 0; }
+              to { transform: translateY(0); opacity: 1; }
+            }
+          `}</style>
         </div>
       </div>
 
-      {/* Mobile toggle */}
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
-        <button onClick={() => setMobileView(mobileView === "list" ? "map" : "list")} className="flex items-center gap-2 px-5 py-3 bg-brand-900 text-white text-sm font-medium rounded-full shadow-lg hover:bg-brand-800 transition-colors">
-          {mobileView === "list" ? (<><MapIcon size={16} strokeWidth={2} />Map</>) : (<><List size={16} strokeWidth={2} />List</>)}
-        </button>
+      {/* Mobile bottom bar */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-neutral-950 border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
+            className="flex-1 flex items-center gap-2 px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-full text-neutral-400 dark:text-neutral-500"
+          >
+            <Search size={15} strokeWidth={2} />
+            Search
+          </button>
+          <button
+            onClick={() => setMobileView(mobileView === "list" ? "map" : "list")}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-900 text-white text-sm font-medium rounded-full shrink-0"
+          >
+            {mobileView === "list" ? (<><MapIcon size={15} strokeWidth={2} />Map</>) : (<><List size={15} strokeWidth={2} />List</>)}
+          </button>
+        </div>
       </div>
     </div>
   );

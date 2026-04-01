@@ -115,12 +115,20 @@ export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
       });
 
       m.on("click", LAYER_ID, (e) => {
+        e.originalEvent.stopPropagation();
         const feature = e.features?.[0];
         if (feature?.properties?.id) {
           const spot = spotsRef.current.find(
             (s) => s.id === feature.properties!.id
           );
           if (spot) onSpotSelect(spot);
+        }
+      });
+
+      m.on("click", (e) => {
+        const features = m.queryRenderedFeatures(e.point, { layers: [LAYER_ID] });
+        if (!features.length) {
+          onSpotSelect(null);
         }
       });
 

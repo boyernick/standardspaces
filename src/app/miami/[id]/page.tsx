@@ -5,7 +5,8 @@ import { CATEGORY_LABELS } from "@/lib/types";
 import Navbar from "@/components/Navbar";
 import SpotGallery from "@/components/SpotGallery";
 import SpotMap from "@/components/SpotMap";
-import { Clock, CalendarDays, Shirt, Car, MapPin, ExternalLink, Phone, Globe, AtSign, Ticket } from "lucide-react";
+import { Clock, CalendarDays, Shirt, Car, MapPin, ExternalLink, Phone, Globe, AtSign, Ticket, ChevronLeft } from "lucide-react";
+import MobileBackButton from "@/components/MobileBackButton";
 
 export async function generateStaticParams() {
   const ids = await getAllSpotIds();
@@ -52,7 +53,8 @@ export default async function SpotPage({
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-neutral-950">
       <Navbar />
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto relative">
+      <MobileBackButton />
       <SpotGallery images={spot.images} name={spot.name} />
 
       <div className="max-w-3xl mx-auto px-4 md:px-6">
