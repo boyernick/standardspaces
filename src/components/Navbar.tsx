@@ -107,18 +107,12 @@ export default function Navbar() {
 
           {menuOpen && (
             <div className="absolute top-full right-0 mt-2 w-52 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-lg py-1.5 z-50">
-              <button onClick={() => setMenuOpen(false)} className="block w-full text-left px-4 py-2.5 text-sm font-medium text-neutral-900 dark:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
-                Sign up
-              </button>
-              <button onClick={() => setMenuOpen(false)} className="block w-full text-left px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
-                Sign in
-              </button>
-              <div className="border-t border-neutral-100 dark:border-neutral-800 my-1.5" />
               <Link href="/recommend" onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
                 Recommend a space
               </Link>
-              <button onClick={() => setMenuOpen(false)} className="block w-full text-left px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
-                About
+              <div className="border-t border-neutral-100 dark:border-neutral-800 my-1.5" />
+              <button onClick={() => setMenuOpen(false)} className="block w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+                Log out
               </button>
             </div>
           )}

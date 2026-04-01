@@ -89,13 +89,10 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
 
       <div className="flex-1 min-h-0 flex flex-col md:flex-row">
         {/* Panel — left */}
-        <div
-          ref={panelRef}
-          className={`w-full md:w-1/2 md:min-w-0 md:block overflow-y-auto scrollbar-hide ${mobileView === "list" ? "flex-1" : "hidden"}`}
-        >
-          {/* Filters bar — sticky inside panel, hidden when no spots */}
-          {allSpots.length > 0 && <div className="sticky top-0 z-20 bg-white dark:bg-neutral-950 px-4 py-2.5">
-            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+        <div className={`w-full md:w-1/2 md:min-w-0 md:flex md:flex-col ${mobileView === "list" ? "flex flex-col flex-1" : "hidden md:flex"}`}>
+          {/* Filters bar — outside scrollable area so dropdowns aren't clipped */}
+          {allSpots.length > 0 && <div className="relative z-20 bg-white dark:bg-neutral-950 px-4 py-2.5 shrink-0">
+            <div className="flex items-center gap-2">
               {/* Neighborhood */}
               <div ref={neighborhoodRef} className="relative shrink-0">
                 <button
@@ -107,7 +104,11 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
                   }`}
                 >
                   {activeNeighborhood ?? "Neighborhoods"}
-                  <ChevronDown size={10} strokeWidth={1.5} className={`transition-transform ${neighborhoodOpen ? "rotate-180" : ""}`} />
+                  {activeNeighborhood ? (
+                    <X size={12} strokeWidth={2} className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setActiveNeighborhood(null); setNeighborhoodOpen(false); setPage(1); }} />
+                  ) : (
+                    <ChevronDown size={10} strokeWidth={1.5} className={`transition-transform ${neighborhoodOpen ? "rotate-180" : ""}`} />
+                  )}
                 </button>
                 {neighborhoodOpen && (
                   <div className="absolute top-full left-0 mt-1.5 w-52 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 z-50 max-h-60 overflow-y-auto scrollbar-hide">
@@ -189,6 +190,8 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
             </div>
           </div>}
 
+          {/* Scrollable content */}
+          <div ref={panelRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
           {/* Cards */}
           {allSpots.length === 0 ? (
             <div className="px-6 py-20 text-center">
@@ -239,6 +242,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
               )}
             </div>
           )}
+          </div>
         </div>
 
         {/* Map — right */}
