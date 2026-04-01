@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
         dress_code: spot.dress_code,
         reservations: spot.reservations,
         parking: spot.parking,
+        booking_url: spot.booking_url,
       });
 
     if (insertError) {

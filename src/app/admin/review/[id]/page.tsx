@@ -45,19 +45,6 @@ export default async function AdminReviewPage({
             </span>
           </div>
 
-          {rec.scraped_images && rec.scraped_images.length > 0 && (
-            <div className="mb-8">
-              <p className="text-sm font-medium mb-3">Scraped photos</p>
-              <div className="grid grid-cols-3 gap-2 rounded-xl overflow-hidden">
-                {rec.scraped_images.map((url: string, i: number) => (
-                  <div key={i} className="aspect-[4/3] bg-neutral-100 dark:bg-neutral-800">
-                    <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           <ReviewForm recommendation={rec} />
         </div>
       </div>

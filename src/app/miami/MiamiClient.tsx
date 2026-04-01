@@ -58,7 +58,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
     if (activeCategory) {
       result = result.filter((s) => s.category === activeCategory);
       if (activeSubcategories.size > 0) {
-        result = result.filter((s) => s.subcategory && activeSubcategories.has(s.subcategory));
+        result = result.filter((s) => s.subcategory?.some((sc) => activeSubcategories.has(sc)));
       }
     }
     if (activeNeighborhood) {

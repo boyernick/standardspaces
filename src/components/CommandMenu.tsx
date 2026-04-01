@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { CATEGORY_LABELS, CATEGORY_ORDER, Category, Spot } from "@/lib/types";
+import { CATEGORY_LABELS, CATEGORY_ORDER, TOP_SUBCATEGORIES, Category, Spot } from "@/lib/types";
 import { Search, MapPin } from "lucide-react";
 
 function Highlight({ text, query }: { text: string; query: string }) {
@@ -43,7 +43,7 @@ export default function CommandMenu() {
             id: r.id as string,
             name: r.name as string,
             category: r.category as Category,
-            subcategory: r.subcategory as string | undefined,
+            subcategory: r.subcategory as string[] | undefined,
             neighborhood: r.neighborhood as string,
             city: r.city as string,
             description: r.description as string,
@@ -204,7 +204,7 @@ export default function CommandMenu() {
                   Vibe
                 </p>
                 <div className="grid grid-cols-4 gap-2">
-                  {["Date night", "Late night", "Special occasion", "Speakeasy", "Rooftop", "Omakase", "Brunch", "Recovery", "Aperitivo", "Tasting menu", "Raw bar", "Cocktails"].map((vibe) => (
+                  {TOP_SUBCATEGORIES.map((vibe) => (
                     <button
                       key={vibe}
                       onClick={() => handleQuickFilter(vibe)}

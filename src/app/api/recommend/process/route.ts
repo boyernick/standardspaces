@@ -108,11 +108,16 @@ export async function POST(req: NextRequest) {
       website: scraped.website || rec.url,
       hours: scraped.hours || null,
       priceRange: scraped.priceRange || null,
+      dressCode: scraped.dressCode || null,
+      parking: scraped.parking || null,
+      bookingUrl: scraped.bookingUrl || null,
+      bookingPlatform: scraped.bookingPlatform || null,
       instagram: scraped.instagram || null,
       lat: scraped.lat || null,
       lng: scraped.lng || null,
-      category: rec.category || null,
-      neighborhood: rec.neighborhood || null,
+      category: rec.category || scraped.category || null,
+      subcategory: scraped.subcategory || null,
+      neighborhood: rec.neighborhood || scraped.neighborhood || null,
     };
 
     // Update the recommendation with scraped data
