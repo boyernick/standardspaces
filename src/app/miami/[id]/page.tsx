@@ -51,7 +51,7 @@ export default async function SpotPage({
     .slice(0, 4);
 
   return (
-    <div className="h-screen flex flex-col bg-white dark:bg-neutral-950">
+    <div className="h-screen flex flex-col bg-surface">
       <Navbar />
       <div className="flex-1 overflow-y-auto relative">
       <MobileBackButton />
@@ -71,42 +71,39 @@ export default async function SpotPage({
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">{spot.name}</h1>
-            <p className="text-base text-neutral-500 dark:text-neutral-400 dark:text-neutral-500 mt-1.5">
+            <p className="text-base text-neutral-500 dark:text-neutral-400 mt-1.5">
               {CATEGORY_LABELS[spot.category]} · {spot.neighborhood}, {spot.city}
               {spot.priceRange && <span> · {spot.priceRange}</span>}
             </p>
           </div>
-        </div>
-
-        {/* Tags */}
-        {spot.tags && spot.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-4">
-            {spot.tags.map((tag) => (
-              <span key={tag} className="text-xs px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 dark:text-neutral-500">
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Booking CTA */}
-        {spot.bookingUrl && (
-          <div className="mt-6">
+          {spot.bookingUrl && (
             <a
               href={spot.bookingUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2.5 bg-brand-900 text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-brand-800 transition-colors"
+              className="shrink-0 inline-flex items-center bg-brand-900 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-brand-800 transition-colors"
             >
-              <Ticket size={16} strokeWidth={1.5} />
               {spot.bookingPlatform === "Resy"
                 ? "Reserve on Resy"
                 : spot.bookingPlatform === "OpenTable"
                 ? "Reserve on OpenTable"
+                : spot.bookingPlatform === "SevenRooms"
+                ? "Reserve"
                 : spot.category === "hotels"
                 ? "Book a stay"
                 : "Book now"}
             </a>
+          )}
+        </div>
+
+        {/* Vibes */}
+        {spot.vibes && spot.vibes.length > 0 && (
+          <div className="flex gap-2 mt-4 overflow-x-auto scrollbar-hide">
+            {spot.vibes.map((vibe) => (
+              <span key={vibe} className="shrink-0 text-xs px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
+                {vibe}
+              </span>
+            ))}
           </div>
         )}
 
@@ -130,13 +127,6 @@ export default async function SpotPage({
                 icon={<Clock size={20} strokeWidth={1.5} />}
                 label="Hours"
                 value={spot.hours}
-              />
-            )}
-            {spot.reservations && (
-              <InfoRow
-                icon={<CalendarDays size={20} strokeWidth={1.5} />}
-                label="Reservations"
-                value={spot.reservations}
               />
             )}
             {spot.dressCode && (

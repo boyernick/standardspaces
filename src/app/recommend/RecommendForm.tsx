@@ -87,14 +87,22 @@ export default function RecommendForm() {
         </div>
         <h2 className="text-xl font-semibold">Thanks for the recommendation</h2>
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2 max-w-sm mx-auto">
-          We'll review this space and add it to the guide<br />if it meets our standards.<br />You'll see it appear on the map soon.
+          We'll review this space and add it to the guide if it meets our standards.
         </p>
-        <button
-          onClick={() => { setStep("url"); setUrl(""); setName(""); setCategory(""); setNeighborhood(""); setNotes(""); }}
-          className="mt-6 text-sm text-brand-900 hover:underline"
+        <a
+          href="/miami"
+          className="mt-6 inline-flex items-center px-6 py-3 bg-brand-900 text-white text-sm font-medium rounded-full hover:bg-brand-800 transition-colors"
         >
-          Recommend another
-        </button>
+          Back to Miami
+        </a>
+        <div className="mt-3">
+          <button
+            onClick={() => { setStep("url"); setUrl(""); setName(""); setCategory(""); setNeighborhood(""); setNotes(""); }}
+            className="text-sm text-brand-900 hover:underline"
+          >
+            Recommend another
+          </button>
+        </div>
       </div>
     );
   }
@@ -118,7 +126,7 @@ export default function RecommendForm() {
             onChange={(e) => { setUrl(e.target.value); setError(""); }}
             onKeyDown={(e) => { if (e.key === "Enter") handleUrlContinue(); }}
             placeholder="Paste a URL — website, Google Maps, Apple Maps, Instagram..."
-            className="w-full pl-10 pr-4 py-3 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-950 placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
+            className="w-full pl-10 pr-4 py-3 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
             autoFocus
           />
         </div>
@@ -156,7 +164,7 @@ export default function RecommendForm() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="What's the place called?"
-                className="w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-950 placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
+                className="w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
               />
             </div>
 
@@ -167,7 +175,7 @@ export default function RecommendForm() {
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full appearance-none px-4 py-2.5 pr-10 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-950 text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
+                  className="w-full appearance-none px-4 py-2.5 pr-10 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
                 >
                   <option value="">Select a category</option>
                   {CATEGORY_ORDER.map((cat) => (
@@ -186,7 +194,7 @@ export default function RecommendForm() {
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
                 placeholder="e.g. Wynwood, Brickell, South Beach"
-                className="w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-950 placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
+                className="w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
               />
             </div>
 
@@ -198,7 +206,7 @@ export default function RecommendForm() {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="What makes it special? Any tips for first-timers?"
                 rows={3}
-                className="w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-950 placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors resize-none"
+                className="w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors resize-none"
               />
             </div>
           </div>

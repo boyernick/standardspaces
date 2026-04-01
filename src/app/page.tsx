@@ -2,15 +2,7 @@
 
 export default function Home() {
   return (
-    <div className="relative h-screen w-full overflow-hidden">
-      {/* Background image — loads instantly as fallback */}
-      <img
-        src="/landing-bg.jpg"
-        alt=""
-        className="absolute inset-0 w-full h-full object-cover"
-        aria-hidden="true"
-      />
-
+    <div className="relative h-screen w-full overflow-hidden" style={{ backgroundColor: "#F7F7F3" }}>
       {/* Header */}
       <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-5 py-4">
         <div className="flex items-center gap-1">

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { getCustomMapStyle } from "./mapStyle";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
@@ -23,22 +24,21 @@ export default function SpotMap({ lng, lat, name }: SpotMapProps) {
 
     map.current = new mapboxgl.Map({
       container: container.current,
-      style: dark
-        ? "mapbox://styles/mapbox/dark-v12"
-        : "mapbox://styles/mapbox/streets-v12",
+      style: getCustomMapStyle(dark),
       center: [lng, lat],
       zoom: 15,
       interactive: true,
+      attributionControl: false,
     });
 
     const el = document.createElement("div");
     el.style.cssText = `
       width: 14px;
       height: 14px;
-      background: ${dark ? "#ffffff" : "#1a1a1a"};
+      background: ${dark ? "#F7F7F3" : "#13120A"};
       border-radius: 50%;
-      border: 2px solid ${dark ? "#000000" : "#ffffff"};
-      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
     `;
 
     new mapboxgl.Marker(el).setLngLat([lng, lat]).addTo(map.current);

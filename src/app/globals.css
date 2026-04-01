@@ -4,6 +4,7 @@
 @custom-variant dark (@media (prefers-color-scheme: dark));
 
 @theme inline {
+  --color-surface: #F7F7F3;
   /* Brand color system built around #6A001E */
   --color-brand-50: #fdf2f4;
   --color-brand-100: #fce7eb;
@@ -18,17 +19,26 @@
   --color-brand-950: #40000f;
 }
 
-body {
-  background: #ffffff;
+html, body {
+  background: var(--color-surface);
   color: #1a1a1a;
   font-family: var(--font-calibre), system-ui, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
-  body {
-    background: #0a0a0a;
+  :root {
+    --color-surface: #13120A;
+    --color-neutral-800: #3F3E37;
+    --color-neutral-700: #4A493F;
+    --color-neutral-100: #2A2922;
+  }
+  html, body {
+    background: var(--color-surface);
     color: #ededed;
   }
+  /* Force logo inversion and nav text color in dark mode */
+  .nav-logo { filter: invert(1); }
+  .nav-title { color: #ffffff !important; }
 }
 
 h1, h2, h3 {

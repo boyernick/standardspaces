@@ -33,13 +33,13 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="bg-white dark:bg-neutral-950 shrink-0" style={{ position: "relative", zIndex: 40 }}>
+    <header className="bg-surface shrink-0" style={{ position: "relative", zIndex: 40 }}>
       <div className="px-4 py-2.5 flex items-center">
         {/* Left: Logo + City */}
         <div className="flex-1 flex items-center gap-5">
           <Link href="/" className="flex items-center gap-1">
-            <img src="/logo.svg" alt="Standard Spaces" className="h-5 w-5 dark:invert" />
-            <span className="text-lg tracking-tight whitespace-nowrap" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
+            <img src="/logo.svg" alt="Standard Spaces" className="h-5 w-5 nav-logo dark:invert" />
+            <span className="text-lg tracking-tight whitespace-nowrap text-neutral-900 dark:text-white nav-title" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
               Standard Spaces
             </span>
           </Link>
@@ -55,7 +55,7 @@ export default function Navbar() {
             </button>
 
             {cityOpen && (
-              <div className="absolute top-full left-0 mt-2 w-44 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 z-50">
+              <div className="absolute top-full left-0 mt-2 w-44 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 z-50">
                 {cities.map((city) => (
                   <Link
                     key={city.slug}
@@ -99,18 +99,18 @@ export default function Navbar() {
         <div ref={menuRef} className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="flex items-center gap-2 pl-3 pr-1.5 py-1 border border-neutral-200 dark:border-neutral-800 rounded-full hover:shadow-md transition-shadow"
+            className="flex items-center gap-2 pl-3 pr-1.5 py-1 border border-neutral-200 dark:border-neutral-800 rounded-full hover:shadow-sm transition-shadow"
           >
             <Menu size={14} strokeWidth={2} className="text-neutral-600 dark:text-neutral-400" />
             <div className="w-7 h-7 rounded-full bg-brand-900" />
           </button>
 
           {menuOpen && (
-            <div className="absolute top-full right-0 mt-2 w-52 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-lg py-1.5 z-50">
+            <div className="absolute top-full right-0 mt-2 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-lg py-1.5 z-50">
               <Link href="/recommend" onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
                 Recommend a space
               </Link>
-              <div className="border-t border-neutral-100 dark:border-neutral-800 my-1.5" />
+              <div className="border-t border-neutral-100 dark:border-neutral-800 my-0.5" />
               <button onClick={() => setMenuOpen(false)} className="block w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
                 Log out
               </button>

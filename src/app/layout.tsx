@@ -27,6 +27,12 @@ const martinaPlantijn = localFont({
 export const metadata: Metadata = {
   title: "Standard Spaces",
   description: "A curated guide to the finest spaces in every city.",
+  icons: {
+    icon: "/logo.svg",
+  },
+  other: {
+    "theme-color": "#F7F7F3",
+  },
 };
 
 export default function RootLayout({

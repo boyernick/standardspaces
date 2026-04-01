@@ -25,24 +25,15 @@ export default async function AdminReviewPage({
   if (!rec) notFound();
 
   return (
-    <div className="h-screen flex flex-col bg-white dark:bg-neutral-950">
+    <div className="h-screen flex flex-col bg-surface">
       <Navbar />
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-4 py-12">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-semibold tracking-tight">Review recommendation</h1>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                Edit the details below, then publish to make it live.
-              </p>
-            </div>
-            <span className={`text-xs px-2.5 py-1 rounded-full ${
-              rec.status === "scraped" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-              rec.status === "processing" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
-              "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
-            }`}>
-              {rec.status}
-            </span>
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-semibold tracking-tight">Review recommendation</h1>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+              Edit the details below, then publish to make it live.
+            </p>
           </div>
 
           <ReviewForm recommendation={rec} />

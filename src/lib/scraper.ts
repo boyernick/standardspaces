@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { geocodeAddress } from "./geocode";
 
 export interface ScrapedData {
   name?: string;
@@ -13,11 +14,13 @@ export interface ScrapedData {
   parking?: string;
   bookingUrl?: string;
   bookingPlatform?: string;
+  menuUrl?: string;
   imageUrls: string[];
   instagram?: string;
   lat?: number;
   lng?: number;
   subcategory?: string[];
+  vibes?: string[];
   category?: string;
 }
 
@@ -48,7 +51,8 @@ function extractMeta($: cheerio.CheerioAPI): Partial<ScrapedData> {
   const metaDesc = $('meta[name="description"]').attr("content");
   const title = $("title").text();
 
-  data.name = ogTitle || ogSiteName || title || undefined;
+  // Prefer og:site_name for multi-location sites (where og:title might be generic like "Miami")
+  data.name = ogSiteName || ogTitle || title || undefined;
   data.description = ogDesc || metaDesc || undefined;
 
   // Clean name — remove " - Home", " | Restaurant", etc.
@@ -104,8 +108,17 @@ function extractJsonLd($: cheerio.CheerioAPI): Partial<ScrapedData> {
 
         // Restaurant, Bar, CafeOrCoffeeShop, Hotel, etc.
         if (typeof type === "string" && ["Restaurant", "BarOrPub", "CafeOrCoffeeShop", "Hotel", "HealthClub", "Store", "LocalBusiness", "FoodEstablishment"].includes(type)) {
-          data.name = data.name || item.name;
-          data.description = data.description || item.description;
+          // Skip generic names like just a city name
+          const itemName = item.name;
+          const genericNames = ["miami", "new york", "los angeles", "chicago", "houston", "dallas", "austin", "denver", "seattle", "boston", "atlanta", "las vegas"];
+          if (itemName && !genericNames.includes(String(itemName).toLowerCase().trim())) {
+            data.name = data.name || itemName;
+          }
+          // Skip descriptions that are just contact info or mention the wrong city
+          const itemDesc = item.description;
+          if (itemDesc && !String(itemDesc).startsWith("Contact") && String(itemDesc).length > 30) {
+            data.description = data.description || itemDesc;
+          }
           data.phone = data.phone || item.telephone;
           data.priceRange = data.priceRange || item.priceRange;
 
@@ -150,7 +163,7 @@ function extractJsonLd($: cheerio.CheerioAPI): Partial<ScrapedData> {
             const images = Array.isArray(item.image) ? item.image : [item.image];
             for (const img of images) {
               const url = typeof img === "string" ? img : img?.url;
-              if (url && !data.imageUrls?.includes(url)) {
+              if (url && url.length > 0 && !data.imageUrls?.includes(url)) {
                 data.imageUrls = data.imageUrls || [];
                 data.imageUrls.push(url);
               }
@@ -297,7 +310,6 @@ function inferDressCode(category?: string, subcategories?: string[]): string | u
   const subs = subcategories || [];
   if (category === "dining") {
     if (subs.includes("Fine dining") || subs.includes("Omakase") || subs.includes("Tasting menu")) return "Smart casual";
-    if (subs.includes("Brunch")) return "Casual";
     return "Smart casual";
   }
   if (category === "drinks") {
@@ -371,22 +383,30 @@ function extractBookingLinks($: cheerio.CheerioAPI): { bookingUrl?: string; book
     { pattern: /yelp\.com\/reservations/i, name: "Yelp" },
   ];
 
-  // Check all links on the page
+  // Check all links on the page — collect all matches, prefer reservation links
   let bookingUrl: string | undefined;
   let bookingPlatform: string | undefined;
+  const candidates: { url: string; platform: string; isReservation: boolean }[] = [];
 
   $("a[href]").each((_, el) => {
-    if (bookingUrl) return false;
     const href = $(el).attr("href");
     if (!href) return;
+    const text = $(el).text().toLowerCase();
     for (const { pattern, name } of platforms) {
       if (pattern.test(href)) {
-        bookingUrl = href;
-        bookingPlatform = name;
-        return false;
+        const isReservation = /reserv|book/i.test(href) || /reserv|book/i.test(text);
+        candidates.push({ url: href, platform: name, isReservation });
+        break;
       }
     }
   });
+
+  // Prefer reservation links over event/other links
+  const best = candidates.find((c) => c.isReservation) || candidates[0];
+  if (best) {
+    bookingUrl = best.url;
+    bookingPlatform = best.platform;
+  }
 
   // Also check for reservation widgets / iframes
   if (!bookingUrl) {
@@ -405,6 +425,56 @@ function extractBookingLinks($: cheerio.CheerioAPI): { bookingUrl?: string; book
   }
 
   return { bookingUrl, bookingPlatform };
+}
+
+// Extract menu link from page
+function extractMenuUrl($: cheerio.CheerioAPI, baseUrl: string): string | undefined {
+  // Check JSON-LD for menu
+  let menuUrl: string | undefined;
+  $('script[type="application/ld+json"]').each((_, el) => {
+    try {
+      const json = JSON.parse($(el).html() || "");
+      const items = Array.isArray(json) ? json : [json];
+      for (const item of items) {
+        if (item.hasMenu) {
+          menuUrl = typeof item.hasMenu === "string" ? item.hasMenu : item.hasMenu?.url;
+        }
+        if (item.menu) {
+          menuUrl = typeof item.menu === "string" ? item.menu : item.menu?.url;
+        }
+      }
+    } catch { /* skip */ }
+  });
+  if (menuUrl) return resolveUrl(menuUrl, baseUrl);
+
+  // Check links with menu-related text or href — prefer links with "menu" in text
+  const candidates: string[] = [];
+  $("a[href]").each((_, el) => {
+    const href = $(el).attr("href") || "";
+    const text = $(el).text().toLowerCase().trim();
+    // Skip anchor-only links, javascript, and booking/event links
+    if (!href || href.startsWith("#") || href.startsWith("javascript:")) return;
+    if (/sevenrooms|opentable|resy|tock|event/i.test(href)) return;
+    if (/\bmenu\b/i.test(text) || /\bfood\s*&?\s*drink/i.test(text)) {
+      candidates.push(href);
+    } else if (/\/menu/i.test(href)) {
+      candidates.push(href);
+    }
+  });
+
+  if (candidates.length > 0) {
+    return resolveUrl(candidates[0], baseUrl);
+  }
+  return undefined;
+}
+
+function resolveUrl(url: string, baseUrl: string): string {
+  if (url.startsWith("http")) return url;
+  try {
+    return new URL(url, baseUrl).href;
+  } catch {
+    return url;
+  }
 }
 
 // Extract dress code, parking, and hours from page text content
@@ -458,6 +528,27 @@ function extractPageDetails($: cheerio.CheerioAPI): { dressCode?: string; parkin
     else if (lcBody.includes("parking garage")) result.parking = "Parking garage";
   }
 
+  // Hours — extract from body text patterns like "Monday: Closed" or "Dinner: 6PM - Close"
+  if (!result.hours) {
+    const lcBody = bodyText.toLowerCase();
+    const hourPatterns = [
+      // "Monday - Saturday: 5PM - 11PM" or "Mon-Sat 5pm-11pm"
+      /(?:mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:rs(?:day)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\s*[-–—:]\s*(?:closed|\d{1,2}(?::?\d{2})?\s*(?:am|pm)\s*[-–—]\s*(?:close|\d{1,2}(?::?\d{2})?\s*(?:am|pm)))/gi,
+      // "Dinner: 6PM - Close"
+      /(?:dinner|lunch|brunch|breakfast|golden\s*hour|happy\s*hour)\s*[:]\s*\d{1,2}(?::?\d{2})?\s*(?:am|pm)\s*[-–—]\s*(?:close|\d{1,2}(?::?\d{2})?\s*(?:am|pm))/gi,
+    ];
+    const hourMatches: string[] = [];
+    for (const p of hourPatterns) {
+      let m;
+      while ((m = p.exec(bodyText)) !== null && hourMatches.length < 5) {
+        hourMatches.push(m[0].trim());
+      }
+    }
+    if (hourMatches.length > 0) {
+      result.hours = hourMatches.join(" · ");
+    }
+  }
+
   // Price range — look for $ signs if not already found
   const priceMatch = bodyText.match(/price\s*(?:range)?\s*[:–—-]\s*(\${1,4})/i);
   if (priceMatch) result.priceRange = priceMatch[1];
@@ -509,7 +600,6 @@ function inferSubcategories(data: Partial<ScrapedData>, $: cheerio.CheerioAPI): 
       "Omakase": ["omakase", "sushi counter", "kaiseki"],
       "Seafood": ["seafood", "oyster", "raw bar", "ceviche", "lobster", "crab"],
       "Tasting menu": ["tasting menu", "degustation", "prix fixe", "multi-course"],
-      "Brunch": ["brunch", "breakfast", "bottomless"],
       "Steakhouse": ["steakhouse", "steak house", "prime beef", "dry aged"],
       "Italian": ["italian", "trattoria", "osteria", "ristorante", "pasta", "risotto"],
       "French": ["french", "brasserie", "bistro", "provençal"],
@@ -555,8 +645,6 @@ function inferSubcategories(data: Partial<ScrapedData>, $: cheerio.CheerioAPI): 
       "Cigar lounge": ["cigar lounge", "cigar bar"],
       "Pool bar": ["pool bar", "poolside"],
       "Day club": ["day club", "dayclub", "day party", "pool party"],
-      "Aperitivo": ["aperitivo", "aperitif", "spritz"],
-      "Natural wine": ["natural wine", "low intervention", "skin contact"],
     },
     coffee: {
       "Specialty coffee": ["specialty coffee", "third wave", "pour over", "single origin", "v60"],
@@ -720,6 +808,102 @@ function inferSubcategories(data: Partial<ScrapedData>, $: cheerio.CheerioAPI): 
   return { category: bestCategory, subcategory: subcategories };
 }
 
+// Infer vibes from page content, category, and subcategories
+function inferVibes(
+  data: Partial<ScrapedData>,
+  $: cheerio.CheerioAPI,
+  category?: string,
+  subcategories?: string[]
+): string[] {
+  const text = [
+    data.name,
+    data.description,
+    $('meta[property="og:description"]').attr("content"),
+    $('meta[name="description"]').attr("content"),
+    $("title").text(),
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  const bodyText = $("body").text().toLowerCase();
+  const combined = text + " " + bodyText.slice(0, 3000);
+
+  const vibeKeywords: Record<string, string[]> = {
+    "Date night": ["date night", "romantic dinner", "intimate dining", "candlelit", "couples"],
+    "Late night": ["late night", "late-night", "open late", "after midnight", "open until 2", "open until 3", "open until 4", "open until 5"],
+    "Special occasion": ["special occasion", "celebration", "anniversary", "birthday", "milestone", "private event"],
+    "Brunch": ["brunch", "bottomless brunch", "sunday brunch", "weekend brunch", "breakfast"],
+    "Business dinner": ["business dinner", "business lunch", "corporate", "private dining room", "executive"],
+    "Group friendly": ["group", "large party", "large parties", "private events", "group dining", "group reservations"],
+    "Outdoor seating": ["outdoor", "patio", "terrace", "al fresco", "garden seating", "sidewalk"],
+    "Rooftop": ["rooftop", "roof deck", "sky bar", "rooftop bar", "rooftop lounge"],
+    "Waterfront": ["waterfront", "oceanfront", "bayfront", "water view", "ocean view", "bay view", "beachfront"],
+    "Live music": ["live music", "live band", "live dj", "dj set", "jazz night", "live entertainment", "live performance"],
+    "People watching": ["people watching", "sidewalk café", "street-side"],
+    "Hidden gem": ["hidden gem", "secret", "speakeasy", "password", "unmarked", "off the beaten"],
+    "Sceney": ["see and be seen", "celebrity", "vip", "bottle service", "velvet rope", "exclusive"],
+    "Chill": ["chill", "laid-back", "laid back", "relaxed", "casual vibes", "low-key", "lowkey"],
+    "Romantic": ["romantic", "intimate", "candlelight", "couples", "valentine", "love"],
+    "Power lunch": ["power lunch", "business lunch", "deal-making"],
+    "Pre-game": ["pre-game", "pregame", "happy hour", "after work", "afterwork"],
+    "After party": ["after party", "afterparty", "late night", "after hours"],
+    "Day drinking": ["day drinking", "day party", "pool party", "day club", "daytime"],
+    "Sunday funday": ["sunday funday", "sunday brunch", "sunday session"],
+    "Solo friendly": ["solo", "bar seating", "counter seating", "solo dining", "come alone"],
+    "Tourist must-do": ["must visit", "must-visit", "iconic", "landmark", "institution", "famous"],
+    "Local favorite": ["local favorite", "local favourite", "neighborhood spot", "regulars", "local gem", "neighborhood gem"],
+    "Aperitivo": ["aperitivo", "aperitif", "spritz", "negroni hour"],
+    "Natural wine": ["natural wine", "low intervention", "skin contact", "orange wine", "biodynamic"],
+    "Wellness ritual": ["wellness ritual", "self-care", "mindfulness", "meditation", "holistic", "detox"],
+  };
+
+  const matched: string[] = [];
+
+  for (const [vibe, keywords] of Object.entries(vibeKeywords)) {
+    for (const kw of keywords) {
+      if (combined.includes(kw)) {
+        matched.push(vibe);
+        break;
+      }
+    }
+  }
+
+  // Context-based vibe inference from category/subcategory
+  const subs = subcategories || [];
+  if (category === "dining") {
+    if (subs.includes("Fine dining") || subs.includes("Omakase") || subs.includes("Tasting menu")) {
+      if (!matched.includes("Date night")) matched.push("Date night");
+      if (!matched.includes("Special occasion")) matched.push("Special occasion");
+    }
+    if (subs.includes("Steakhouse")) {
+      if (!matched.includes("Business dinner")) matched.push("Business dinner");
+    }
+  }
+  if (category === "drinks") {
+    if (subs.includes("Speakeasy")) {
+      if (!matched.includes("Hidden gem")) matched.push("Hidden gem");
+      if (!matched.includes("Date night")) matched.push("Date night");
+    }
+    if (subs.includes("Rooftop bar")) {
+      if (!matched.includes("Rooftop")) matched.push("Rooftop");
+    }
+    if (subs.includes("Nightclub") || subs.includes("Day club")) {
+      if (!matched.includes("Late night")) matched.push("Late night");
+    }
+    if (subs.includes("Cocktail bar") || subs.includes("Wine bar")) {
+      if (!matched.includes("Date night")) matched.push("Date night");
+    }
+  }
+  if (category === "coffee") {
+    if (!matched.includes("Solo friendly")) matched.push("Solo friendly");
+  }
+  if (category === "wellness") {
+    if (subs.includes("Spa") || subs.includes("Recovery") || subs.includes("Cold plunge") || subs.includes("Sauna")) {
+      if (!matched.includes("Wellness ritual")) matched.push("Wellness ritual");
+    }
+  }
+
+  return matched;
+}
+
 // Main scrape function
 export async function scrapeUrl(url: string): Promise<ScrapedData> {
   const { html, finalUrl } = await fetchPage(url);
@@ -729,7 +913,30 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
   const jsonLd = extractJsonLd($);
   const instagram = extractInstagram($);
   const booking = extractBookingLinks($);
+  const menuUrl = extractMenuUrl($, finalUrl);
   const pageDetails = extractPageDetails($);
+
+  // Extract CSS background images as fallback when no img tags or JSON-LD images
+  const bgImages: string[] = [];
+  $("[style]").each((_, el) => {
+    if (bgImages.length >= 5) return false;
+    const style = $(el).attr("style") || "";
+    const bgMatch = style.match(/background(?:-image)?\s*:\s*url\(['"]?([^'")\s]+)['"]?\)/i);
+    if (bgMatch && bgMatch[1]) {
+      const imgUrl = bgMatch[1];
+      if (!imgUrl.includes("logo") && !imgUrl.includes("icon") && !imgUrl.includes(".svg")) {
+        const resolved = resolveUrl(imgUrl, finalUrl);
+        if (!bgImages.includes(resolved)) bgImages.push(resolved);
+      }
+    }
+  });
+
+  // Collect all images — JSON-LD, meta, CSS backgrounds
+  const allImages = [...new Set([
+    ...(jsonLd.imageUrls || []),
+    ...(meta.imageUrls || []),
+    ...bgImages,
+  ])].filter((url) => url && url.length > 0).slice(0, 5);
 
   // Merge — JSON-LD takes priority, then page extraction, then meta
   const merged: Partial<ScrapedData> = {
@@ -744,11 +951,21 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
     parking: jsonLd.parking || pageDetails.parking,
     bookingUrl: booking.bookingUrl,
     bookingPlatform: booking.bookingPlatform,
-    imageUrls: [...new Set([...(jsonLd.imageUrls || []), ...(meta.imageUrls || [])])].slice(0, 5),
+    menuUrl,
+    imageUrls: allImages,
     instagram: jsonLd.instagram || instagram || meta.instagram,
     lat: jsonLd.lat,
     lng: jsonLd.lng,
   };
+
+  // Geocode address when coordinates are missing
+  if (!merged.lat && !merged.lng && merged.address) {
+    const geo = await geocodeAddress(merged.address);
+    if (geo) {
+      merged.lat = geo.lat;
+      merged.lng = geo.lng;
+    }
+  }
 
   // Infer category and subcategories from page content
   const inferred = inferSubcategories(merged, $);
@@ -761,11 +978,15 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
   const finalDressCode = merged.dressCode || inferDressCode(inferred.category, inferred.subcategory);
   const finalParking = merged.parking || inferParking(merged.address);
 
+  // Infer vibes from page content and category context
+  const vibes = inferVibes(merged, $, inferred.category, inferred.subcategory);
+
   const result: ScrapedData = {
     ...merged,
     imageUrls: merged.imageUrls || [],
     category: inferred.category,
     subcategory: inferred.subcategory.length > 0 ? inferred.subcategory : undefined,
+    vibes: vibes.length > 0 ? vibes : undefined,
     neighborhood,
     priceRange: finalPriceRange,
     dressCode: finalDressCode,

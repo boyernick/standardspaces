@@ -84,14 +84,14 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
   const hasFilters = activeCategory || activeNeighborhood;
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col bg-surface">
       <Navbar />
 
       <div className="flex-1 min-h-0 flex flex-col md:flex-row">
         {/* Panel — left */}
         <div className={`w-full md:w-1/2 md:min-w-0 md:flex md:flex-col ${mobileView === "list" ? "flex flex-col flex-1" : "hidden md:flex"}`}>
           {/* Filters bar — outside scrollable area so dropdowns aren't clipped */}
-          {allSpots.length > 0 && <div className="relative z-20 bg-white dark:bg-neutral-950 px-4 py-2.5 shrink-0">
+          {allSpots.length > 0 && <div className="relative z-20 bg-surface px-4 py-2.5 shrink-0">
             <div className="flex items-center gap-2">
               {/* Neighborhood */}
               <div ref={neighborhoodRef} className="relative shrink-0">
@@ -100,7 +100,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
                   className={`flex items-center justify-between gap-1.5 w-[142px] px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${
                     activeNeighborhood
                       ? "bg-brand-900 text-white border-brand-900"
-                      : "bg-white dark:bg-neutral-950 text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
+                      : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
                   }`}
                 >
                   {activeNeighborhood ?? "Neighborhoods"}
@@ -111,7 +111,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
                   )}
                 </button>
                 {neighborhoodOpen && (
-                  <div className="absolute top-full left-0 mt-1.5 w-52 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 z-50 max-h-60 overflow-y-auto scrollbar-hide">
+                  <div className="absolute top-full left-0 mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 z-50 max-h-60 overflow-y-auto scrollbar-hide">
                     <button onClick={() => { setActiveNeighborhood(null); setNeighborhoodOpen(false); setPage(1); }} className={`block w-full text-left px-4 py-2.5 text-xs transition-colors ${!activeNeighborhood ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
                       All neighborhoods
                     </button>
@@ -134,7 +134,9 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
               <div ref={categoryRef} className="flex gap-1.5 shrink-0">
                 {categories.map((cat) => {
                   const isActive = activeCategory === cat;
-                  const subs = SUBCATEGORIES[cat];
+                  const subs = SUBCATEGORIES[cat].filter((sub) =>
+                    allSpots.some((s) => s.category === cat && s.subcategory?.includes(sub))
+                  );
                   const isDropdownOpen = categoryDropdown === cat;
                   const activeSubCount = isActive ? activeSubcategories.size : 0;
                   return (
@@ -145,7 +147,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
                           else { setActiveCategory(cat); setActiveSubcategories(new Set()); setCategoryDropdown(cat); setActiveSpot(null); setPage(1); }
                         }}
                         className={`flex items-center gap-1 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${
-                          isActive ? "bg-brand-900 text-white border-brand-900" : "bg-white dark:bg-neutral-950 text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
+                          isActive ? "bg-brand-900 text-white border-brand-900" : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
                         }`}
                       >
                         {CATEGORY_LABELS[cat]}
@@ -157,7 +159,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
                         )}
                       </button>
                       {isDropdownOpen && (
-                        <div className="absolute top-full left-0 mt-1.5 w-48 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 z-50">
+                        <div className="absolute top-full left-0 mt-1.5 w-48 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 z-50 max-h-64 overflow-y-auto scrollbar-hide">
                           <button onClick={() => { setActiveSubcategories(new Set()); setPage(1); }} className={`block w-full text-left px-4 py-2 text-xs transition-colors ${activeSubCount === 0 ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
                             All {CATEGORY_LABELS[cat]}
                           </button>
@@ -250,11 +252,11 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
           <div className="w-full h-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative">
             <Map spots={filtered} activeSpot={activeSpot} onSpotSelect={handleSpotSelect} />
 
-            {/* Mobile map card */}
-            {activeSpot && mobileView === "map" && (
-              <div className="md:hidden absolute bottom-3 left-3 right-3 z-10">
+            {/* Map card */}
+            {activeSpot && (
+              <div className="absolute bottom-3 left-3 right-3 md:left-auto md:right-3 md:w-72 z-10">
                 <div
-                  className="bg-white dark:bg-neutral-950 rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
+                  className="bg-surface rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
                   style={{ animation: "map-card-in 0.2s ease-out" }}
                 >
                   <Link
@@ -298,7 +300,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
       </div>
 
       {/* Mobile bottom bar */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-neutral-950 border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-surface border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-2">
           <button
             onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}

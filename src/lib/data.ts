@@ -27,7 +27,7 @@ function mapRow(row: Record<string, unknown>): Spot {
     bookingPlatform: row.booking_platform as string | undefined,
     menuUrl: row.menu_url as string | undefined,
     events: (row.events as Spot["events"]) ?? [],
-    tags: row.tags as string[] | undefined,
+    vibes: row.vibes as string[] | undefined,
   };
 }
 

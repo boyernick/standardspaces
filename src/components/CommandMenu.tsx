@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { CATEGORY_LABELS, CATEGORY_ORDER, TOP_SUBCATEGORIES, Category, Spot } from "@/lib/types";
+import { CATEGORY_LABELS, CATEGORY_ORDER, TOP_VIBES, Category, Spot } from "@/lib/types";
 import { Search, MapPin } from "lucide-react";
 
 function Highlight({ text, query }: { text: string; query: string }) {
@@ -44,6 +44,7 @@ export default function CommandMenu() {
             name: r.name as string,
             category: r.category as Category,
             subcategory: r.subcategory as string[] | undefined,
+            vibes: r.vibes as string[] | undefined,
             neighborhood: r.neighborhood as string,
             city: r.city as string,
             description: r.description as string,
@@ -52,7 +53,6 @@ export default function CommandMenu() {
             lng: r.lng as number,
             lat: r.lat as number,
             priceRange: r.price_range as string | undefined,
-            tags: r.tags as string[] | undefined,
           } as Spot)));
         }
       });
@@ -68,7 +68,7 @@ export default function CommandMenu() {
         s.name.toLowerCase().includes(q) ||
         s.neighborhood.toLowerCase().includes(q) ||
         CATEGORY_LABELS[s.category].toLowerCase().includes(q) ||
-        (s.tags && s.tags.some((t) => t.toLowerCase().includes(q)))
+        (s.vibes && s.vibes.some((v) => v.toLowerCase().includes(q)))
     );
   }, [query]);
 
@@ -168,7 +168,7 @@ export default function CommandMenu() {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
       <div
-        className="relative w-full max-w-xl mx-4 md:mx-0 bg-white dark:bg-neutral-950 rounded-2xl shadow-2xl dark:shadow-neutral-900/50 overflow-hidden"
+        className="relative w-full max-w-xl mx-4 md:mx-0 bg-surface rounded-2xl shadow-2xl dark:shadow-neutral-900/50 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{ animation: "command-in 0.15s ease-out" }}
       >
@@ -204,7 +204,7 @@ export default function CommandMenu() {
                   Vibe
                 </p>
                 <div className="grid grid-cols-4 gap-2">
-                  {TOP_SUBCATEGORIES.map((vibe) => (
+                  {TOP_VIBES.map((vibe) => (
                     <button
                       key={vibe}
                       onClick={() => handleQuickFilter(vibe)}
@@ -345,11 +345,11 @@ export default function CommandMenu() {
                           <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
                             {CATEGORY_LABELS[spot.category]} · <Highlight text={spot.neighborhood} query={query} />
                           </p>
-                          {spot.tags && spot.tags.length > 0 && (
+                          {spot.vibes && spot.vibes.length > 0 && (
                             <div className="flex gap-1.5 mt-1.5">
-                              {spot.tags.slice(0, 3).map((tag) => (
-                                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
-                                  {tag}
+                              {spot.vibes.slice(0, 3).map((vibe) => (
+                                <span key={vibe} className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
+                                  {vibe}
                                 </span>
                               ))}
                             </div>

@@ -17,14 +17,14 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   hotels: "Stays",
 };
 
-// Subcategories for each category
+// Subcategories — the type of place within each category
 export const SUBCATEGORIES: Record<Category, string[]> = {
   coffee: [
     "Specialty coffee", "Roastery", "Café", "Matcha", "Tea house",
     "Bakery café", "Espresso bar", "Coffee lab",
   ],
   dining: [
-    "Fine dining", "Omakase", "Seafood", "Tasting menu", "Brunch",
+    "Fine dining", "Omakase", "Seafood", "Tasting menu",
     "Steakhouse", "Italian", "French", "Japanese", "Mediterranean",
     "Latin American", "Mexican", "Peruvian", "Asian fusion", "Thai",
     "Indian", "Middle Eastern", "Greek", "Farm-to-table", "Raw bar",
@@ -36,7 +36,6 @@ export const SUBCATEGORIES: Record<Category, string[]> = {
     "Rooftop bar", "Dive bar", "Tiki bar", "Mezcal bar", "Sake bar",
     "Champagne bar", "Beer garden", "Brewery", "Sports bar",
     "Jazz bar", "Piano bar", "Cigar lounge", "Pool bar", "Day club",
-    "Aperitivo", "Natural wine",
   ],
   wellness: [
     "Gym", "Recovery", "Spa", "Yoga", "Pilates", "Barbershop", "Salon",
@@ -67,20 +66,50 @@ export const SUBCATEGORIES: Record<Category, string[]> = {
   ],
 };
 
-// Top 12 subcategories for the command menu vibe grid
-export const TOP_SUBCATEGORIES: string[] = [
+// Vibes — cross-category mood/experience tags
+export const VIBES: string[] = [
   "Date night",
   "Late night",
   "Special occasion",
-  "Speakeasy",
-  "Rooftop bar",
-  "Omakase",
   "Brunch",
-  "Recovery",
+  "Business dinner",
+  "Group friendly",
+  "Outdoor seating",
+  "Rooftop",
+  "Waterfront",
+  "Live music",
+  "People watching",
+  "Hidden gem",
+  "Sceney",
+  "Chill",
+  "Romantic",
+  "Power lunch",
+  "Pre-game",
+  "After party",
+  "Day drinking",
+  "Sunday funday",
+  "Solo friendly",
+  "Tourist must-do",
+  "Local favorite",
   "Aperitivo",
-  "Tasting menu",
-  "Raw bar",
-  "Cocktail bar",
+  "Natural wine",
+  "Wellness ritual",
+];
+
+// Top 12 vibes for the command menu grid
+export const TOP_VIBES: string[] = [
+  "Date night",
+  "Late night",
+  "Special occasion",
+  "Brunch",
+  "Rooftop",
+  "Hidden gem",
+  "Romantic",
+  "Aperitivo",
+  "Live music",
+  "Solo friendly",
+  "Local favorite",
+  "Power lunch",
 ];
 
 // Ordered by frequency of use
@@ -99,6 +128,7 @@ export interface Spot {
   name: string;
   category: Category;
   subcategory?: string[];
+  vibes?: string[];
   neighborhood: string;
   city: string;
   description: string;
@@ -120,5 +150,4 @@ export interface Spot {
   bookingPlatform?: string;
   menuUrl?: string;
   events?: { name: string; date: string; description: string }[];
-  tags?: string[];
 }

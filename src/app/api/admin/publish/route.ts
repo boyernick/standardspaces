@@ -51,11 +51,13 @@ export async function POST(req: NextRequest) {
         reservations: spot.reservations,
         parking: spot.parking,
         booking_url: spot.booking_url,
+        menu_url: spot.menu_url,
+        vibes: spot.vibes,
       });
 
     if (insertError) {
       console.error("Insert error:", insertError);
-      return NextResponse.json({ error: "Failed to create spot" }, { status: 500 });
+      return NextResponse.json({ error: `Failed to create spot: ${insertError.message}` }, { status: 500 });
     }
 
     await supabase

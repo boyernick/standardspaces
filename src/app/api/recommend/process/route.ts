@@ -112,11 +112,13 @@ export async function POST(req: NextRequest) {
       parking: scraped.parking || null,
       bookingUrl: scraped.bookingUrl || null,
       bookingPlatform: scraped.bookingPlatform || null,
+      menuUrl: scraped.menuUrl || null,
       instagram: scraped.instagram || null,
       lat: scraped.lat || null,
       lng: scraped.lng || null,
       category: rec.category || scraped.category || null,
       subcategory: scraped.subcategory || null,
+      vibes: scraped.vibes || null,
       neighborhood: rec.neighborhood || scraped.neighborhood || null,
     };
 

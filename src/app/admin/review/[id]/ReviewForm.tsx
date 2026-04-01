@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, Category } from "@/lib/types";
+import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, VIBES, Category } from "@/lib/types";
 import { ChevronDown, Loader2, CheckCircle, X, Plus, GripVertical, Upload, Trash2 } from "lucide-react";
 
 interface Recommendation {
@@ -36,16 +36,15 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
   const [hours, setHours] = useState(scraped.hours || "");
   const [priceRange, setPriceRange] = useState(scraped.priceRange || "");
   const [dressCode, setDressCode] = useState(scraped.dressCode || "");
-  const [reservations, setReservations] = useState(
-    scraped.bookingPlatform && scraped.bookingUrl
-      ? `${scraped.bookingPlatform}`
-      : ""
-  );
   const [parking, setParking] = useState(scraped.parking || "");
   const [bookingUrl, setBookingUrl] = useState(scraped.bookingUrl || "");
+  const [menuUrl, setMenuUrl] = useState(scraped.menuUrl || "");
   const [lng, setLng] = useState(scraped.lng?.toString() || "");
   const [lat, setLat] = useState(scraped.lat?.toString() || "");
   const [images, setImages] = useState<string[]>(rec.scraped_images || []);
+  const [vibes, setVibes] = useState<string[]>(
+    Array.isArray(scraped.vibes) ? scraped.vibes : []
+  );
 
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
@@ -81,9 +80,10 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
           hours: hours.trim() || null,
           price_range: priceRange.trim() || null,
           dress_code: dressCode.trim() || null,
-          reservations: reservations.trim() || null,
           parking: parking.trim() || null,
           booking_url: bookingUrl.trim() || null,
+          menu_url: menuUrl.trim() || null,
+          vibes: vibes.length > 0 ? vibes : null,
           lng: lng ? parseFloat(lng) : -80.19,
           lat: lat ? parseFloat(lat) : 25.77,
           images,
@@ -94,7 +94,8 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
     setPublishing(false);
 
     if (!res.ok) {
-      setError("Failed to publish. Please try again.");
+      const body = await res.json().catch(() => null);
+      setError(body?.error || "Failed to publish. Please try again.");
       return;
     }
 
@@ -132,27 +133,32 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
         <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
       </Field>
 
-      {/* Category + Subcategory */}
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Category" required>
-          <div className="relative">
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass + " appearance-none pr-10"}>
-              <option value="">Select</option>
-              {CATEGORY_ORDER.map((cat) => (
-                <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-          </div>
-        </Field>
-        <Field label="Subcategory">
-          <SubcategorySelect
-            category={category as Category}
-            selected={subcategory}
-            onChange={setSubcategory}
-          />
-        </Field>
-      </div>
+      {/* Category */}
+      <Field label="Category" required>
+        <div className="relative">
+          <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass + " appearance-none pr-10"}>
+            <option value="">Select</option>
+            {CATEGORY_ORDER.map((cat) => (
+              <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+            ))}
+          </select>
+          <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+        </div>
+      </Field>
+
+      {/* Subcategory */}
+      <Field label="Subcategory">
+        <SubcategorySelect
+          category={category as Category}
+          selected={subcategory}
+          onChange={setSubcategory}
+        />
+      </Field>
+
+      {/* Vibes */}
+      <Field label="Vibes">
+        <VibeSelect selected={vibes} onChange={setVibes} />
+      </Field>
 
       {/* Neighborhood + City */}
       <div className="grid grid-cols-2 gap-4">
@@ -214,20 +220,20 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
         </Field>
       </div>
 
-      {/* Reservations + Parking */}
+      {/* Parking */}
+      <Field label="Parking">
+        <input type="text" value={parking} onChange={(e) => setParking(e.target.value)} placeholder="Valet available" className={inputClass} />
+      </Field>
+
+      {/* Booking + Menu URLs */}
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Reservations">
-          <input type="text" value={reservations} onChange={(e) => setReservations(e.target.value)} placeholder="Required via Resy" className={inputClass} />
+        <Field label="Booking URL">
+          <input type="text" value={bookingUrl} onChange={(e) => setBookingUrl(e.target.value)} placeholder="https://resy.com/..." className={inputClass} />
         </Field>
-        <Field label="Parking">
-          <input type="text" value={parking} onChange={(e) => setParking(e.target.value)} placeholder="Valet available" className={inputClass} />
+        <Field label="Menu URL">
+          <input type="text" value={menuUrl} onChange={(e) => setMenuUrl(e.target.value)} placeholder="https://..." className={inputClass} />
         </Field>
       </div>
-
-      {/* Booking URL */}
-      <Field label="Booking URL">
-        <input type="text" value={bookingUrl} onChange={(e) => setBookingUrl(e.target.value)} placeholder="https://resy.com/..." className={inputClass} />
-      </Field>
 
       {/* Original URL + Notes */}
       <div className="border-t border-neutral-100 dark:border-neutral-800 pt-5 mt-6">
@@ -277,7 +283,7 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
   );
 }
 
-const inputClass = "w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-white dark:bg-neutral-950 placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors";
+const inputClass = "w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors";
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
@@ -347,7 +353,7 @@ function SubcategorySelect({
         <ChevronDown size={14} className={`ml-auto text-neutral-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && options.length > 0 && (
-        <div className="absolute z-10 mt-1.5 w-full bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-48 overflow-y-auto">
+        <div className="absolute z-10 mt-1.5 w-full bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-48 overflow-y-auto">
           {options.map((opt) => {
             const isActive = selected.includes(opt);
             return (
@@ -676,5 +682,87 @@ function EmptySlot({ onClick }: { onClick: () => void }) {
       <Plus size={20} />
       <span className="text-xs mt-1">Add</span>
     </button>
+  );
+}
+
+function VibeSelect({
+  selected,
+  onChange,
+}: {
+  selected: string[];
+  onChange: (value: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  function toggle(value: string) {
+    if (selected.includes(value)) {
+      onChange(selected.filter((s) => s !== value));
+    } else {
+      onChange([...selected, value]);
+    }
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={inputClass + " text-left flex items-center gap-1.5 flex-wrap min-h-[42px]"}
+      >
+        {selected.length === 0 && (
+          <span className="text-neutral-400 dark:text-neutral-500">Select vibes</span>
+        )}
+        {selected.map((s) => (
+          <span
+            key={s}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-900 text-white text-xs font-medium"
+          >
+            {s}
+            <X
+              size={12}
+              strokeWidth={2}
+              className="cursor-pointer opacity-70 hover:opacity-100"
+              onClick={(e) => { e.stopPropagation(); toggle(s); }}
+            />
+          </span>
+        ))}
+        <ChevronDown size={14} className={`ml-auto text-neutral-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute z-10 mt-1.5 w-full bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-48 overflow-y-auto scrollbar-hide">
+          {VIBES.map((vibe) => {
+            const isActive = selected.includes(vibe);
+            return (
+              <button
+                key={vibe}
+                type="button"
+                onClick={() => toggle(vibe)}
+                className={`flex w-full items-center gap-2.5 px-4 py-2 text-xs transition-colors ${isActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}
+              >
+                <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isActive ? "bg-brand-900 border-brand-900" : "border-neutral-300 dark:border-neutral-600"}`}>
+                  {isActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                </span>
+                {vibe}
+              </button>
+            );
+          })}
+          {selected.length > 0 && (
+            <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
+              <button type="button" onClick={() => onChange([])} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear all</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

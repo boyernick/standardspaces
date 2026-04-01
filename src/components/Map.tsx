@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Spot } from "@/lib/types";
+import { getCustomMapStyle } from "./mapStyle";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
@@ -11,13 +12,6 @@ const MIAMI_CENTER: [number, number] = [-80.1918, 25.7817];
 const MIAMI_ZOOM = 12;
 const SOURCE_ID = "spots-source";
 const LAYER_ID = "spots-layer";
-
-function getMapStyle() {
-  if (typeof window === "undefined") return "mapbox://styles/mapbox/streets-v12";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "mapbox://styles/mapbox/dark-v12"
-    : "mapbox://styles/mapbox/streets-v12";
-}
 
 function isDarkMode() {
   if (typeof window === "undefined") return false;
@@ -57,17 +51,34 @@ export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [dark, setDark] = useState(false);
   const spotsRef = useRef(spots);
   spotsRef.current = spots;
+
+  // Track dark mode state
+  useEffect(() => {
+    setDark(isDarkMode());
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => setDark(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // Recreate map when dark mode changes
+  useEffect(() => {
+    if (map.current) {
+      map.current.remove();
+      map.current = null;
+      setMapReady(false);
+    }
+  }, [dark]);
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    const dark = isDarkMode();
-
     const m = new mapboxgl.Map({
       container: mapContainer.current,
-      style: getMapStyle(),
+      style: getCustomMapStyle(dark),
       center: MIAMI_CENTER,
       zoom: MIAMI_ZOOM,
       attributionControl: false,
@@ -79,6 +90,25 @@ export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
         data: toGeoJSON(spotsRef.current, null),
       });
 
+      // Shadow layer
+      m.addLayer({
+        id: "spots-shadow",
+        type: "circle",
+        source: SOURCE_ID,
+        paint: {
+          "circle-radius": [
+            "case",
+            ["==", ["get", "active"], 1],
+            12,
+            10,
+          ],
+          "circle-color": "#000000",
+          "circle-opacity": 0.15,
+          "circle-blur": 1,
+        },
+      });
+
+      // Main dot layer
       m.addLayer({
         id: LAYER_ID,
         type: "circle",
@@ -96,10 +126,10 @@ export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
           "circle-color": [
             "case",
             ["==", ["get", "active"], 1],
-            "#e90042",
-            dark ? "#ffffff" : "#1a1a1a",
+            "#6A001E",
+            dark ? "#F7F7F3" : "#13120A",
           ],
-          "circle-stroke-color": dark ? "#000000" : "#ffffff",
+          "circle-stroke-color": "#ffffff",
           "circle-stroke-width": 2,
           "circle-opacity": 1,
           "circle-radius-transition": { duration: 200 },
@@ -142,7 +172,7 @@ export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
       map.current = null;
       setMapReady(false);
     };
-  }, [onSpotSelect]);
+  }, [onSpotSelect, dark]);
 
   useEffect(() => {
     if (!map.current || !mapReady) return;
