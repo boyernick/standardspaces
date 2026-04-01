@@ -1,23 +1,35 @@
 export type Category =
-  | "restaurant"
-  | "bar"
-  | "club"
-  | "gym"
+  | "dining"
+  | "drinks"
+  | "members"
+  | "wellness"
   | "coffee"
-  | "clothing"
-  | "hotel"
-  | "spa";
+  | "shopping"
+  | "grooming"
+  | "hotels";
 
 export const CATEGORY_LABELS: Record<Category, string> = {
-  restaurant: "Restaurants",
-  bar: "Bars",
-  club: "Clubs",
-  gym: "Gyms",
   coffee: "Coffee",
-  clothing: "Clothing",
-  hotel: "Hotels",
-  spa: "Spas",
+  dining: "Dining",
+  drinks: "Drinks",
+  wellness: "Wellness",
+  grooming: "Grooming",
+  shopping: "Shopping",
+  members: "Members Clubs",
+  hotels: "Hotels",
 };
+
+// Ordered by frequency of use
+export const CATEGORY_ORDER: Category[] = [
+  "coffee",
+  "dining",
+  "drinks",
+  "wellness",
+  "grooming",
+  "shopping",
+  "members",
+  "hotels",
+];
 
 export interface Spot {
   id: string;
@@ -27,5 +39,22 @@ export interface Spot {
   city: string;
   description: string;
   address: string;
-  image: string;
+  images: string[];
+  lng: number;
+  lat: number;
+  // Logistics
+  hours?: string;
+  phone?: string;
+  website?: string;
+  instagram?: string;
+  priceRange?: string;
+  dressCode?: string;
+  reservations?: string;
+  parking?: string;
+  // Booking & extras
+  bookingUrl?: string;
+  bookingPlatform?: string;
+  menuUrl?: string;
+  events?: { name: string; date: string; description: string }[];
+  tags?: string[];
 }

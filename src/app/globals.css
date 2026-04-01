@@ -1,12 +1,61 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Brand color system built around #6A001E */
+  --color-brand-50: #fdf2f4;
+  --color-brand-100: #fce7eb;
+  --color-brand-200: #f9d0d9;
+  --color-brand-300: #f4a8b8;
+  --color-brand-400: #ec7693;
+  --color-brand-500: #df4770;
+  --color-brand-600: #cc2d5a;
+  --color-brand-700: #ab1d47;
+  --color-brand-800: #8f1a3f;
+  --color-brand-900: #6A001E;
+  --color-brand-950: #40000f;
+
+  /* Surface system — light */
+  --color-surface: #ffffff;
+  --color-surface-secondary: #fafafa;
+  --color-surface-tertiary: #f5f5f5;
+  --color-border: #e5e5e5;
+  --color-border-light: #f0f0f0;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #525252;
+  --color-text-tertiary: #a3a3a3;
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme inline {
+    --color-surface: #0a0a0a;
+    --color-surface-secondary: #141414;
+    --color-surface-tertiary: #1c1c1c;
+    --color-border: #262626;
+    --color-border-light: #1c1c1c;
+    --color-text-primary: #ededed;
+    --color-text-secondary: #a3a3a3;
+    --color-text-tertiary: #525252;
+  }
 }
 
 body {
-  background: #ffffff;
-  color: #1a1a1a;
-  font-family: var(--font-sans), system-ui, sans-serif;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-calibre), system-ui, sans-serif;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-martina), Georgia, serif;
+}
+
+a, button, select, [role="button"] {
+  cursor: pointer;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }

@@ -1,11 +1,27 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
-import Link from "next/link";
+import localFont from "next/font/local";
+import Navbar from "@/components/Navbar";
+import CommandMenu from "@/components/CommandMenu";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const calibre = localFont({
+  variable: "--font-calibre",
+  src: [
+    { path: "../../public/fonts/TestCalibre-Light.otf", weight: "300", style: "normal" },
+    { path: "../../public/fonts/TestCalibre-Regular.otf", weight: "400", style: "normal" },
+    { path: "../../public/fonts/TestCalibre-Medium.otf", weight: "500", style: "normal" },
+    { path: "../../public/fonts/TestCalibre-Semibold.otf", weight: "600", style: "normal" },
+    { path: "../../public/fonts/TestCalibre-Bold.otf", weight: "700", style: "normal" },
+  ],
+});
+
+const martinaPlantijn = localFont({
+  variable: "--font-martina",
+  src: [
+    { path: "../../public/fonts/TestMartinaPlantijn-Regular.otf", weight: "400", style: "normal" },
+    { path: "../../public/fonts/TestMartinaPlantijn-Medium.otf", weight: "500", style: "normal" },
+    { path: "../../public/fonts/TestMartinaPlantijn-Bold.otf", weight: "700", style: "normal" },
+  ],
 });
 
 export const metadata: Metadata = {
@@ -19,26 +35,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
-        <header className="border-b border-neutral-200">
-          <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
-            <Link href="/" className="text-xl font-semibold tracking-tight">
-              Standard Spaces
-            </Link>
-            <nav className="flex gap-8 text-sm text-neutral-500">
-              <Link href="/miami" className="hover:text-neutral-900 transition-colors">
-                Miami
-              </Link>
-            </nav>
-          </div>
-        </header>
-        <main className="flex-1">{children}</main>
-        <footer className="border-t border-neutral-200">
-          <div className="max-w-7xl mx-auto px-6 py-8 text-xs text-neutral-400">
-            © {new Date().getFullYear()} Standard Spaces
-          </div>
-        </footer>
+    <html lang="en" className={`${calibre.variable} ${martinaPlantijn.variable} h-full antialiased`}>
+      <body className="h-full flex flex-col overflow-hidden">
+        <Navbar />
+        <CommandMenu />
+        <main className="flex-1 overflow-hidden">{children}</main>
       </body>
     </html>
   );
