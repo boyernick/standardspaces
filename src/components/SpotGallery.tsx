@@ -299,7 +299,7 @@ export default function SpotGallery({ images, name }: SpotGalleryProps) {
               <div
                 key={i}
                 className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                  i === scrollIndex ? "bg-neutral-900" : "bg-neutral-300"
+                  i === scrollIndex ? "bg-neutral-900 dark:bg-white" : "bg-neutral-300 dark:bg-neutral-600"
                 }`}
               />
             ))}

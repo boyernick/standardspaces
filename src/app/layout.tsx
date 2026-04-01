@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import Navbar from "@/components/Navbar";
 import CommandMenu from "@/components/CommandMenu";
+import ThemeProvider from "@/components/ThemeProvider";
 import "./globals.css";
 
 const calibre = localFont({
@@ -35,16 +35,23 @@ export const metadata: Metadata = {
   },
 };
 
+const themeScript = `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})()`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${calibre.variable} ${martinaPlantijn.variable} h-full antialiased`}>
+    <html lang="en" className={`${calibre.variable} ${martinaPlantijn.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="h-full flex flex-col overflow-hidden">
-        <CommandMenu />
-        <main className="flex-1 overflow-hidden">{children}</main>
+        <ThemeProvider>
+          <CommandMenu />
+          <main className="flex-1 overflow-hidden">{children}</main>
+        </ThemeProvider>
       </body>
     </html>
   );

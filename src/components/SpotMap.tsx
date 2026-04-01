@@ -20,7 +20,7 @@ export default function SpotMap({ lng, lat, name }: SpotMapProps) {
   useEffect(() => {
     if (!container.current || map.current) return;
 
-    const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const dark = document.documentElement.classList.contains("dark");
 
     map.current = new mapboxgl.Map({
       container: container.current,

@@ -14,8 +14,8 @@ const SOURCE_ID = "spots-source";
 const LAYER_ID = "spots-layer";
 
 function isDarkMode() {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  if (typeof document === "undefined") return false;
+  return document.documentElement.classList.contains("dark");
 }
 
 interface MapProps {
@@ -55,13 +55,14 @@ export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
   const spotsRef = useRef(spots);
   spotsRef.current = spots;
 
-  // Track dark mode state
+  // Track dark mode state via class on <html>
   useEffect(() => {
     setDark(isDarkMode());
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => setDark(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    const observer = new MutationObserver(() => {
+      setDark(document.documentElement.classList.contains("dark"));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
   }, []);
 
   // Recreate map when dark mode changes

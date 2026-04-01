@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Menu, X, Search } from "lucide-react";
+import { ChevronDown, Menu, X, Search, Sun, Moon } from "lucide-react";
+import { useTheme } from "./ThemeProvider";
 
 const cities = [
   { name: "Miami", slug: "miami" },
@@ -15,6 +16,8 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const { theme, toggleTheme } = useTheme();
 
   const currentCity =
     cities.find((c) => pathname.startsWith(`/${c.slug}`)) ?? cities[0];
@@ -110,6 +113,13 @@ export default function Navbar() {
               <Link href="/recommend" onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
                 Recommend a space
               </Link>
+              <button
+                onClick={() => { toggleTheme(); setMenuOpen(false); }}
+                className="flex w-full items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
+              >
+                {theme === "dark" ? "Light mode" : "Dark mode"}
+                {theme === "dark" ? <Sun size={14} strokeWidth={1.5} /> : <Moon size={14} strokeWidth={1.5} />}
+              </button>
               <div className="border-t border-neutral-100 dark:border-neutral-800 my-0.5" />
               <button onClick={() => setMenuOpen(false)} className="block w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
                 Log out
