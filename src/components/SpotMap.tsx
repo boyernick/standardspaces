@@ -24,8 +24,8 @@ export default function SpotMap({ lng, lat, name }: SpotMapProps) {
     map.current = new mapboxgl.Map({
       container: container.current,
       style: dark
-        ? "mapbox://styles/mapbox/dark-v11"
-        : "mapbox://styles/mapbox/light-v11",
+        ? "mapbox://styles/mapbox/dark-v12"
+        : "mapbox://styles/mapbox/streets-v12",
       center: [lng, lat],
       zoom: 15,
       interactive: true,

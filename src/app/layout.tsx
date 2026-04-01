@@ -37,7 +37,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${calibre.variable} ${martinaPlantijn.variable} h-full antialiased`}>
       <body className="h-full flex flex-col overflow-hidden">
-        <Navbar />
         <CommandMenu />
         <main className="flex-1 overflow-hidden">{children}</main>
       </body>

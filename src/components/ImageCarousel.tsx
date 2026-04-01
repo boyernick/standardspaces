@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ImageCarouselProps {
@@ -10,8 +10,13 @@ interface ImageCarouselProps {
 
 export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
   const [current, setCurrent] = useState(0);
+  const [loaded, setLoaded] = useState<Set<number>>(new Set());
 
   const count = images.length;
+
+  const onLoad = useCallback((i: number) => {
+    setLoaded((prev) => new Set(prev).add(i));
+  }, []);
 
   const prev = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -35,14 +40,22 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
         {images.map((src, i) => (
           <div
             key={i}
-            className="w-full h-full shrink-0 bg-neutral-100 dark:bg-neutral-800"
+            className="relative w-full h-full shrink-0 bg-neutral-100 dark:bg-neutral-800"
             aria-label={`${alt} image ${i + 1}`}
           >
+            {/* Shimmer skeleton */}
+            {!loaded.has(i) && src !== "/placeholder.jpg" && (
+              <div className="absolute inset-0 bg-neutral-100 dark:bg-neutral-800 animate-pulse" />
+            )}
             {src !== "/placeholder.jpg" && (
               <img
                 src={src}
                 alt={`${alt} ${i + 1}`}
-                className="w-full h-full object-cover"
+                loading={i === 0 ? "eager" : "lazy"}
+                onLoad={() => onLoad(i)}
+                className={`w-full h-full object-cover spot-img transition-opacity duration-500 ${
+                  loaded.has(i) ? "opacity-100" : "opacity-0"
+                }`}
               />
             )}
           </div>
@@ -55,7 +68,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
           {current > 0 && (
             <button
               onClick={prev}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity hover:scale-110"
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 shadow-sm flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity hover:scale-110"
             >
               <ChevronLeft size={10} strokeWidth={1.5} />
             </button>
@@ -63,7 +76,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
           {current < count - 1 && (
             <button
               onClick={next}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity hover:scale-110"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 shadow-sm flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity hover:scale-110"
             >
               <ChevronRight size={10} strokeWidth={1.5} />
             </button>

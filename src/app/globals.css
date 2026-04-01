@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Tell Tailwind v4 to use prefers-color-scheme for dark: variant */
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
 @theme inline {
   /* Brand color system built around #6A001E */
   --color-brand-50: #fdf2f4;
@@ -13,35 +16,19 @@
   --color-brand-800: #8f1a3f;
   --color-brand-900: #6A001E;
   --color-brand-950: #40000f;
-
-  /* Surface system — light */
-  --color-surface: #ffffff;
-  --color-surface-secondary: #fafafa;
-  --color-surface-tertiary: #f5f5f5;
-  --color-border: #e5e5e5;
-  --color-border-light: #f0f0f0;
-  --color-text-primary: #1a1a1a;
-  --color-text-secondary: #525252;
-  --color-text-tertiary: #a3a3a3;
-}
-
-@media (prefers-color-scheme: dark) {
-  @theme inline {
-    --color-surface: #0a0a0a;
-    --color-surface-secondary: #141414;
-    --color-surface-tertiary: #1c1c1c;
-    --color-border: #262626;
-    --color-border-light: #1c1c1c;
-    --color-text-primary: #ededed;
-    --color-text-secondary: #a3a3a3;
-    --color-text-tertiary: #525252;
-  }
 }
 
 body {
-  background: var(--color-surface);
-  color: var(--color-text-primary);
+  background: #ffffff;
+  color: #1a1a1a;
   font-family: var(--font-calibre), system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #0a0a0a;
+    color: #ededed;
+  }
 }
 
 h1, h2, h3 {
@@ -50,6 +37,11 @@ h1, h2, h3 {
 
 a, button, select, [role="button"] {
   cursor: pointer;
+}
+
+/* Consistent photo treatment across all spot images */
+.spot-img {
+  filter: brightness(0.95) contrast(1.02) saturate(0.9);
 }
 
 .scrollbar-hide {

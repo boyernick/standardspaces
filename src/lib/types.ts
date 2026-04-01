@@ -5,7 +5,6 @@ export type Category =
   | "wellness"
   | "coffee"
   | "shopping"
-  | "grooming"
   | "hotels";
 
 export const CATEGORY_LABELS: Record<Category, string> = {
@@ -13,10 +12,20 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   dining: "Dining",
   drinks: "Drinks",
   wellness: "Wellness",
-  grooming: "Grooming",
-  shopping: "Shopping",
-  members: "Members Clubs",
-  hotels: "Hotels",
+  shopping: "Shops",
+  members: "Venues",
+  hotels: "Stays",
+};
+
+// Subcategories for each category
+export const SUBCATEGORIES: Record<Category, string[]> = {
+  coffee: ["Specialty coffee", "Roastery", "Café"],
+  dining: ["Fine dining", "Omakase", "Seafood", "Tasting menu", "Brunch"],
+  drinks: ["Cocktail bar", "Wine bar", "Speakeasy", "Nightclub", "Lounge"],
+  wellness: ["Gym", "Recovery", "Spa", "Yoga", "Pilates", "Barbershop", "Salon"],
+  shopping: ["Fashion", "Jewelry", "Watches", "Art gallery", "Vintage"],
+  members: ["Social club", "Business club", "Event space"],
+  hotels: ["Boutique hotel", "Resort", "Villa"],
 };
 
 // Ordered by frequency of use
@@ -25,7 +34,6 @@ export const CATEGORY_ORDER: Category[] = [
   "dining",
   "drinks",
   "wellness",
-  "grooming",
   "shopping",
   "members",
   "hotels",
@@ -35,6 +43,7 @@ export interface Spot {
   id: string;
   name: string;
   category: Category;
+  subcategory?: string;
   neighborhood: string;
   city: string;
   description: string;

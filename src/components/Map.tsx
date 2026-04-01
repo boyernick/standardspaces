@@ -13,10 +13,10 @@ const SOURCE_ID = "spots-source";
 const LAYER_ID = "spots-layer";
 
 function getMapStyle() {
-  if (typeof window === "undefined") return "mapbox://styles/mapbox/light-v11";
+  if (typeof window === "undefined") return "mapbox://styles/mapbox/streets-v12";
   return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "mapbox://styles/mapbox/dark-v11"
-    : "mapbox://styles/mapbox/light-v11";
+    ? "mapbox://styles/mapbox/dark-v12"
+    : "mapbox://styles/mapbox/streets-v12";
 }
 
 function isDarkMode() {
@@ -96,7 +96,7 @@ export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
           "circle-color": [
             "case",
             ["==", ["get", "active"], 1],
-            "#6A001E",
+            "#e90042",
             dark ? "#ffffff" : "#1a1a1a",
           ],
           "circle-stroke-color": dark ? "#000000" : "#ffffff",

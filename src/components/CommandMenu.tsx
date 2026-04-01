@@ -2,25 +2,10 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { spots } from "@/lib/data";
-import { CATEGORY_LABELS, CATEGORY_ORDER, Category } from "@/lib/types";
-import { Search } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { CATEGORY_LABELS, CATEGORY_ORDER, Category, Spot } from "@/lib/types";
+import { Search, MapPin } from "lucide-react";
 
-// Group results by category
-function groupByCategory(items: typeof spots) {
-  const grouped = new globalThis.Map<Category, typeof spots>();
-  for (const spot of items) {
-    const list = grouped.get(spot.category) || [];
-    list.push(spot);
-    grouped.set(spot.category, list);
-  }
-  // Return in category order
-  return CATEGORY_ORDER
-    .filter((c) => grouped.has(c))
-    .map((c) => ({ category: c, spots: grouped.get(c)! }));
-}
-
-// Highlight matching text
 function Highlight({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
   const idx = text.toLowerCase().indexOf(query.toLowerCase());
@@ -40,45 +25,90 @@ export default function CommandMenu() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [spots, setSpots] = useState<Spot[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  // Fetch spots once on first open
+  useEffect(() => {
+    if (!open || spots.length > 0) return;
+    supabase
+      .from("spots")
+      .select("*")
+      .order("name")
+      .then(({ data }) => {
+        if (data) {
+          setSpots(data.map((r: Record<string, unknown>) => ({
+            id: r.id as string,
+            name: r.name as string,
+            category: r.category as Category,
+            subcategory: r.subcategory as string | undefined,
+            neighborhood: r.neighborhood as string,
+            city: r.city as string,
+            description: r.description as string,
+            address: r.address as string,
+            images: r.images as string[],
+            lng: r.lng as number,
+            lat: r.lat as number,
+            priceRange: r.price_range as string | undefined,
+            tags: r.tags as string[] | undefined,
+          } as Spot)));
+        }
+      });
+  }, [open, spots.length]);
+
+  const neighborhoods = useMemo(() => [...new Set(spots.map((s) => s.neighborhood))].sort(), [spots]);
+
   const results = useMemo(() => {
-    if (!query.trim()) return spots;
+    if (!query.trim()) return [];
     const q = query.toLowerCase();
     return spots.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
         s.neighborhood.toLowerCase().includes(q) ||
-        CATEGORY_LABELS[s.category].toLowerCase().includes(q)
+        CATEGORY_LABELS[s.category].toLowerCase().includes(q) ||
+        (s.tags && s.tags.some((t) => t.toLowerCase().includes(q)))
     );
   }, [query]);
 
-  const grouped = useMemo(() => groupByCategory(results), [results]);
+  const matchingNeighborhoods = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase();
+    return neighborhoods.filter((n) => n.toLowerCase().includes(q));
+  }, [query]);
 
-  // Flat list for keyboard navigation
-  const flatResults = useMemo(
-    () => grouped.flatMap((g) => g.spots),
-    [grouped]
-  );
+  const matchingCategories = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase();
+    return CATEGORY_ORDER.filter((c) =>
+      CATEGORY_LABELS[c].toLowerCase().includes(q)
+    );
+  }, [query]);
 
-  // Keyboard shortcut to open
+  const flatItems = useMemo(() => {
+    const all: Array<{ type: string; value: string }> = [];
+    for (const n of matchingNeighborhoods) all.push({ type: "neighborhood", value: n });
+    for (const c of matchingCategories) all.push({ type: "category", value: c });
+    for (const s of results) all.push({ type: "spot", value: s.id });
+    return all;
+  }, [matchingNeighborhoods, matchingCategories, results]);
+
+  const hasQuery = query.trim().length > 0;
+  const hasResults = flatItems.length > 0;
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setOpen((o) => !o);
       }
-      if (e.key === "Escape") {
-        setOpen(false);
-      }
+      if (e.key === "Escape") setOpen(false);
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Focus input when opened
   useEffect(() => {
     if (open) {
       setQuery("");
@@ -87,12 +117,8 @@ export default function CommandMenu() {
     }
   }, [open]);
 
-  // Reset selection on results change
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [flatResults]);
+  useEffect(() => { setSelectedIndex(0); }, [flatItems]);
 
-  // Scroll selected item into view
   useEffect(() => {
     const el = listRef.current?.querySelector("[data-selected='true']");
     el?.scrollIntoView({ block: "nearest" });
@@ -101,46 +127,53 @@ export default function CommandMenu() {
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setSelectedIndex((i) => Math.min(i + 1, flatResults.length - 1));
+      setSelectedIndex((i) => Math.min(i + 1, flatItems.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setSelectedIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && flatResults[selectedIndex]) {
+    } else if (e.key === "Enter") {
       e.preventDefault();
-      navigate(flatResults[selectedIndex].id);
+      const item = flatItems[selectedIndex];
+      if (item) selectItem(item);
     }
   }
 
-  function navigate(id: string) {
-    setOpen(false);
-    const spot = spots.find((s) => s.id === id);
-    if (spot) {
-      router.push(`/${spot.city.toLowerCase()}/${spot.id}`);
+  function selectItem(item: { type: string; value: string }) {
+    if (item.type === "spot") {
+      const spot = spots.find((s) => s.id === item.value);
+      if (spot) {
+        setOpen(false);
+        router.push(`/${spot.city.toLowerCase()}/${spot.id}`);
+      }
+    } else {
+      setQuery(item.type === "category" ? CATEGORY_LABELS[item.value as Category] : item.value);
+      inputRef.current?.focus();
     }
+  }
+
+  function handleQuickFilter(value: string) {
+    setQuery(value);
+    inputRef.current?.focus();
   }
 
   if (!open) return null;
 
-  let flatIndex = 0;
+  let flatIdx = 0;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] md:pt-[15vh]"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] md:pt-[12vh]"
       onClick={() => setOpen(false)}
     >
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-      {/* Dialog */}
       <div
-        className="relative w-full max-w-xl mx-4 md:mx-0 bg-white dark:bg-neutral-950 rounded-2xl shadow-2xl overflow-hidden animate-in"
+        className="relative w-full max-w-xl mx-4 md:mx-0 bg-white dark:bg-neutral-950 rounded-2xl shadow-2xl dark:shadow-neutral-900/50 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
-        style={{
-          animation: "command-in 0.15s ease-out",
-        }}
+        style={{ animation: "command-in 0.15s ease-out" }}
       >
         {/* Input */}
-        <div className="flex items-center gap-3 px-4 md:px-5 border-b border-neutral-100 dark:border-neutral-800">
+        <div className="flex items-center gap-3 px-5 border-b border-neutral-100 dark:border-neutral-800">
           <Search size={18} strokeWidth={2} className="text-neutral-400 dark:text-neutral-500 shrink-0" />
           <input
             ref={inputRef}
@@ -148,85 +181,189 @@ export default function CommandMenu() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Where do you want to go?"
-            className="flex-1 py-4 text-sm bg-transparent outline-none placeholder-neutral-400 dark:placeholder-neutral-500 dark:text-white"
+            placeholder="Search by name, neighborhood, or vibe..."
+            className="flex-1 py-4 text-sm bg-transparent outline-none placeholder-neutral-400 dark:placeholder-neutral-500"
           />
-          <kbd className="text-[10px] text-neutral-400 dark:text-neutral-500 border border-neutral-200 dark:border-neutral-700 rounded px-1.5 py-0.5">
-            ESC
-          </kbd>
-        </div>
-
-        {/* Results */}
-        <div ref={listRef} className="max-h-[400px] overflow-y-auto">
-          {flatResults.length === 0 ? (
-            <div className="px-5 py-10 text-center">
-              <p className="text-sm text-neutral-400 dark:text-neutral-500">No spaces found</p>
-              <p className="text-xs text-neutral-300 dark:text-neutral-600 mt-1">
-                Try a different name, neighborhood, or category
-              </p>
-            </div>
-          ) : (
-            grouped.map((group) => (
-              <div key={group.category}>
-                {/* Category header */}
-                <div className="px-5 pt-3 pb-1.5">
-                  <p className="text-[10px] font-medium uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
-                    {CATEGORY_LABELS[group.category]}
-                  </p>
-                </div>
-
-                {/* Spots in category */}
-                {group.spots.map((spot) => {
-                  const thisIndex = flatIndex++;
-                  const isSelected = thisIndex === selectedIndex;
-
-                  return (
-                    <button
-                      key={spot.id}
-                      data-selected={isSelected}
-                      onClick={() => navigate(spot.id)}
-                      onMouseEnter={() => setSelectedIndex(thisIndex)}
-                      className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
-                        isSelected ? "bg-neutral-50 dark:bg-neutral-900" : ""
-                      }`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate text-neutral-700 dark:text-neutral-200">
-                          <Highlight text={spot.name} query={query} />
-                        </p>
-                        <p className="text-xs text-neutral-400 dark:text-neutral-500 truncate">
-                          <Highlight text={spot.neighborhood} query={query} />
-                        </p>
-                      </div>
-                      {isSelected && (
-                        <span className="text-[10px] text-neutral-300 dark:text-neutral-600 shrink-0">
-                          ↵ open
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            ))
+          {query && (
+            <button
+              onClick={() => { setQuery(""); inputRef.current?.focus(); }}
+              className="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+            >
+              Clear
+            </button>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-2.5 flex items-center gap-4 text-[10px] text-neutral-400 dark:text-neutral-500">
-          <span className="flex items-center gap-1">
-            <kbd className="border border-neutral-200 dark:border-neutral-700 rounded px-1 py-0.5">↑</kbd>
-            <kbd className="border border-neutral-200 dark:border-neutral-700 rounded px-1 py-0.5">↓</kbd>
-            navigate
-          </span>
-          <span className="flex items-center gap-1">
-            <kbd className="border border-neutral-200 dark:border-neutral-700 rounded px-1 py-0.5">↵</kbd>
-            open
-          </span>
-          <span className="flex items-center gap-1">
-            <kbd className="border border-neutral-200 dark:border-neutral-700 rounded px-1 py-0.5">esc</kbd>
-            close
-          </span>
+        {/* Content */}
+        <div ref={listRef} className="max-h-[420px] overflow-y-auto scrollbar-hide">
+          {!hasQuery ? (
+            <div className="p-5 space-y-5">
+              {/* Vibe grid */}
+              <div>
+                <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mb-2.5">
+                  Vibe
+                </p>
+                <div className="grid grid-cols-4 gap-2">
+                  {["Date night", "Late night", "Special occasion", "Speakeasy", "Rooftop", "Omakase", "Brunch", "Recovery", "Aperitivo", "Tasting menu", "Raw bar", "Cocktails"].map((vibe) => (
+                    <button
+                      key={vibe}
+                      onClick={() => handleQuickFilter(vibe)}
+                      className="px-3 py-2.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-600 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors text-center"
+                    >
+                      {vibe}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Trending */}
+              <div>
+                <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mb-1">
+                  Trending in Miami
+                </p>
+                <div className="space-y-0.5">
+                  {spots.slice(0, 6).map((spot) => (
+                    <button
+                      key={spot.id}
+                      onClick={() => {
+                        setOpen(false);
+                        router.push(`/${spot.city.toLowerCase()}/${spot.id}`);
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{spot.name}</p>
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500 truncate">
+                          {CATEGORY_LABELS[spot.category]} · {spot.neighborhood}
+                          {spot.priceRange && ` · ${spot.priceRange}`}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : !hasResults ? (
+            <div className="px-5 py-12 text-center">
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">No spaces match &ldquo;{query}&rdquo;</p>
+              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1.5">
+                Try a name, neighborhood, category, or vibe like &ldquo;date night&rdquo;
+              </p>
+            </div>
+          ) : (
+            <div className="py-2">
+              {/* Neighborhood matches */}
+              {matchingNeighborhoods.length > 0 && (
+                <div>
+                  <div className="px-5 pt-2 pb-1">
+                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Neighborhoods</p>
+                  </div>
+                  {matchingNeighborhoods.map((n) => {
+                    const idx = flatIdx++;
+                    const isSelected = idx === selectedIndex;
+                    const count = spots.filter((s) => s.neighborhood === n).length;
+                    return (
+                      <button
+                        key={n}
+                        data-selected={isSelected}
+                        onClick={() => handleQuickFilter(n)}
+                        onMouseEnter={() => setSelectedIndex(idx)}
+                        className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
+                          isSelected ? "bg-neutral-50 dark:bg-neutral-900" : ""
+                        }`}
+                      >
+                        <MapPin size={16} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium"><Highlight text={n} query={query} /></p>
+                          <p className="text-xs text-neutral-400 dark:text-neutral-500">{count} spaces</p>
+                        </div>
+                        {isSelected && <span className="text-[10px] text-neutral-300 dark:text-neutral-600 shrink-0">↵ filter</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Category matches */}
+              {matchingCategories.length > 0 && (
+                <div>
+                  <div className="px-5 pt-2 pb-1">
+                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Categories</p>
+                  </div>
+                  {matchingCategories.map((c) => {
+                    const idx = flatIdx++;
+                    const isSelected = idx === selectedIndex;
+                    const count = spots.filter((s) => s.category === c).length;
+                    return (
+                      <button
+                        key={c}
+                        data-selected={isSelected}
+                        onClick={() => handleQuickFilter(CATEGORY_LABELS[c])}
+                        onMouseEnter={() => setSelectedIndex(idx)}
+                        className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
+                          isSelected ? "bg-neutral-50 dark:bg-neutral-900" : ""
+                        }`}
+                      >
+                        <Search size={14} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium"><Highlight text={CATEGORY_LABELS[c]} query={query} /></p>
+                          <p className="text-xs text-neutral-400 dark:text-neutral-500">{count} spaces</p>
+                        </div>
+                        {isSelected && <span className="text-[10px] text-neutral-300 dark:text-neutral-600 shrink-0">↵ filter</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Spot results */}
+              {results.length > 0 && (
+                <div>
+                  <div className="px-5 pt-2 pb-1">
+                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Spaces</p>
+                  </div>
+                  {results.map((spot) => {
+                    const idx = flatIdx++;
+                    const isSelected = idx === selectedIndex;
+                    return (
+                      <button
+                        key={spot.id}
+                        data-selected={isSelected}
+                        onClick={() => selectItem({ type: "spot", value: spot.id })}
+                        onMouseEnter={() => setSelectedIndex(idx)}
+                        className={`w-full text-left px-5 py-3 flex items-center gap-3 transition-colors ${
+                          isSelected ? "bg-neutral-50 dark:bg-neutral-900" : ""
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium truncate"><Highlight text={spot.name} query={query} /></p>
+                            {spot.priceRange && (
+                              <span className="text-[10px] text-neutral-400 dark:text-neutral-500 shrink-0">{spot.priceRange}</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+                            {CATEGORY_LABELS[spot.category]} · <Highlight text={spot.neighborhood} query={query} />
+                          </p>
+                          {spot.tags && spot.tags.length > 0 && (
+                            <div className="flex gap-1.5 mt-1.5">
+                              {spot.tags.slice(0, 3).map((tag) => (
+                                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
       </div>
 
       <style>{`
