@@ -8,6 +8,7 @@ import SpotMap from "@/components/SpotMap";
 import ImageCarousel from "@/components/ImageCarousel";
 import { Clock, Shirt, Car, MapPin, ExternalLink, Phone, Globe, AtSign } from "lucide-react";
 import MobileBackButton from "@/components/MobileBackButton";
+import SpotActions from "@/components/SpotActions";
 
 export async function generateStaticParams() {
   const ids = await getAllSpotIds();
@@ -288,9 +289,11 @@ export default async function SpotPage({
             </>
           )}
 
-          <div className={spot.bookingUrl ? "h-24 md:h-12" : "h-12"} />
+          <div className={spot.bookingUrl ? "h-36 md:h-20" : "h-24 md:h-12"} />
         </div>
       </div>
+
+      <SpotActions spotId={id} hasBookingBar={!!spot.bookingUrl} />
 
       {/* Sticky mobile booking button */}
       {spot.bookingUrl && (
