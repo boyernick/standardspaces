@@ -1,11 +1,20 @@
 @import "tailwindcss";
 
-/* Tell Tailwind v4 to use prefers-color-scheme for dark: variant */
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/* Class-based dark mode — toggled via .dark on <html> */
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Surface colors — change these to retheme the entire app */
   --color-surface: #F7F7F3;
-  /* Brand color system built around #6A001E */
+  --color-surface-dark: #13120A;
+
+  /* Text colors */
+  --color-text: #1a1a1a;
+  --color-text-dark: #ededed;
+  --color-text-muted: #666666;
+  --color-text-muted-dark: #999999;
+
+  /* Brand color system — change --color-brand-900 to retheme */
   --color-brand-50: #fdf2f4;
   --color-brand-100: #fce7eb;
   --color-brand-200: #f9d0d9;
@@ -21,25 +30,22 @@
 
 html, body {
   background: var(--color-surface);
-  color: #1a1a1a;
+  color: var(--color-text);
   font-family: var(--font-calibre), system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-surface: #13120A;
-    --color-neutral-800: #3F3E37;
-    --color-neutral-700: #4A493F;
-    --color-neutral-100: #2A2922;
-  }
-  html, body {
-    background: var(--color-surface);
-    color: #ededed;
-  }
-  /* Force logo inversion and nav text color in dark mode */
-  .nav-logo { filter: invert(1); }
-  .nav-title { color: #ffffff !important; }
+.dark {
+  --color-surface: var(--color-surface-dark);
+  --color-neutral-800: #3F3E37;
+  --color-neutral-700: #4A493F;
+  --color-neutral-100: #2A2922;
 }
+.dark, .dark body {
+  background: var(--color-surface-dark);
+  color: var(--color-text-dark);
+}
+.dark .nav-logo { filter: invert(1); }
+.dark .nav-title { color: var(--color-text-dark) !important; }
 
 h1, h2, h3 {
   font-family: var(--font-martina), Georgia, serif;

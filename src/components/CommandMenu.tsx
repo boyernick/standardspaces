@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 import { CATEGORY_LABELS, CATEGORY_ORDER, TOP_VIBES, Category, Spot } from "@/lib/types";
 import { Search, MapPin } from "lucide-react";
 
@@ -33,7 +33,7 @@ export default function CommandMenu() {
   // Fetch spots once on first open
   useEffect(() => {
     if (!open || spots.length > 0) return;
-    supabase
+    createClient()
       .from("spots")
       .select("*")
       .order("name")

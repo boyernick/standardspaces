@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 import { CATEGORY_LABELS, CATEGORY_ORDER } from "@/lib/types";
 import { Link2, MapPin, ChevronDown, CheckCircle, Loader2 } from "lucide-react";
 
@@ -50,6 +50,7 @@ export default function RecommendForm() {
     setSubmitting(true);
     setError("");
 
+    const supabase = createClient();
     const { data: insertData, error: insertError } = await supabase
       .from("recommendations")
       .insert({

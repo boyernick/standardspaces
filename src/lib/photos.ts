@@ -1,11 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
-
-function getSupabaseAdmin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
+import { createAdminClient } from "./supabase/admin";
 
 export async function downloadAndUploadPhoto(
   imageUrl: string,
@@ -32,7 +25,7 @@ export async function downloadAndUploadPhoto(
 
     const path = `recommendations/${recommendationId}/${index}.${ext}`;
 
-    const { error } = await getSupabaseAdmin().storage
+    const { error } = await createAdminClient().storage
       .from("spot-photos")
       .upload(path, buffer, {
         contentType,
@@ -45,7 +38,7 @@ export async function downloadAndUploadPhoto(
     }
 
     // Get public URL
-    const { data } = getSupabaseAdmin().storage
+    const { data } = createAdminClient().storage
       .from("spot-photos")
       .getPublicUrl(path);
 

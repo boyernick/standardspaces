@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { createAdminClient } from "./supabase/admin";
 import { Spot, Category } from "./types";
 
 // Map DB row (snake_case) to app type (camelCase)
@@ -32,6 +32,7 @@ function mapRow(row: Record<string, unknown>): Spot {
 }
 
 export async function getSpotsByCity(city: string): Promise<Spot[]> {
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("spots")
     .select("*")
@@ -47,6 +48,7 @@ export async function getSpotsByCity(city: string): Promise<Spot[]> {
 }
 
 export async function getSpotById(id: string): Promise<Spot | null> {
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("spots")
     .select("*")
@@ -62,6 +64,7 @@ export async function getSpotById(id: string): Promise<Spot | null> {
 }
 
 export async function getAllSpotIds(): Promise<string[]> {
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("spots")
     .select("id");

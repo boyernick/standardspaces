@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,7 +15,7 @@ export async function POST(req: NextRequest) {
     const ext = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
     const path = `recommendations/${recommendationId}/${Date.now()}.${ext}`;
 
-    const supabase = getSupabase();
+    const supabase = createAdminClient();
 
     const { error } = await supabase.storage
       .from("spot-photos")

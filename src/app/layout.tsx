@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import Navbar from "@/components/Navbar";
 import CommandMenu from "@/components/CommandMenu";
@@ -30,9 +30,10 @@ export const metadata: Metadata = {
   icons: {
     icon: "/logo.svg",
   },
-  other: {
-    "theme-color": "#F7F7F3",
-  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#f0ebe0",
 };
 
 export default function RootLayout({
@@ -41,7 +42,25 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${calibre.variable} ${martinaPlantijn.variable} h-full antialiased`}>
+    <html lang="en" className={`${calibre.variable} ${martinaPlantijn.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            var theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+              document.documentElement.classList.add('dark');
+            } else if (theme === 'light') {
+              // User explicitly chose light — respect it
+            } else {
+              // Auto: dark between 7pm and 7am
+              var hour = new Date().getHours();
+              if (hour >= 19 || hour < 7) {
+                document.documentElement.classList.add('dark');
+              }
+            }
+          })();
+        `}} />
+      </head>
       <body className="h-full flex flex-col overflow-hidden">
         <CommandMenu />
         <main className="flex-1 overflow-hidden">{children}</main>

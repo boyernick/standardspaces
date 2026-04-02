@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { THEME } from "@/lib/theme";
 import { getCustomMapStyle } from "./mapStyle";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
@@ -20,7 +21,7 @@ export default function SpotMap({ lng, lat, name }: SpotMapProps) {
   useEffect(() => {
     if (!container.current || map.current) return;
 
-    const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const dark = document.documentElement.classList.contains("dark");
 
     map.current = new mapboxgl.Map({
       container: container.current,
@@ -35,9 +36,9 @@ export default function SpotMap({ lng, lat, name }: SpotMapProps) {
     el.style.cssText = `
       width: 14px;
       height: 14px;
-      background: ${dark ? "#F7F7F3" : "#13120A"};
+      background: ${dark ? THEME.light.surface : THEME.dark.surface};
       border-radius: 50%;
-      border: 2px solid #ffffff;
+      border: 2px solid ${THEME.white};
       box-shadow: 0 2px 6px rgba(0,0,0,0.25);
     `;
 

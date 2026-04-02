@@ -1,7 +1,9 @@
 import Navbar from "@/components/Navbar";
 import RecommendForm from "./RecommendForm";
+import { requireAuth } from "@/lib/auth";
 
-export default function RecommendPage() {
+export default async function RecommendPage() {
+  await requireAuth();
   return (
     <div className="h-screen flex flex-col bg-surface">
       <Navbar />

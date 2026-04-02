@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ChevronDown, Menu, X, Search } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { ChevronDown, Menu, X, Search, Moon, Sun } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 const cities = [
   { name: "Miami", slug: "miami" },
@@ -11,10 +12,23 @@ const cities = [
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [cityOpen, setCityOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+  const [themeMode, setThemeMode] = useState<"auto" | "light" | "dark">("auto");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains("dark"));
+    const stored = localStorage.getItem("theme");
+    if (stored === "dark" || stored === "light") {
+      setThemeMode(stored);
+    } else {
+      setThemeMode("auto");
+    }
+  }, []);
 
   const currentCity =
     cities.find((c) => pathname.startsWith(`/${c.slug}`)) ?? cities[0];
@@ -37,7 +51,7 @@ export default function Navbar() {
       <div className="px-4 py-2.5 flex items-center">
         {/* Left: Logo + City */}
         <div className="flex-1 flex items-center gap-5">
-          <Link href="/" className="flex items-center gap-1">
+          <Link href="/miami" className="flex items-center gap-1">
             <img src="/logo.svg" alt="Standard Spaces" className="h-5 w-5 nav-logo dark:invert" />
             <span className="text-lg tracking-tight whitespace-nowrap text-neutral-900 dark:text-white nav-title" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
               Standard Spaces
@@ -48,7 +62,7 @@ export default function Navbar() {
           <div ref={dropdownRef} className="relative">
             <button
               onClick={() => setCityOpen(!cityOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-full border border-transparent hover:border-neutral-200 dark:hover:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-full border border-transparent hover:border-neutral-400 dark:hover:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
             >
               {currentCity.name}
               <ChevronDown size={12} strokeWidth={1.5} className={`transition-transform ${cityOpen ? "rotate-180" : ""}`} />
@@ -87,7 +101,7 @@ export default function Navbar() {
         >
           <span className="flex items-center gap-1.5">
             <Search size={13} strokeWidth={2} />
-            Search
+            Search for spaces
           </span>
           <kbd className="text-[10px] text-neutral-300 dark:text-neutral-600 border border-neutral-200 dark:border-neutral-800 rounded px-1 py-0.5">
             ⌘K
@@ -99,7 +113,7 @@ export default function Navbar() {
         <div ref={menuRef} className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="flex items-center gap-2 pl-3 pr-1.5 py-1 border border-neutral-200 dark:border-neutral-800 rounded-full hover:shadow-sm transition-shadow"
+            className="flex items-center gap-2 pl-3 pr-1.5 py-1 border border-neutral-200 dark:border-neutral-800 rounded-full hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
           >
             <Menu size={14} strokeWidth={2} className="text-neutral-600 dark:text-neutral-400" />
             <div className="w-7 h-7 rounded-full bg-brand-900" />
@@ -110,8 +124,44 @@ export default function Navbar() {
               <Link href="/recommend" onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
                 Recommend a space
               </Link>
+              <button
+                onClick={() => {
+                  let nextMode: "auto" | "light" | "dark";
+                  if (themeMode === "auto") nextMode = "light";
+                  else if (themeMode === "light") nextMode = "dark";
+                  else nextMode = "auto";
+
+                  setThemeMode(nextMode);
+
+                  if (nextMode === "auto") {
+                    localStorage.removeItem("theme");
+                    const hour = new Date().getHours();
+                    const shouldBeDark = hour >= 19 || hour < 7;
+                    document.documentElement.classList.toggle("dark", shouldBeDark);
+                    setIsDark(shouldBeDark);
+                  } else {
+                    localStorage.setItem("theme", nextMode);
+                    document.documentElement.classList.toggle("dark", nextMode === "dark");
+                    setIsDark(nextMode === "dark");
+                  }
+                }}
+                className="flex w-full items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
+              >
+                {themeMode === "auto" ? "Auto mode" : themeMode === "light" ? "Light mode" : "Dark mode"}
+                <span className="text-xs text-neutral-400 dark:text-neutral-500">
+                  {themeMode === "auto" ? "auto" : ""}
+                </span>
+              </button>
               <div className="border-t border-neutral-100 dark:border-neutral-800 my-0.5" />
-              <button onClick={() => setMenuOpen(false)} className="block w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+              <button
+                onClick={async () => {
+                  setMenuOpen(false);
+                  const supabase = createClient();
+                  await supabase.auth.signOut();
+                  router.push("/");
+                }}
+                className="block w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+              >
                 Log out
               </button>
             </div>

@@ -2,7 +2,7 @@
 
 export default function Home() {
   return (
-    <div className="relative h-screen w-full overflow-hidden" style={{ backgroundColor: "#F7F7F3" }}>
+    <div className="relative h-screen w-full overflow-hidden" style={{ backgroundColor: "var(--color-surface)" }}>
       {/* Header */}
       <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-5 py-4">
         <div className="flex items-center gap-1">
@@ -11,9 +11,14 @@ export default function Home() {
             Standard Spaces
           </span>
         </div>
-        <button className="px-5 py-2 text-sm font-medium text-black border border-black/30 rounded-full hover:bg-black/5 transition-colors" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
-          Apply to join
-        </button>
+        <div className="flex items-center gap-3">
+          <a href="/login" className="text-sm font-medium text-black/60 hover:text-black transition-colors" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
+            Log in
+          </a>
+          <a href="/apply" className="px-5 py-2 text-sm font-medium text-black border border-black/30 rounded-full hover:bg-black/5 transition-colors" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
+            Apply to join
+          </a>
+        </div>
       </div>
 
       {/* Footer */}

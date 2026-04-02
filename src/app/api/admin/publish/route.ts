@@ -1,17 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { geocodeAddress } from "@/lib/geocode";
-
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = getSupabase();
+    const supabase = createAdminClient();
     const { recommendationId, spot } = await req.json();
 
     if (!recommendationId || !spot) {
