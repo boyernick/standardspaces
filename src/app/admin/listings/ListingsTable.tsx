@@ -8,7 +8,7 @@ import { Search } from "lucide-react";
 type SpotRow = {
   id: string;
   name: string;
-  category: string;
+  category: string[];
   neighborhood: string;
   city: string;
   images: string[];
@@ -68,7 +68,7 @@ export default function ListingsTable({ spots }: { spots: SpotRow[] }) {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate" style={fontCalibre}>{spot.name}</p>
                 <p className="text-xs text-black/50" style={fontCalibre}>
-                  {(spot.category as string[]).map((c: string) => CATEGORY_LABELS[c as Category] || c).join(" · ")} · {spot.neighborhood}
+                  {spot.category.map((c) => CATEGORY_LABELS[c as Category] || c).join(" · ")} · {spot.neighborhood}
                 </p>
               </div>
               <span className="text-xs text-black/30 shrink-0" style={fontCalibre}>Edit</span>
