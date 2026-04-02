@@ -126,7 +126,7 @@ export const CATEGORY_ORDER: Category[] = [
 export interface Spot {
   id: string;
   name: string;
-  category: Category;
+  category: Category[];
   subcategory?: string[];
   vibes?: string[];
   neighborhood: string;

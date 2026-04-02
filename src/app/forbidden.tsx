@@ -9,12 +9,12 @@ export default function Forbidden() {
         <h1 className="text-2xl font-medium mb-3" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
           Access denied
         </h1>
-        <p className="text-sm text-black/50 mb-6" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
           You don&apos;t have permission to view this page.
         </p>
         <Link
           href="/miami"
-          className="px-5 py-2 text-sm font-medium text-black border border-black/30 rounded-full hover:bg-black/5 transition-colors"
+          className="px-5 py-2 text-sm font-medium text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
           style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}
         >
           Back to guide

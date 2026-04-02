@@ -3,7 +3,7 @@
 /* Class-based dark mode — toggled via .dark on <html> */
 @custom-variant dark (&:is(.dark *));
 
-@theme inline {
+@theme {
   /* Surface colors — change these to retheme the entire app */
   --color-surface: #F7F7F3;
   --color-surface-dark: #13120A;
@@ -35,17 +35,17 @@ html, body {
 }
 
 .dark {
-  --color-surface: var(--color-surface-dark);
+  --color-surface: #13120A;
   --color-neutral-800: #3F3E37;
   --color-neutral-700: #4A493F;
   --color-neutral-100: #2A2922;
 }
 .dark, .dark body {
-  background: var(--color-surface-dark);
-  color: var(--color-text-dark);
+  background: #13120A;
+  color: #ededed;
 }
 .dark .nav-logo { filter: invert(1); }
-.dark .nav-title { color: var(--color-text-dark) !important; }
+.dark .nav-title { color: #ededed !important; }
 
 h1, h2, h3 {
   font-family: var(--font-martina), Georgia, serif;
@@ -58,6 +58,11 @@ a, button, select, [role="button"] {
 /* Consistent photo treatment across all spot images */
 .spot-img {
   filter: brightness(0.95) contrast(1.02) saturate(0.9);
+}
+
+input[type="time"]::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
 }
 
 .scrollbar-hide {

@@ -42,7 +42,7 @@ export default function CommandMenu() {
           setSpots(data.map((r: Record<string, unknown>) => ({
             id: r.id as string,
             name: r.name as string,
-            category: r.category as Category,
+            category: r.category as Category[],
             subcategory: r.subcategory as string[] | undefined,
             vibes: r.vibes as string[] | undefined,
             neighborhood: r.neighborhood as string,
@@ -67,7 +67,7 @@ export default function CommandMenu() {
       (s) =>
         s.name.toLowerCase().includes(q) ||
         s.neighborhood.toLowerCase().includes(q) ||
-        CATEGORY_LABELS[s.category].toLowerCase().includes(q) ||
+        s.category.some((c) => CATEGORY_LABELS[c].toLowerCase().includes(q)) ||
         (s.vibes && s.vibes.some((v) => v.toLowerCase().includes(q)))
     );
   }, [query]);
@@ -234,7 +234,7 @@ export default function CommandMenu() {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{spot.name}</p>
                         <p className="text-xs text-neutral-400 dark:text-neutral-500 truncate">
-                          {CATEGORY_LABELS[spot.category]} · {spot.neighborhood}
+                          {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")} · {spot.neighborhood}
                           {spot.priceRange && ` · ${spot.priceRange}`}
                         </p>
                       </div>
@@ -293,7 +293,7 @@ export default function CommandMenu() {
                   {matchingCategories.map((c) => {
                     const idx = flatIdx++;
                     const isSelected = idx === selectedIndex;
-                    const count = spots.filter((s) => s.category === c).length;
+                    const count = spots.filter((s) => s.category.includes(c)).length;
                     return (
                       <button
                         key={c}
@@ -343,7 +343,7 @@ export default function CommandMenu() {
                             )}
                           </div>
                           <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
-                            {CATEGORY_LABELS[spot.category]} · <Highlight text={spot.neighborhood} query={query} />
+                            {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")} · <Highlight text={spot.neighborhood} query={query} />
                           </p>
                           {spot.vibes && spot.vibes.length > 0 && (
                             <div className="flex gap-1.5 mt-1.5">

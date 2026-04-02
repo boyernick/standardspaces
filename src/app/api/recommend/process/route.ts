@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Resend } from "resend";
 import { scrapeUrl } from "@/lib/scraper";
+import { enrichScrapedData } from "@/lib/enrich";
 import { processPhotos } from "@/lib/photos";
 
 function getResend() {
@@ -20,6 +21,7 @@ async function sendNotification(data: {
   neighborhood?: string | null;
   notes?: string | null;
   photos: number;
+  siteUrl: string;
 }) {
   const resend = getResend();
   if (!resend) return;
@@ -43,7 +45,7 @@ async function sendNotification(data: {
             ${data.photos} photo${data.photos !== 1 ? "s" : ""} scraped
           </p>
           <div style="margin: 20px 0;">
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/admin/review/${data.recommendationId}"
+            <a href="${data.siteUrl}/admin/review/${data.recommendationId}"
                style="display: inline-block; padding: 10px 24px; background: #6A001E; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500;">
               Review and publish
             </a>
@@ -58,6 +60,7 @@ async function sendNotification(data: {
 
 export async function POST(req: NextRequest) {
   try {
+    const siteUrl = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/[^/]*$/, "") || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const supabase = createAdminClient();
     const { recommendationId } = await req.json();
 
@@ -87,7 +90,10 @@ export async function POST(req: NextRequest) {
       .eq("id", recommendationId);
 
     // Scrape the URL
-    const scraped = await scrapeUrl(rec.url);
+    const initialScrape = await scrapeUrl(rec.url);
+
+    // Enrich with Google Places, Yelp, and Instagram data
+    const scraped = await enrichScrapedData(initialScrape);
 
     // Download and upload photos to Supabase Storage
     const uploadedPhotos = await processPhotos(scraped.imageUrls, recommendationId);
@@ -141,6 +147,7 @@ export async function POST(req: NextRequest) {
       neighborhood: mergedData.neighborhood,
       notes: rec.notes,
       photos: uploadedPhotos.length,
+      siteUrl,
     });
 
     return NextResponse.json({

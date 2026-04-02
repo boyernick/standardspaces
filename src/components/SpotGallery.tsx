@@ -9,8 +9,6 @@ interface SpotGalleryProps {
 }
 
 function GalleryImage({ src, alt, onClick }: { src: string; alt: string; onClick?: () => void }) {
-  const [loaded, setLoaded] = useState(false);
-
   if (src === "/placeholder.jpg") {
     return <div className="w-full h-full bg-neutral-100 dark:bg-neutral-800" />;
   }
@@ -20,15 +18,10 @@ function GalleryImage({ src, alt, onClick }: { src: string; alt: string; onClick
       className={`relative w-full h-full bg-neutral-100 dark:bg-neutral-800 ${onClick ? "cursor-pointer" : ""}`}
       onClick={onClick}
     >
-      {!loaded && <div className="absolute inset-0 animate-pulse bg-neutral-100 dark:bg-neutral-800" />}
       <img
         src={src}
         alt={alt}
-        loading="lazy"
-        onLoad={() => setLoaded(true)}
-        className={`w-full h-full object-cover spot-img transition-opacity duration-500 ${
-          loaded ? "opacity-100" : "opacity-0"
-        }`}
+        className="w-full h-full object-cover spot-img"
       />
     </div>
   );

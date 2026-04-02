@@ -5,6 +5,142 @@ import { useRouter } from "next/navigation";
 import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, VIBES, Category } from "@/lib/types";
 import { ChevronDown, Loader2, CheckCircle, X, Plus, GripVertical, Upload, Trash2 } from "lucide-react";
 
+// --- Constants ---
+
+const MIAMI_NEIGHBORHOODS = [
+  "Aventura", "Bal Harbour", "Bay Harbor Islands", "Brickell", "Coconut Grove",
+  "Coral Gables", "Design District", "Downtown", "Edgewater", "Fisher Island",
+  "Key Biscayne", "Little Haiti", "Little Havana", "Miami Beach", "Miami Shores",
+  "Midtown", "North Beach", "South Beach", "Surfside", "Sunny Isles Beach",
+  "Upper East Side", "Wynwood",
+];
+
+const CITIES = ["Miami"];
+
+const DRESS_CODES = [
+  "Casual",
+  "Smart casual",
+  "Business casual",
+  "Upscale",
+  "Formal",
+  "Resort chic",
+  "No dress code",
+];
+
+const PARKING_OPTIONS = [
+  "Valet",
+  "Valet & self-park",
+  "Street parking",
+  "Parking garage",
+  "Parking lot",
+  "Limited street parking",
+  "No dedicated parking",
+];
+
+const PRICE_RANGES = ["$", "$$", "$$$", "$$$$"];
+
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+
+interface TimeBlock {
+  open: string;
+  close: string;
+}
+
+interface DayHours {
+  closed: boolean;
+  blocks: TimeBlock[];
+}
+
+function parseHoursString(str: string): Record<string, DayHours> {
+  const defaults: Record<string, DayHours> = {};
+  for (const d of DAYS) {
+    defaults[d] = { closed: false, blocks: [{ open: "11:00", close: "23:00" }] };
+  }
+  if (str && str.trim()) {
+    const timeMatch = str.match(/(\d{1,2}(?::\d{2})?\s*(?:AM|PM)?)\s*[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM)?)/i);
+    if (timeMatch) {
+      const block = { open: to24(timeMatch[1]), close: to24(timeMatch[2]) };
+      for (const d of DAYS) {
+        defaults[d] = { closed: false, blocks: [block] };
+      }
+    }
+  }
+  return defaults;
+}
+
+function to24(t: string): string {
+  t = t.trim().toUpperCase();
+  const m = t.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/);
+  if (!m) return "12:00";
+  let h = parseInt(m[1]);
+  const min = m[2] || "00";
+  const ampm = m[3];
+  if (ampm === "PM" && h < 12) h += 12;
+  if (ampm === "AM" && h === 12) h = 0;
+  return `${h.toString().padStart(2, "0")}:${min}`;
+}
+
+function fmtBlocks(blocks: TimeBlock[]): string {
+  return blocks.map((b) => `${fmt(b.open)}–${fmt(b.close)}`).join(", ");
+}
+
+function blocksEqual(a: TimeBlock[], b: TimeBlock[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((ab, i) => ab.open === b[i].open && ab.close === b[i].close);
+}
+
+function hoursToString(hours: Record<string, DayHours>): string {
+  const entries = DAYS.map((d) => ({ day: d, ...hours[d] }));
+  const openDays = entries.filter((e) => !e.closed);
+  if (openDays.length === 0) return "Closed";
+  const allSame = openDays.every((d) => blocksEqual(d.blocks, openDays[0].blocks));
+  if (allSame && openDays.length === 7) {
+    return `Daily ${fmtBlocks(openDays[0].blocks)}`;
+  }
+  if (allSame) {
+    const ranges = getRanges(entries);
+    return `${ranges} ${fmtBlocks(openDays[0].blocks)}`;
+  }
+  return entries
+    .filter((e) => !e.closed)
+    .map((e) => `${e.day} ${fmtBlocks(e.blocks)}`)
+    .join(", ");
+}
+
+function getRanges(entries: { day: string; closed: boolean }[]): string {
+  const open = entries.filter((e) => !e.closed);
+  if (open.length === 0) return "";
+  if (open.length === 7) return "Mon–Sun";
+  // Simple: just list days
+  const dayIndices = open.map((e) => DAYS.indexOf(e.day as typeof DAYS[number]));
+  let ranges: string[] = [];
+  let start = dayIndices[0];
+  let end = dayIndices[0];
+  for (let i = 1; i < dayIndices.length; i++) {
+    if (dayIndices[i] === end + 1) {
+      end = dayIndices[i];
+    } else {
+      ranges.push(start === end ? DAYS[start] : `${DAYS[start]}–${DAYS[end]}`);
+      start = dayIndices[i];
+      end = dayIndices[i];
+    }
+  }
+  ranges.push(start === end ? DAYS[start] : `${DAYS[start]}–${DAYS[end]}`);
+  return ranges.join(", ");
+}
+
+function fmt(t: string): string {
+  const [hStr, mStr] = t.split(":");
+  let h = parseInt(hStr);
+  const m = mStr || "00";
+  const ampm = h >= 12 ? "PM" : "AM";
+  if (h === 0) h = 12;
+  else if (h > 12) h -= 12;
+  return m === "00" ? `${h}${ampm}` : `${h}:${m}${ampm}`;
+}
+
+// --- Types ---
+
 interface Recommendation {
   id: string;
   url: string;
@@ -17,12 +153,17 @@ interface Recommendation {
   status: string;
 }
 
+// --- Main Form ---
+
 export default function ReviewForm({ recommendation: rec }: { recommendation: Recommendation }) {
   const router = useRouter();
   const scraped = (rec.scraped_data || {}) as Record<string, string | null>;
 
   const [name, setName] = useState(rec.name || scraped.name || "");
-  const [category, setCategory] = useState(rec.category || scraped.category || "");
+  const [category, setCategory] = useState<string[]>(
+    rec.category ? (Array.isArray(rec.category) ? rec.category : [rec.category]) :
+    scraped.category ? (Array.isArray(scraped.category) ? scraped.category : [scraped.category]) : []
+  );
   const [subcategory, setSubcategory] = useState<string[]>(
     Array.isArray(scraped.subcategory) ? scraped.subcategory : []
   );
@@ -33,14 +174,16 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
   const [phone, setPhone] = useState(scraped.phone || "");
   const [website, setWebsite] = useState(scraped.website || rec.url || "");
   const [instagram, setInstagram] = useState(scraped.instagram || "");
-  const [hours, setHours] = useState(scraped.hours || "");
+  const [hours, setHours] = useState<Record<string, DayHours>>(() =>
+    parseHoursString(scraped.hours || "")
+  );
   const [priceRange, setPriceRange] = useState(scraped.priceRange || "");
   const [dressCode, setDressCode] = useState(scraped.dressCode || "");
   const [parking, setParking] = useState(scraped.parking || "");
   const [bookingUrl, setBookingUrl] = useState(scraped.bookingUrl || "");
   const [menuUrl, setMenuUrl] = useState(scraped.menuUrl || "");
-  const [lng, setLng] = useState(scraped.lng?.toString() || "");
-  const [lat, setLat] = useState(scraped.lat?.toString() || "");
+  const [lng] = useState(scraped.lng?.toString() || "");
+  const [lat] = useState(scraped.lat?.toString() || "");
   const [images, setImages] = useState<string[]>(rec.scraped_images || []);
   const [vibes, setVibes] = useState<string[]>(
     Array.isArray(scraped.vibes) ? scraped.vibes : []
@@ -52,7 +195,7 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
   const [error, setError] = useState("");
 
   async function handlePublish() {
-    if (!name.trim() || !category || !neighborhood.trim() || !city.trim()) {
+    if (!name.trim() || category.length === 0 || !neighborhood.trim() || !city.trim()) {
       setError("Name, category, neighborhood, and city are required.");
       return;
     }
@@ -77,7 +220,7 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
           phone: phone.trim() || null,
           website: website.trim() || null,
           instagram: instagram.trim() || null,
-          hours: hours.trim() || null,
+          hours: hoursToString(hours) || null,
           price_range: priceRange.trim() || null,
           dress_code: dressCode.trim() || null,
           parking: parking.trim() || null,
@@ -120,170 +263,179 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
   }
 
   return (
-    <div className="space-y-5">
-      {/* Photos */}
-      <PhotoManager
-        images={images}
-        onChange={setImages}
-        recommendationId={rec.id}
-      />
+    <div className="space-y-6">
+      {/* Source reference */}
+      <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800">
+        <div className="min-w-0">
+          <p className="text-xs text-neutral-400 dark:text-neutral-500">Source</p>
+          <a href={rec.url} target="_blank" rel="noopener noreferrer" className="text-sm text-neutral-700 dark:text-white underline underline-offset-2 decoration-neutral-300 dark:decoration-neutral-600 hover:decoration-neutral-500 dark:hover:decoration-neutral-400 transition-colors truncate block">{rec.url}</a>
+        </div>
+        {rec.notes && (
+          <div className="shrink-0 text-right">
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">Note</p>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 italic max-w-[200px] truncate">"{rec.notes}"</p>
+          </div>
+        )}
+      </div>
 
-      {/* Name */}
+      {/* Photos */}
+      <PhotoManager images={images} onChange={setImages} recommendationId={rec.id} />
+
+      {/* === Basic Info === */}
+      <SectionHeader>Basic info</SectionHeader>
+
       <Field label="Name" required>
         <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
       </Field>
 
-      {/* Category */}
-      <Field label="Category" required>
-        <div className="relative">
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass + " appearance-none pr-10"}>
-            <option value="">Select</option>
-            {CATEGORY_ORDER.map((cat) => (
-              <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
-            ))}
-          </select>
-          <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-        </div>
-      </Field>
-
-      {/* Subcategory */}
-      <Field label="Subcategory">
-        <SubcategorySelect
-          category={category as Category}
-          selected={subcategory}
-          onChange={setSubcategory}
+      <Field label={`Category · ${category.length} selected`} required>
+        <ChipSelect
+          options={CATEGORY_ORDER}
+          labels={CATEGORY_LABELS}
+          selected={category}
+          onChange={setCategory}
         />
       </Field>
 
-      {/* Vibes */}
-      <Field label="Vibes">
-        <VibeSelect selected={vibes} onChange={setVibes} />
+      <Field label="Price range">
+        <SelectInput value={priceRange} onChange={setPriceRange} options={PRICE_RANGES.map((p) => ({ value: p, label: p }))} placeholder="Select" />
       </Field>
 
-      {/* Neighborhood + City */}
+      {/* Subcategory chips — show subcategories for all selected categories */}
+      {category.length > 0 && (
+        <Field label={`Subcategory · ${subcategory.length} selected`}>
+          <ChipSelect
+            options={category.flatMap((c) => SUBCATEGORIES[c as Category] || [])}
+            selected={subcategory}
+            onChange={setSubcategory}
+          />
+        </Field>
+      )}
+
+      {/* Vibes chips */}
+      <Field label={`Vibes · ${vibes.length} selected`}>
+        <ChipSelect options={VIBES} selected={vibes} onChange={setVibes} />
+      </Field>
+
       <div className="grid grid-cols-2 gap-4">
         <Field label="Neighborhood" required>
-          <input type="text" value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} className={inputClass} />
+          <SelectInput value={neighborhood} onChange={setNeighborhood} options={MIAMI_NEIGHBORHOODS.map((n) => ({ value: n, label: n }))} placeholder="Select" allowCustom />
         </Field>
         <Field label="City" required>
-          <input type="text" value={city} onChange={(e) => setCity(e.target.value)} className={inputClass} />
+          <SelectInput value={city} onChange={setCity} options={CITIES.map((c) => ({ value: c, label: c }))} placeholder="Select" />
         </Field>
       </div>
 
-      {/* Description */}
+      {/* Description with template generator */}
       <Field label="Description">
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className={inputClass + " resize-none"} />
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} className={inputClass + " resize-none"} />
       </Field>
 
-      {/* Address */}
+      {/* === Location & Contact === */}
+      <SectionHeader>Location & contact</SectionHeader>
+
       <Field label="Address">
         <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} />
       </Field>
 
-      {/* Coordinates */}
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Longitude">
-          <input type="text" value={lng} onChange={(e) => setLng(e.target.value)} placeholder="-80.19" className={inputClass} />
-        </Field>
-        <Field label="Latitude">
-          <input type="text" value={lat} onChange={(e) => setLat(e.target.value)} placeholder="25.77" className={inputClass} />
-        </Field>
-      </div>
-
-      {/* Hours + Phone */}
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Hours">
-          <input type="text" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="Mon–Sun 9am–10pm" className={inputClass} />
-        </Field>
         <Field label="Phone">
-          <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
-        </Field>
-      </div>
-
-      {/* Website + Instagram */}
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Website">
-          <input type="text" value={website} onChange={(e) => setWebsite(e.target.value)} className={inputClass} />
+          <input type="tel" value={phone} onChange={(e) => {
+            const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+            if (digits.length === 0) { setPhone(""); return; }
+            let formatted = "(";
+            formatted += digits.slice(0, 3);
+            if (digits.length >= 4) formatted += ") " + digits.slice(3, 6);
+            if (digits.length >= 7) formatted += " - " + digits.slice(6);
+            setPhone(formatted);
+          }} placeholder="(305) 555 - 1234" className={inputClass} />
         </Field>
         <Field label="Instagram">
           <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@handle" className={inputClass} />
         </Field>
       </div>
 
-      {/* Price + Dress code */}
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Price range">
-          <input type="text" value={priceRange} onChange={(e) => setPriceRange(e.target.value)} placeholder="$$$$" className={inputClass} />
-        </Field>
-        <Field label="Dress code">
-          <input type="text" value={dressCode} onChange={(e) => setDressCode(e.target.value)} placeholder="Smart casual" className={inputClass} />
-        </Field>
-      </div>
-
-      {/* Parking */}
-      <Field label="Parking">
-        <input type="text" value={parking} onChange={(e) => setParking(e.target.value)} placeholder="Valet available" className={inputClass} />
+      <Field label="Website">
+        <input type="text" value={website} onChange={(e) => setWebsite(e.target.value)} className={inputClass} />
       </Field>
 
-      {/* Booking + Menu URLs */}
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Booking URL">
-          <input type="text" value={bookingUrl} onChange={(e) => setBookingUrl(e.target.value)} placeholder="https://resy.com/..." className={inputClass} />
-        </Field>
-        <Field label="Menu URL">
-          <input type="text" value={menuUrl} onChange={(e) => setMenuUrl(e.target.value)} placeholder="https://..." className={inputClass} />
-        </Field>
-      </div>
+      <Field label="Booking URL">
+        <input type="text" value={bookingUrl} onChange={(e) => setBookingUrl(e.target.value)} placeholder="https://resy.com/..." className={inputClass} />
+      </Field>
 
-      {/* Original URL + Notes */}
-      <div className="border-t border-neutral-100 dark:border-neutral-800 pt-5 mt-6">
-        <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-1">Original URL</p>
-        <a href={rec.url} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-900 hover:underline break-all">{rec.url}</a>
-        {rec.notes && (
-          <div className="mt-3">
-            <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-1">User notes</p>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 italic">"{rec.notes}"</p>
-          </div>
-        )}
+      <Field label="Menu URL">
+        <input type="text" value={menuUrl} onChange={(e) => setMenuUrl(e.target.value)} placeholder="https://..." className={inputClass} />
+      </Field>
+
+      {/* === Logistics === */}
+      <SectionHeader>Logistics</SectionHeader>
+
+      <Field label="Hours">
+        <HoursEditor hours={hours} onChange={setHours} />
+      </Field>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="Dress code">
+          <SelectInput value={dressCode} onChange={setDressCode} options={DRESS_CODES.map((d) => ({ value: d, label: d }))} placeholder="Select" />
+        </Field>
+        <Field label="Parking">
+          <SelectInput value={parking} onChange={setParking} options={PARKING_OPTIONS.map((p) => ({ value: p, label: p }))} placeholder="Select" />
+        </Field>
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
+      <div className="h-32" />
 
-      <button
-        onClick={handlePublish}
-        disabled={publishing || deleting}
-        className="w-full py-3 text-sm font-medium rounded-xl bg-brand-900 text-white hover:bg-brand-800 disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
-      >
-        {publishing ? <><Loader2 size={16} className="animate-spin" /> Publishing...</> : "Publish to site"}
-      </button>
-
-      <button
-        onClick={async () => {
-          if (!confirm("Delete this recommendation? This cannot be undone.")) return;
-          setDeleting(true);
-          setError("");
-          const res = await fetch("/api/admin/delete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ recommendationId: rec.id }),
-          });
-          setDeleting(false);
-          if (!res.ok) {
-            setError("Failed to delete. Please try again.");
-            return;
-          }
-          router.push("/miami");
-        }}
-        disabled={publishing || deleting}
-        className="w-full py-3 text-sm font-medium rounded-xl border border-red-200 dark:border-red-900/50 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
-      >
-        {deleting ? <><Loader2 size={16} className="animate-spin" /> Deleting...</> : <><Trash2 size={14} /> Delete recommendation</>}
-      </button>
+      {/* Fixed publish bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-surface/90 backdrop-blur-lg border-t border-neutral-200 dark:border-neutral-800">
+        <div className="flex items-center justify-between gap-4">
+        <button
+          onClick={async () => {
+            if (!confirm("Delete this recommendation? This cannot be undone.")) return;
+            setDeleting(true);
+            setError("");
+            const res = await fetch("/api/admin/delete", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ recommendationId: rec.id }),
+            });
+            setDeleting(false);
+            if (!res.ok) {
+              setError("Failed to delete. Please try again.");
+              return;
+            }
+            router.push("/miami");
+          }}
+          disabled={publishing || deleting}
+          className="text-sm text-red-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-60 transition-colors flex items-center gap-1.5 shrink-0"
+        >
+          {deleting ? <><Loader2 size={14} className="animate-spin" /> Deleting...</> : <><Trash2 size={14} /> Delete</>}
+        </button>
+        <button
+          onClick={handlePublish}
+          disabled={publishing || deleting}
+          className="px-8 py-2.5 text-sm font-medium rounded-xl bg-brand-900 text-white hover:bg-brand-800 disabled:opacity-60 transition-colors flex items-center gap-2 shrink-0"
+        >
+          {publishing ? <><Loader2 size={16} className="animate-spin" /> Publishing...</> : "Publish to site"}
+        </button>
+        </div>
+      </div>
     </div>
   );
 }
 
+// --- Shared styles & components ---
+
 const inputClass = "w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors";
+
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <h3 className="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500 shrink-0">{children}</h3>
+      <div className="flex-1 h-px bg-neutral-100 dark:bg-neutral-800" />
+    </div>
+  );
+}
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
@@ -296,90 +448,204 @@ function Field({ label, required, children }: { label: string; required?: boolea
   );
 }
 
-function SubcategorySelect({
-  category,
+// --- SelectInput: styled dropdown with optional custom entry ---
+
+function SelectInput({
+  value,
+  onChange,
+  options,
+  placeholder,
+  allowCustom,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  placeholder: string;
+  allowCustom?: boolean;
+}) {
+  const isCustom = allowCustom && value && !options.some((o) => o.value === value);
+
+  return (
+    <div className="relative">
+      <select
+        value={isCustom ? "__custom__" : value}
+        onChange={(e) => {
+          if (e.target.value === "__custom__") return;
+          onChange(e.target.value);
+        }}
+        className={inputClass + " appearance-none pr-10"}
+      >
+        <option value="">{placeholder}</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+        {isCustom && <option value="__custom__">{value} (custom)</option>}
+      </select>
+      <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+    </div>
+  );
+}
+
+// --- ChipSelect: toggleable chip grid for subcategories & vibes ---
+
+function ChipSelect({
+  options,
+  labels,
   selected,
   onChange,
 }: {
-  category: Category;
+  options: string[];
+  labels?: Record<string, string>;
   selected: string[];
-  onChange: (value: string[]) => void;
+  onChange: (v: string[]) => void;
 }) {
-  const options = category && SUBCATEGORIES[category] ? SUBCATEGORIES[category] : [];
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  function toggle(value: string) {
-    if (selected.includes(value)) {
-      onChange(selected.filter((s) => s !== value));
+  function toggle(v: string) {
+    if (selected.includes(v)) {
+      onChange(selected.filter((s) => s !== v));
     } else {
-      onChange([...selected, value]);
+      onChange([...selected, v]);
     }
   }
 
   return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className={inputClass + " text-left flex items-center gap-1.5 flex-wrap min-h-[42px]"}
-      >
-        {selected.length === 0 && (
-          <span className="text-neutral-400 dark:text-neutral-500">Select subcategories</span>
-        )}
-        {selected.map((s) => (
-          <span
-            key={s}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-900 text-white text-xs font-medium"
-          >
-            {s}
-            <X
-              size={12}
-              strokeWidth={2}
-              className="cursor-pointer opacity-70 hover:opacity-100"
-              onClick={(e) => { e.stopPropagation(); toggle(s); }}
-            />
-          </span>
-        ))}
-        <ChevronDown size={14} className={`ml-auto text-neutral-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && options.length > 0 && (
-        <div className="absolute z-10 mt-1.5 w-full bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-48 overflow-y-auto">
-          {options.map((opt) => {
-            const isActive = selected.includes(opt);
-            return (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => toggle(opt)}
-                className={`flex w-full items-center gap-2.5 px-4 py-2 text-xs transition-colors ${isActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}
-              >
-                <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isActive ? "bg-brand-900 border-brand-900" : "border-neutral-300 dark:border-neutral-600"}`}>
-                  {isActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                </span>
-                {opt}
-              </button>
-            );
-          })}
-          {selected.length > 0 && (
-            <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
-              <button type="button" onClick={() => onChange([])} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear all</button>
-            </div>
-          )}
-        </div>
+    <div>
+      <div className="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto scrollbar-hide p-0.5">
+        {options.map((opt) => {
+          const isActive = selected.includes(opt);
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => toggle(opt)}
+              className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
+                isActive
+                  ? "bg-brand-900 border-brand-900 text-white"
+                  : "bg-surface border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-500"
+              }`}
+            >
+              {labels ? labels[opt] || opt : opt}
+            </button>
+          );
+        })}
+      </div>
+      {selected.length > 0 && (
+        <button type="button" onClick={() => onChange([])} className="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 mt-2 transition-colors">
+          Clear all
+        </button>
       )}
     </div>
   );
 }
+
+// --- HoursEditor: structured day-by-day hours ---
+
+function HoursEditor({
+  hours,
+  onChange,
+}: {
+  hours: Record<string, DayHours>;
+  onChange: (h: Record<string, DayHours>) => void;
+}) {
+  const timeInputClass = "px-2 py-1 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-surface focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors";
+
+  function updateBlock(day: string, blockIndex: number, patch: Partial<TimeBlock>) {
+    const blocks = hours[day].blocks.map((b, i) => i === blockIndex ? { ...b, ...patch } : b);
+    onChange({ ...hours, [day]: { ...hours[day], blocks } });
+  }
+
+  function addBlock(day: string) {
+    const lastBlock = hours[day].blocks[hours[day].blocks.length - 1];
+    const newBlock = { open: lastBlock?.close || "18:00", close: "23:00" };
+    onChange({ ...hours, [day]: { ...hours[day], blocks: [...hours[day].blocks, newBlock] } });
+  }
+
+  function removeBlock(day: string, blockIndex: number) {
+    const blocks = hours[day].blocks.filter((_, i) => i !== blockIndex);
+    onChange({ ...hours, [day]: { ...hours[day], blocks: blocks.length > 0 ? blocks : [{ open: "11:00", close: "23:00" }] } });
+  }
+
+  function toggleClosed(day: string) {
+    onChange({ ...hours, [day]: { ...hours[day], closed: !hours[day].closed } });
+  }
+
+  function applyToAll(day: string) {
+    const src = hours[day];
+    const next = { ...hours };
+    for (const d of DAYS) {
+      next[d] = { closed: src.closed, blocks: src.blocks.map((b) => ({ ...b })) };
+    }
+    onChange(next);
+  }
+
+  return (
+    <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
+      {DAYS.map((day, i) => (
+        <div
+          key={day}
+          className={`px-4 py-2.5 ${i > 0 ? "border-t border-neutral-100 dark:border-neutral-800" : ""}`}
+        >
+          <div className="flex items-start gap-3">
+            <span className="text-sm font-medium w-8 shrink-0 pt-1">{day}</span>
+            {hours[day].closed ? (
+              <span className="text-sm text-neutral-400 dark:text-neutral-500 flex-1 pt-1">Closed</span>
+            ) : (
+              <div className="flex-1 space-y-1.5">
+                {hours[day].blocks.map((block, bi) => (
+                  <div key={bi} className="flex items-center gap-1.5">
+                    <input
+                      type="time"
+                      value={block.open}
+                      onChange={(e) => updateBlock(day, bi, { open: e.target.value })}
+                      className={timeInputClass}
+                    />
+                    <span className="text-neutral-400 text-xs">to</span>
+                    <input
+                      type="time"
+                      value={block.close}
+                      onChange={(e) => updateBlock(day, bi, { close: e.target.value })}
+                      className={timeInputClass}
+                    />
+                    {hours[day].blocks.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeBlock(day, bi)}
+                        className="text-neutral-300 dark:text-neutral-600 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                        title="Remove this time block"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-2 shrink-0 pt-1">
+              <button
+                type="button"
+                onClick={() => toggleClosed(day)}
+                className="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+              >
+                {hours[day].closed ? "Open" : "Closed"}
+              </button>
+              {!hours[day].closed && (
+                <button
+                  type="button"
+                  onClick={() => addBlock(day)}
+                  title="Add another time block (e.g. lunch + dinner)"
+                  className="text-xs text-neutral-400 hover:text-brand-900 transition-colors"
+                >
+                  Add block
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// --- PhotoManager (unchanged from original) ---
 
 function PhotoManager({
   images,
@@ -423,7 +689,6 @@ function PhotoManager({
     replaceIndexRef.current = null;
 
     if (replaceIndex !== null) {
-      // Replace a specific photo
       setUploading(replaceIndex);
       const url = await uploadFile(files[0]);
       if (url) {
@@ -433,7 +698,6 @@ function PhotoManager({
       }
       setUploading(null);
     } else {
-      // Add new photos
       setUploading("add");
       const newUrls: string[] = [];
       for (let i = 0; i < files.length; i++) {
@@ -446,7 +710,6 @@ function PhotoManager({
       setUploading(null);
     }
 
-    // Reset file input
     e.target.value = "";
   }
 
@@ -454,21 +717,10 @@ function PhotoManager({
     onChange(images.filter((_, i) => i !== index));
   }
 
-  function handleDragStart(index: number) {
-    setDragIndex(index);
-  }
-
-  function handleDragOver(e: React.DragEvent, index: number) {
-    e.preventDefault();
-    setDragOverIndex(index);
-  }
-
+  function handleDragStart(index: number) { setDragIndex(index); }
+  function handleDragOver(e: React.DragEvent, index: number) { e.preventDefault(); setDragOverIndex(index); }
   function handleDrop(index: number) {
-    if (dragIndex === null || dragIndex === index) {
-      setDragIndex(null);
-      setDragOverIndex(null);
-      return;
-    }
+    if (dragIndex === null || dragIndex === index) { setDragIndex(null); setDragOverIndex(null); return; }
     const next = [...images];
     const [moved] = next.splice(dragIndex, 1);
     next.splice(index, 0, moved);
@@ -476,25 +728,13 @@ function PhotoManager({
     setDragIndex(null);
     setDragOverIndex(null);
   }
-
-  function handleDragEnd() {
-    setDragIndex(null);
-    setDragOverIndex(null);
-  }
+  function handleDragEnd() { setDragIndex(null); setDragOverIndex(null); }
 
   return (
     <div>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        className="hidden"
-        onChange={handleFileChange}
-      />
+      <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
       <p className="text-sm font-medium mb-3">Photos</p>
 
-      {/* Gallery grid — matching SpotGallery layout */}
       {images.length > 0 && (
         <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[320px] rounded-xl overflow-hidden mb-3">
           {(() => {
@@ -502,29 +742,16 @@ function PhotoManager({
             while (slots.length < 5) slots.push("");
             return (
               <>
-                {/* Hero image — col-span-2 row-span-2 */}
                 <div className="col-span-2 row-span-2 relative group bg-neutral-100 dark:bg-neutral-800">
                   {slots[0] ? (
                     <>
                       <img src={slots[0]} alt="Photo 1" className="w-full h-full object-cover" />
-                      <PhotoOverlay
-                        index={0}
-                        onReplace={() => triggerFileInput(0)}
-                        onRemove={() => removeImage(0)}
-                        uploading={uploading === 0}
-                        draggable
-                        onDragStart={() => handleDragStart(0)}
-                        onDragOver={(e) => handleDragOver(e, 0)}
-                        onDrop={() => handleDrop(0)}
-                        onDragEnd={handleDragEnd}
-                        isDragOver={dragOverIndex === 0}
-                      />
+                      <PhotoOverlay index={0} onReplace={() => triggerFileInput(0)} onRemove={() => removeImage(0)} uploading={uploading === 0} draggable onDragStart={() => handleDragStart(0)} onDragOver={(e) => handleDragOver(e, 0)} onDrop={() => handleDrop(0)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === 0} />
                     </>
                   ) : (
                     <EmptySlot onClick={() => triggerFileInput(null)} />
                   )}
                 </div>
-                {/* 4 smaller images */}
                 {slots.slice(1, 5).map((url, i) => {
                   const idx = i + 1;
                   return (
@@ -532,18 +759,7 @@ function PhotoManager({
                       {url ? (
                         <>
                           <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                          <PhotoOverlay
-                            index={idx}
-                            onReplace={() => triggerFileInput(idx)}
-                            onRemove={() => removeImage(idx)}
-                            uploading={uploading === idx}
-                            draggable
-                            onDragStart={() => handleDragStart(idx)}
-                            onDragOver={(e) => handleDragOver(e, idx)}
-                            onDrop={() => handleDrop(idx)}
-                            onDragEnd={handleDragEnd}
-                            isDragOver={dragOverIndex === idx}
-                          />
+                          <PhotoOverlay index={idx} onReplace={() => triggerFileInput(idx)} onRemove={() => removeImage(idx)} uploading={uploading === idx} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDrop={() => handleDrop(idx)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === idx} />
                         </>
                       ) : (
                         <EmptySlot onClick={() => triggerFileInput(null)} />
@@ -557,7 +773,6 @@ function PhotoManager({
         </div>
       )}
 
-      {/* Extra photos beyond the 5 in gallery */}
       {images.length > 5 && (
         <div className="grid grid-cols-5 gap-2 mb-3">
           {images.slice(5).map((url, i) => {
@@ -565,36 +780,20 @@ function PhotoManager({
             return (
               <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                 <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                <PhotoOverlay
-                  index={idx}
-                  onReplace={() => triggerFileInput(idx)}
-                  onRemove={() => removeImage(idx)}
-                  uploading={uploading === idx}
-                  draggable
-                  onDragStart={() => handleDragStart(idx)}
-                  onDragOver={(e) => handleDragOver(e, idx)}
-                  onDrop={() => handleDrop(idx)}
-                  onDragEnd={handleDragEnd}
-                  isDragOver={dragOverIndex === idx}
-                />
+                <PhotoOverlay index={idx} onReplace={() => triggerFileInput(idx)} onRemove={() => removeImage(idx)} uploading={uploading === idx} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDrop={() => handleDrop(idx)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === idx} />
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Add photos button */}
       <button
         type="button"
         onClick={() => triggerFileInput(null)}
         disabled={uploading !== null}
         className="flex items-center gap-2 px-4 py-2.5 text-sm border border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors disabled:opacity-50"
       >
-        {uploading === "add" ? (
-          <><Loader2 size={14} className="animate-spin" /> Uploading...</>
-        ) : (
-          <><Plus size={14} /> Add photos</>
-        )}
+        {uploading === "add" ? <><Loader2 size={14} className="animate-spin" /> Uploading...</> : <><Plus size={14} /> Add photos</>}
       </button>
     </div>
   );
@@ -630,42 +829,15 @@ function PhotoOverlay({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
-      className={`absolute inset-0 flex items-center justify-center transition-all ${
-        isDragOver
-          ? "bg-brand-900/20 ring-2 ring-inset ring-brand-900"
-          : uploading
-          ? "bg-black/40"
-          : "bg-black/0 hover:bg-black/40"
-      }`}
+      className={`absolute inset-0 flex items-center justify-center transition-all ${isDragOver ? "bg-brand-900/20 ring-2 ring-inset ring-brand-900" : uploading ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
     >
       {uploading ? (
         <Loader2 size={20} className="text-white animate-spin" />
       ) : (
         <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity">
-          <button
-            type="button"
-            onClick={onReplace}
-            className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-neutral-700 dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-800 transition-colors"
-            title="Replace photo"
-          >
-            <Upload size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={onRemove}
-            className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-red-500 hover:bg-white dark:hover:bg-neutral-800 transition-colors"
-            title="Remove photo"
-          >
-            <Trash2 size={14} />
-          </button>
-          {draggable && (
-            <div
-              className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-neutral-700 dark:text-neutral-300 cursor-grab active:cursor-grabbing"
-              title="Drag to reorder"
-            >
-              <GripVertical size={14} />
-            </div>
-          )}
+          <button type="button" onClick={onReplace} className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-neutral-700 dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-800 transition-colors" title="Replace photo"><Upload size={14} /></button>
+          <button type="button" onClick={onRemove} className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-red-500 hover:bg-white dark:hover:bg-neutral-800 transition-colors" title="Remove photo"><Trash2 size={14} /></button>
+          {draggable && <div className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-neutral-700 dark:text-neutral-300 cursor-grab active:cursor-grabbing" title="Drag to reorder"><GripVertical size={14} /></div>}
         </div>
       )}
     </div>
@@ -674,95 +846,9 @@ function PhotoOverlay({
 
 function EmptySlot({ onClick }: { onClick: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full h-full flex flex-col items-center justify-center text-neutral-400 dark:text-neutral-600 hover:text-neutral-500 dark:hover:text-neutral-500 transition-colors"
-    >
+    <button type="button" onClick={onClick} className="w-full h-full flex flex-col items-center justify-center text-neutral-400 dark:text-neutral-600 hover:text-neutral-500 dark:hover:text-neutral-500 transition-colors">
       <Plus size={20} />
       <span className="text-xs mt-1">Add</span>
     </button>
-  );
-}
-
-function VibeSelect({
-  selected,
-  onChange,
-}: {
-  selected: string[];
-  onChange: (value: string[]) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  function toggle(value: string) {
-    if (selected.includes(value)) {
-      onChange(selected.filter((s) => s !== value));
-    } else {
-      onChange([...selected, value]);
-    }
-  }
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className={inputClass + " text-left flex items-center gap-1.5 flex-wrap min-h-[42px]"}
-      >
-        {selected.length === 0 && (
-          <span className="text-neutral-400 dark:text-neutral-500">Select vibes</span>
-        )}
-        {selected.map((s) => (
-          <span
-            key={s}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-900 text-white text-xs font-medium"
-          >
-            {s}
-            <X
-              size={12}
-              strokeWidth={2}
-              className="cursor-pointer opacity-70 hover:opacity-100"
-              onClick={(e) => { e.stopPropagation(); toggle(s); }}
-            />
-          </span>
-        ))}
-        <ChevronDown size={14} className={`ml-auto text-neutral-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <div className="absolute z-10 mt-1.5 w-full bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-48 overflow-y-auto scrollbar-hide">
-          {VIBES.map((vibe) => {
-            const isActive = selected.includes(vibe);
-            return (
-              <button
-                key={vibe}
-                type="button"
-                onClick={() => toggle(vibe)}
-                className={`flex w-full items-center gap-2.5 px-4 py-2 text-xs transition-colors ${isActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}
-              >
-                <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isActive ? "bg-brand-900 border-brand-900" : "border-neutral-300 dark:border-neutral-600"}`}>
-                  {isActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                </span>
-                {vibe}
-              </button>
-            );
-          })}
-          {selected.length > 0 && (
-            <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
-              <button type="button" onClick={() => onChange([])} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear all</button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
   );
 }

@@ -60,11 +60,10 @@ function extractMeta($: cheerio.CheerioAPI): Partial<ScrapedData> {
     data.name = data.name.replace(/\s*[-|–—]\s*(Home|Official|Website|Restaurant|Bar|Cafe|Coffee|Hotel|Gym|Salon|Shop).*$/i, "").trim();
   }
 
-  // Images — collect OG images, large images from page
+  // Images — collect with minimal filtering, scoring happens later
   const imageUrls: string[] = [];
-  if (ogImage) imageUrls.push(ogImage);
 
-  // Additional OG images
+  // OG images (high priority — added first)
   $('meta[property="og:image"]').each((_, el) => {
     const url = $(el).attr("content");
     if (url && !imageUrls.includes(url)) imageUrls.push(url);
@@ -74,21 +73,28 @@ function extractMeta($: cheerio.CheerioAPI): Partial<ScrapedData> {
   const twitterImage = $('meta[name="twitter:image"]').attr("content");
   if (twitterImage && !imageUrls.includes(twitterImage)) imageUrls.push(twitterImage);
 
-  // Large images from page (likely hero/gallery images)
+  // All page images — collect everything, score later
   $("img").each((_, el) => {
-    if (imageUrls.length >= 5) return false;
-    const src = $(el).attr("src") || $(el).attr("data-src");
+    const src = $(el).attr("src") || $(el).attr("data-src") || $(el).attr("data-lazy-src");
     if (!src) return;
-    // Skip tiny images, icons, logos
-    const width = parseInt($(el).attr("width") || "0");
-    const height = parseInt($(el).attr("height") || "0");
-    if ((width > 0 && width < 200) || (height > 0 && height < 200)) return;
-    if (src.includes("logo") || src.includes("icon") || src.includes("favicon")) return;
-    if (src.includes(".svg")) return;
     if (!imageUrls.includes(src)) imageUrls.push(src);
   });
 
-  data.imageUrls = imageUrls.slice(0, 5);
+  // srcset images (lazy-loaded / responsive)
+  $("img[srcset], source[srcset]").each((_, el) => {
+    const srcset = $(el).attr("srcset") || "";
+    // Pick the largest from srcset
+    const candidates = srcset.split(",").map((s) => s.trim().split(/\s+/));
+    let bestUrl = "";
+    let bestWidth = 0;
+    for (const [url, descriptor] of candidates) {
+      const w = parseInt(descriptor) || 0;
+      if (w > bestWidth && url) { bestWidth = w; bestUrl = url; }
+    }
+    if (bestUrl && !imageUrls.includes(bestUrl)) imageUrls.push(bestUrl);
+  });
+
+  data.imageUrls = imageUrls;
 
   return data;
 }
@@ -258,7 +264,7 @@ const MIAMI_ZIP_NEIGHBORHOODS: Record<string, string> = {
   "33156": "Pinecrest",
 };
 
-function inferNeighborhood(address?: string, description?: string): string | undefined {
+export function inferNeighborhood(address?: string, description?: string): string | undefined {
   if (!address) return undefined;
 
   const combined = (address + " " + (description || "")).toLowerCase();
@@ -470,6 +476,7 @@ function extractMenuUrl($: cheerio.CheerioAPI, baseUrl: string): string | undefi
 
 function resolveUrl(url: string, baseUrl: string): string {
   if (url.startsWith("http")) return url;
+  if (url.startsWith("//")) return "https:" + url;
   try {
     return new URL(url, baseUrl).href;
   } catch {
@@ -752,7 +759,12 @@ function inferSubcategories(data: Partial<ScrapedData>, $: cheerio.CheerioAPI): 
     hotel: "hotels",
     lodgingbusiness: "hotels",
     healthclub: "wellness",
+    exercisegym: "wellness",
+    gym: "wellness",
     sportsactivitylocation: "wellness",
+    dayspas: "wellness",
+    beautysalon: "wellness",
+    spa: "wellness",
     store: "shopping",
   };
 
@@ -786,12 +798,13 @@ function inferSubcategories(data: Partial<ScrapedData>, $: cheerio.CheerioAPI): 
     hotels: "Boutique hotel",
   };
 
-  // Pick the most common category, or use inferredCategory
+  // JSON-LD type is the strongest signal — prefer it over keyword matches
   const categoryCounts = new Map<string, number>();
   for (const m of matches) {
     categoryCounts.set(m.category, (categoryCounts.get(m.category) || 0) + 1);
   }
-  const bestCategory = inferredCategory || (categoryCounts.size > 0 ? [...categoryCounts.entries()].sort((a, b) => b[1] - a[1])[0][0] : undefined);
+  const keywordCategory = categoryCounts.size > 0 ? [...categoryCounts.entries()].sort((a, b) => b[1] - a[1])[0][0] : undefined;
+  const bestCategory = inferredCategory || keywordCategory;
 
   if (!bestCategory) {
     return { category: undefined, subcategory: [] };
@@ -904,6 +917,145 @@ function inferVibes(
   return matched;
 }
 
+// --- Image scoring and ranking ---
+
+// Hard-reject patterns — these are never venue photos
+const IMAGE_REJECT_PATTERNS = [
+  /logo/i, /icon/i, /favicon/i, /sprite/i, /spacer/i, /pixel/i, /tracking/i,
+  /badge/i, /avatar/i, /profile[-_]?pic/i, /gravatar/i, /widget/i, /button/i,
+  /\.svg(\?|$)/i, /\.gif(\?|$)/i, /1x1/i, /transparent/i, /blank\./i,
+  /facebook\.com/i, /twitter\.com/i, /google-analytics/i, /doubleclick/i,
+  /adsystem/i, /adserver/i, /cloudflare/i, /recaptcha/i,
+  /payment/i, /credit[-_]?card/i, /visa\b/i, /mastercard/i, /amex/i,
+  /arrow/i, /chevron/i, /caret/i, /close[-_]?btn/i, /hamburger/i,
+  /share[-_]?icon/i, /social[-_]?icon/i, /map[-_]?pin/i, /marker/i,
+];
+
+// Positive signals — boost score for these
+const IMAGE_BOOST_PATTERNS = [
+  { pattern: /hero/i, boost: 15 },
+  { pattern: /gallery/i, boost: 12 },
+  { pattern: /banner/i, boost: 8 },
+  { pattern: /photo/i, boost: 8 },
+  { pattern: /image/i, boost: 5 },
+  { pattern: /interior/i, boost: 12 },
+  { pattern: /exterior/i, boost: 10 },
+  { pattern: /food/i, boost: 10 },
+  { pattern: /dish/i, boost: 10 },
+  { pattern: /cocktail/i, boost: 10 },
+  { pattern: /dining/i, boost: 10 },
+  { pattern: /restaurant/i, boost: 8 },
+  { pattern: /bar\b/i, boost: 8 },
+  { pattern: /lounge/i, boost: 8 },
+  { pattern: /pool/i, boost: 8 },
+  { pattern: /rooftop/i, boost: 8 },
+  { pattern: /spa\b/i, boost: 8 },
+  { pattern: /gym/i, boost: 8 },
+  { pattern: /room/i, boost: 6 },
+  { pattern: /ambiance|ambience|atmosphere/i, boost: 10 },
+  { pattern: /featured/i, boost: 8 },
+  { pattern: /slide/i, boost: 6 },
+  { pattern: /carousel/i, boost: 6 },
+  { pattern: /cover/i, boost: 6 },
+  { pattern: /main/i, boost: 5 },
+];
+
+function scoreAndRankImages(
+  candidates: string[],
+  jsonLdImages: string[],
+  $: cheerio.CheerioAPI,
+  baseUrl: string,
+): string[] {
+  interface ScoredImage {
+    url: string;
+    score: number;
+  }
+
+  const scored: ScoredImage[] = [];
+  const jsonLdSet = new Set(jsonLdImages.map((u) => resolveUrl(u, baseUrl)));
+
+  for (const url of candidates) {
+    // Hard reject
+    if (IMAGE_REJECT_PATTERNS.some((p) => p.test(url))) continue;
+
+    let score = 0;
+
+    // Source priority
+    if (jsonLdSet.has(url)) score += 25; // JSON-LD images are curated by the site
+
+    // Check if this was an OG/meta image (appears early in candidates from meta extraction)
+    const isOgImage = $(`meta[property="og:image"][content="${url}"], meta[property="og:image"][content="${url.replace('https:', '')}"]`).length > 0;
+    if (isOgImage) score += 20;
+
+    // URL pattern boosting
+    for (const { pattern, boost } of IMAGE_BOOST_PATTERNS) {
+      if (pattern.test(url)) { score += boost; break; } // Only apply strongest match
+    }
+
+    // Image dimensions from HTML attributes
+    const imgEl = $(`img[src="${url}"], img[data-src="${url}"], img[data-lazy-src="${url}"]`);
+    if (imgEl.length > 0) {
+      const width = parseInt(imgEl.attr("width") || "0");
+      const height = parseInt(imgEl.attr("height") || "0");
+
+      // Size scoring
+      if (width > 0 && height > 0) {
+        const area = width * height;
+        if (area >= 500000) score += 20;       // 1000x500+: very large
+        else if (area >= 200000) score += 15;   // ~600x333+: large
+        else if (area >= 80000) score += 8;     // ~400x200+: medium
+        else if (area < 10000) score -= 20;     // tiny: penalize heavily
+        else if (area < 40000) score -= 5;      // small: mild penalty
+
+        // Aspect ratio — venue photos are typically landscape (4:3, 16:9)
+        const ratio = width / height;
+        if (ratio >= 1.2 && ratio <= 2.0) score += 8;  // landscape
+        else if (ratio >= 0.6 && ratio < 1.2) score += 4;  // square-ish
+        else if (ratio > 3 || ratio < 0.3) score -= 10; // extreme banner or tower
+      }
+
+      // Position on page — earlier images are usually more important
+      const allImgs = $("img").toArray();
+      const idx = allImgs.findIndex((el) => {
+        const s = $(el).attr("src") || $(el).attr("data-src") || "";
+        return s === url;
+      });
+      if (idx >= 0 && idx < 3) score += 10;    // top 3 images
+      else if (idx >= 3 && idx < 8) score += 5; // top 8
+
+      // Alt text relevance
+      const alt = (imgEl.attr("alt") || "").toLowerCase();
+      if (alt.length > 5 && alt.length < 100) score += 3; // Has meaningful alt text
+      for (const { pattern, boost } of IMAGE_BOOST_PATTERNS) {
+        if (pattern.test(alt)) { score += Math.floor(boost * 0.5); break; }
+      }
+
+      // Parent element context
+      const parentClass = (imgEl.parent().attr("class") || "") + " " + (imgEl.closest("section, div").attr("class") || "");
+      if (/hero|banner|gallery|carousel|slider|featured|spotlight/i.test(parentClass)) score += 10;
+      if (/nav|footer|sidebar|widget|cookie|popup|modal/i.test(parentClass)) score -= 15;
+    } else {
+      // CSS background image or no matching img tag — give base score
+      score += 5;
+    }
+
+    // URL quality signals
+    if (/\d{3,4}x\d{3,4}/.test(url)) score += 5; // Has dimensions in URL (common for high-res)
+    if (/thumb|thumbnail|small|tiny|micro/i.test(url)) score -= 10;
+    if (/large|full|original|high|hd|retina|2x/i.test(url)) score += 5;
+
+    // Prefer common image CDNs known for quality content
+    if (/ctfassets\.net|cloudinary|imgix|unsplash|squarespace-cdn/i.test(url)) score += 5;
+
+    scored.push({ url, score });
+  }
+
+  // Sort by score descending, take top 10
+  scored.sort((a, b) => b.score - a.score);
+
+  return scored.slice(0, 10).map((s) => s.url);
+}
+
 // Main scrape function
 export async function scrapeUrl(url: string): Promise<ScrapedData> {
   const { html, finalUrl } = await fetchPage(url);
@@ -916,27 +1068,27 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
   const menuUrl = extractMenuUrl($, finalUrl);
   const pageDetails = extractPageDetails($);
 
-  // Extract CSS background images as fallback when no img tags or JSON-LD images
+  // Extract CSS background images
   const bgImages: string[] = [];
   $("[style]").each((_, el) => {
-    if (bgImages.length >= 5) return false;
     const style = $(el).attr("style") || "";
     const bgMatch = style.match(/background(?:-image)?\s*:\s*url\(['"]?([^'")\s]+)['"]?\)/i);
     if (bgMatch && bgMatch[1]) {
-      const imgUrl = bgMatch[1];
-      if (!imgUrl.includes("logo") && !imgUrl.includes("icon") && !imgUrl.includes(".svg")) {
-        const resolved = resolveUrl(imgUrl, finalUrl);
-        if (!bgImages.includes(resolved)) bgImages.push(resolved);
-      }
+      const resolved = resolveUrl(bgMatch[1], finalUrl);
+      if (!bgImages.includes(resolved)) bgImages.push(resolved);
     }
   });
 
-  // Collect all images — JSON-LD, meta, CSS backgrounds
-  const allImages = [...new Set([
+  // Collect all candidate images and score them
+  const allCandidates = [...new Set([
     ...(jsonLd.imageUrls || []),
     ...(meta.imageUrls || []),
     ...bgImages,
-  ])].filter((url) => url && url.length > 0).slice(0, 5);
+  ])]
+    .filter((url) => url && url.length > 0)
+    .map((url) => resolveUrl(url, finalUrl));
+
+  const allImages = scoreAndRankImages(allCandidates, jsonLd.imageUrls || [], $, finalUrl);
 
   // Merge — JSON-LD takes priority, then page extraction, then meta
   const merged: Partial<ScrapedData> = {

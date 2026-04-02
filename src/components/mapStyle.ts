@@ -43,6 +43,7 @@ export function getCustomMapStyle(dark: boolean): mapboxgl.StyleSpecification {
       },
     },
     glyphs: "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
+    metadata: { "mapbox:indoor": { enabled: false } },
     layers: dark ? DARK_LAYERS : LIGHT_LAYERS,
   };
 }

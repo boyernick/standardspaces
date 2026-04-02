@@ -6,7 +6,7 @@ function mapRow(row: Record<string, unknown>): Spot {
   return {
     id: row.id as string,
     name: row.name as string,
-    category: row.category as Category,
+    category: row.category as Category[],
     subcategory: row.subcategory as string[] | undefined,
     neighborhood: row.neighborhood as string,
     city: row.city as string,

@@ -22,7 +22,7 @@ export default function ListingsTable({ spots }: { spots: SpotRow[] }) {
         (s) =>
           s.name.toLowerCase().includes(query.toLowerCase()) ||
           s.neighborhood.toLowerCase().includes(query.toLowerCase()) ||
-          s.category.toLowerCase().includes(query.toLowerCase())
+          s.category.some((c: string) => c.toLowerCase().includes(query.toLowerCase()))
       )
     : spots;
 
@@ -68,7 +68,7 @@ export default function ListingsTable({ spots }: { spots: SpotRow[] }) {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate" style={fontCalibre}>{spot.name}</p>
                 <p className="text-xs text-black/50" style={fontCalibre}>
-                  {CATEGORY_LABELS[spot.category as Category] || spot.category} · {spot.neighborhood}
+                  {(spot.category as string[]).map((c: string) => CATEGORY_LABELS[c as Category] || c).join(" · ")} · {spot.neighborhood}
                 </p>
               </div>
               <span className="text-xs text-black/30 shrink-0" style={fontCalibre}>Edit</span>

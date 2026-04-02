@@ -9,7 +9,7 @@ import Link from "next/link";
 interface SpotData {
   id: string;
   name: string;
-  category: string;
+  category: string[];
   subcategory: string[] | null;
   vibes: string[] | null;
   neighborhood: string;
@@ -36,7 +36,7 @@ export default function EditListingForm({ spot }: { spot: SpotData }) {
   const router = useRouter();
 
   const [name, setName] = useState(spot.name || "");
-  const [category, setCategory] = useState(spot.category || "");
+  const [category, setCategory] = useState<string[]>(Array.isArray(spot.category) ? spot.category : spot.category ? [spot.category] : []);
   const [subcategory, setSubcategory] = useState<string[]>(spot.subcategory || []);
   const [vibes, setVibes] = useState<string[]>(spot.vibes || []);
   const [neighborhood, setNeighborhood] = useState(spot.neighborhood || "");
@@ -63,7 +63,7 @@ export default function EditListingForm({ spot }: { spot: SpotData }) {
   const [error, setError] = useState("");
 
   async function handleSave() {
-    if (!name.trim() || !category || !neighborhood.trim() || !city.trim()) {
+    if (!name.trim() || category.length === 0 || !neighborhood.trim() || !city.trim()) {
       setError("Name, category, neighborhood, and city are required.");
       return;
     }
@@ -151,22 +151,32 @@ export default function EditListingForm({ spot }: { spot: SpotData }) {
       </Field>
 
       {/* Category */}
-      <Field label="Category" required>
-        <div className="relative">
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass + " appearance-none pr-10"}>
-            <option value="">Select</option>
-            {CATEGORY_ORDER.map((cat) => (
-              <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
-            ))}
-          </select>
-          <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+      <Field label={`Category · ${category.length} selected`} required>
+        <div className="flex flex-wrap gap-1.5 p-0.5">
+          {CATEGORY_ORDER.map((cat) => {
+            const isActive = category.includes(cat);
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCategory(isActive ? category.filter((c) => c !== cat) : [...category, cat])}
+                className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
+                  isActive
+                    ? "bg-brand-900 border-brand-900 text-white"
+                    : "bg-surface border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-500"
+                }`}
+              >
+                {CATEGORY_LABELS[cat]}
+              </button>
+            );
+          })}
         </div>
       </Field>
 
       {/* Subcategory */}
       <Field label="Subcategory">
         <MultiSelect
-          options={(category && SUBCATEGORIES[category as Category]) || []}
+          options={category.flatMap((c) => SUBCATEGORIES[c as Category] || [])}
           selected={subcategory}
           onChange={setSubcategory}
           placeholder="Select subcategories"

@@ -13,7 +13,7 @@ interface MiamiClientProps {
 }
 
 export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
-  const activeCategories = useMemo(() => new Set(allSpots.map((s) => s.category)), [allSpots]);
+  const activeCategories = useMemo(() => new Set(allSpots.flatMap((s) => s.category)), [allSpots]);
   const categories = useMemo(() => CATEGORY_ORDER.filter((c) => activeCategories.has(c)), [activeCategories]);
   const neighborhoods = useMemo(() => [...new Set(allSpots.map((s) => s.neighborhood))].sort(), [allSpots]);
 
@@ -56,7 +56,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
   const filtered = useMemo(() => {
     let result = allSpots;
     if (activeCategory) {
-      result = result.filter((s) => s.category === activeCategory);
+      result = result.filter((s) => s.category.includes(activeCategory));
       if (activeSubcategories.size > 0) {
         result = result.filter((s) => s.subcategory?.some((sc) => activeSubcategories.has(sc)));
       }
@@ -97,7 +97,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
               <div ref={neighborhoodRef} className="relative shrink-0">
                 <button
                   onClick={() => setNeighborhoodOpen(!neighborhoodOpen)}
-                  className={`flex items-center justify-between gap-1.5 w-[142px] px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${
+                  className={`flex items-center justify-between gap-1.5 w-[146px] px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${
                     activeNeighborhood
                       ? "bg-brand-900 text-white border-brand-900"
                       : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
@@ -135,7 +135,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
                 {categories.map((cat) => {
                   const isActive = activeCategory === cat;
                   const subs = SUBCATEGORIES[cat].filter((sub) =>
-                    allSpots.some((s) => s.category === cat && s.subcategory?.includes(sub))
+                    allSpots.some((s) => s.category.includes(cat) && s.subcategory?.includes(sub))
                   );
                   const isDropdownOpen = categoryDropdown === cat;
                   const activeSubCount = isActive ? activeSubcategories.size : 0;
@@ -223,7 +223,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
                     </Link>
                     <div className="mt-3">
                       <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
-                      <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">{CATEGORY_LABELS[spot.category]} · {spot.neighborhood}</p>
+                      <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">{spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")} · {spot.neighborhood}</p>
                     </div>
                   </div>
                 ))}
@@ -248,7 +248,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
         </div>
 
         {/* Map — right */}
-        <div className={`md:flex-1 md:block relative px-3 pt-1.5 pb-3 md:p-4 ${mobileView === "map" ? "flex-1 pb-[5rem]" : "hidden"}`}>
+        <div className={`md:flex-1 md:block relative px-3 pt-1.5 pb-3 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "flex-1 pb-[5rem]" : "hidden"}`}>
           <div className="w-full h-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative">
             <Map spots={filtered} activeSpot={activeSpot} onSpotSelect={handleSpotSelect} />
 
@@ -272,7 +272,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
                     <div className="flex-1 min-w-0 py-0.5">
                       <h3 className="text-sm font-medium truncate">{activeSpot.name}</h3>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                        {CATEGORY_LABELS[activeSpot.category]} · {activeSpot.neighborhood}
+                        {activeSpot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")} · {activeSpot.neighborhood}
                       </p>
                       {activeSpot.priceRange && (
                         <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">{activeSpot.priceRange}</p>

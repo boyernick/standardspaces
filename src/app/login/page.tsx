@@ -53,25 +53,29 @@ export default function LoginPage() {
       <div className="w-full max-w-sm px-6">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-1 mb-6">
-            <img src="/logo.svg" alt="Standard Spaces" className="h-5 w-5" />
-            <span className="text-lg tracking-tight text-black" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
+            <img src="/logo.svg" alt="Standard Spaces" className="h-5 w-5 dark:invert" />
+            <span className="text-lg tracking-tight text-neutral-900 dark:text-white" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
               Standard Spaces
             </span>
           </div>
-          <h1 className="text-xl font-medium mb-1" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
-            Welcome back
-          </h1>
-          <p className="text-sm text-black/50" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
-            Enter your email to receive a login link.
-          </p>
+          {!sent && (
+            <>
+              <h1 className="text-xl font-medium mb-1" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
+                Welcome back
+              </h1>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
+                Enter your email to receive a login link.
+              </p>
+            </>
+          )}
         </div>
 
         {sent ? (
           <div className="text-center">
-            <p className="text-sm text-black/70 mb-2" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
+            <p className="text-sm text-neutral-900 dark:text-white mb-2" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
               Check your email for a login link.
             </p>
-            <p className="text-xs text-black/40" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
               Sent to {email}
             </p>
           </div>
@@ -83,7 +87,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@email.com"
               required
-              className="w-full px-4 py-2.5 text-sm border border-black/15 rounded-lg bg-white focus:outline-none focus:border-black/40 transition-colors"
+              className="w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors"
               style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}
             />
             {error && (
@@ -105,7 +109,7 @@ export default function LoginPage() {
         <div className="mt-6 text-center">
           <Link
             href="/apply"
-            className="text-xs text-black/40 hover:text-black/60 transition-colors"
+            className="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
             style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}
           >
             Don&apos;t have an account? Apply to join
