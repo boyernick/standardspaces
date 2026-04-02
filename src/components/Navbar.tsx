@@ -17,6 +17,8 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [themeMode, setThemeMode] = useState<"auto" | "light" | "dark">("auto");
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -28,6 +30,21 @@ export default function Navbar() {
     } else {
       setThemeMode("auto");
     }
+
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUser({ id: user.id, email: user.email });
+        supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single()
+          .then(({ data }) => {
+            if (data?.role === "admin") setIsAdmin(true);
+          });
+      }
+    });
   }, []);
 
   const currentCity =
@@ -155,6 +172,11 @@ export default function Navbar() {
                   {themeMode === "auto" ? "auto" : ""}
                 </span>
               </button>
+              {isAdmin && (
+                <Link href="/admin/listings" onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
+                  Admin
+                </Link>
+              )}
               <div className="border-t border-neutral-100 dark:border-neutral-800 my-0.5" />
               <button
                 onClick={async () => {
