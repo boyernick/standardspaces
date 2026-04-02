@@ -169,7 +169,14 @@ export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
 
     map.current = m;
 
+    // Resize map when container dimensions change (e.g. mobile view toggle)
+    const ro = new ResizeObserver(() => {
+      map.current?.resize();
+    });
+    if (mapContainer.current) ro.observe(mapContainer.current);
+
     return () => {
+      ro.disconnect();
       map.current?.remove();
       map.current = null;
       setMapReady(false);

@@ -7,12 +7,15 @@ import Map from "@/components/Map";
 import ImageCarousel from "@/components/ImageCarousel";
 import Navbar from "@/components/Navbar";
 import { ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, X, MapPin, Search } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import SaveButton from "@/components/SaveButton";
 
 interface MiamiClientProps {
   spots: Spot[];
+  savedSpotIds?: string[];
 }
 
-export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
+export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: MiamiClientProps) {
   const activeCategories = useMemo(() => new Set(allSpots.flatMap((s) => s.category)), [allSpots]);
   const categories = useMemo(() => CATEGORY_ORDER.filter((c) => activeCategories.has(c)), [activeCategories]);
   const neighborhoods = useMemo(() => [...new Set(allSpots.map((s) => s.neighborhood))].sort(), [allSpots]);
@@ -29,6 +32,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
 
   const neighborhoodRef = useRef<HTMLDivElement>(null);
   const categoryRef = useRef<HTMLDivElement>(null);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,7 +47,10 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
   useEffect(() => {
     if (!categoryDropdown) return;
     function handleClick(e: MouseEvent) {
-      if (categoryRef.current && !categoryRef.current.contains(e.target as Node)) setCategoryDropdown(null);
+      if (
+        categoryRef.current && !categoryRef.current.contains(e.target as Node) &&
+        categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)
+      ) setCategoryDropdown(null);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -89,21 +96,31 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
 
       <div className="flex-1 min-h-0 flex flex-col md:flex-row">
         {/* Panel — left */}
-        <div className={`w-full md:w-1/2 md:min-w-0 md:flex md:flex-col ${mobileView === "list" ? "flex flex-col flex-1" : "hidden md:flex"}`}>
-          {/* Filters bar — outside scrollable area so dropdowns aren't clipped */}
+        <div className={`w-full md:w-[55%] lg:w-1/2 md:min-w-[420px] md:flex md:flex-col md:shrink-0 ${mobileView === "list" ? "flex flex-col flex-1 min-h-0" : "hidden md:flex"}`}>
+          {/* Filters bar */}
           {allSpots.length > 0 && <div className="relative z-20 bg-surface px-4 py-2.5 shrink-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto md:overflow-x-visible scrollbar-hide">
+              {/* City */}
+              <div className="relative shrink-0">
+                <button className="flex items-center justify-between gap-1.5 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white">
+                  Miami
+                  <ChevronDown size={10} strokeWidth={1.5} />
+                </button>
+              </div>
+
+              <div className="w-px h-5 bg-neutral-200 dark:bg-neutral-700 shrink-0" />
+
               {/* Neighborhood */}
               <div ref={neighborhoodRef} className="relative shrink-0">
                 <button
                   onClick={() => setNeighborhoodOpen(!neighborhoodOpen)}
-                  className={`flex items-center justify-between gap-1.5 w-[146px] px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${
+                  className={`flex items-center justify-between gap-1.5 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${
                     activeNeighborhood
-                      ? "bg-brand-900 text-white border-brand-900"
+                      ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
                       : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
                   }`}
                 >
-                  {activeNeighborhood ?? "Neighborhoods"}
+                  {activeNeighborhood ?? "Neighborhood"}
                   {activeNeighborhood ? (
                     <X size={12} strokeWidth={2} className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setActiveNeighborhood(null); setNeighborhoodOpen(false); setPage(1); }} />
                   ) : (
@@ -130,66 +147,73 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
 
               <div className="w-px h-5 bg-neutral-200 dark:bg-neutral-700 shrink-0" />
 
-              {/* Category pills */}
-              <div ref={categoryRef} className="flex gap-1.5 shrink-0">
+              {/* Category pills — scrollable, dropdowns rendered outside */}
+              <div ref={categoryRef} className="flex gap-1.5 md:overflow-x-auto scrollbar-hide min-w-0">
                 {categories.map((cat) => {
                   const isActive = activeCategory === cat;
-                  const subs = SUBCATEGORIES[cat].filter((sub) =>
-                    allSpots.some((s) => s.category.includes(cat) && s.subcategory?.includes(sub))
-                  );
                   const isDropdownOpen = categoryDropdown === cat;
                   const activeSubCount = isActive ? activeSubcategories.size : 0;
                   return (
-                    <div key={cat} className="relative">
-                      <button
-                        onClick={() => {
-                          if (isActive) { isDropdownOpen ? setCategoryDropdown(null) : setCategoryDropdown(cat); }
-                          else { setActiveCategory(cat); setActiveSubcategories(new Set()); setCategoryDropdown(cat); setActiveSpot(null); setPage(1); }
-                        }}
-                        className={`flex items-center gap-1 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${
-                          isActive ? "bg-brand-900 text-white border-brand-900" : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
-                        }`}
-                      >
-                        {CATEGORY_LABELS[cat]}
-                        {activeSubCount > 0 && <span className="text-[10px] opacity-70">({activeSubCount})</span>}
-                        {isActive ? (
-                          <X size={12} strokeWidth={2} className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setActiveCategory(null); setActiveSubcategories(new Set()); setCategoryDropdown(null); setPage(1); }} />
-                        ) : (
-                          <ChevronDown size={10} strokeWidth={1.5} />
-                        )}
-                      </button>
-                      {isDropdownOpen && (
-                        <div className="absolute top-full left-0 mt-1.5 w-48 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 z-50 max-h-64 overflow-y-auto scrollbar-hide">
-                          <button onClick={() => { setActiveSubcategories(new Set()); setPage(1); }} className={`block w-full text-left px-4 py-2 text-xs transition-colors ${activeSubCount === 0 ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
-                            All {CATEGORY_LABELS[cat]}
-                          </button>
-                          {subs.map((sub) => {
-                            const isSubActive = activeSubcategories.has(sub);
-                            return (
-                              <button key={sub} onClick={() => { setActiveSubcategories((prev) => { const next = new Set(prev); isSubActive ? next.delete(sub) : next.add(sub); return next; }); setPage(1); }} className={`flex w-full items-center gap-2.5 px-4 py-2 text-xs transition-colors ${isSubActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
-                                <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isSubActive ? "bg-brand-900 border-brand-900" : "border-neutral-300 dark:border-neutral-600"}`}>
-                                  {isSubActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                                </span>
-                                {sub}
-                              </button>
-                            );
-                          })}
-                          <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
-                            <button onClick={() => { setActiveCategory(null); setActiveSubcategories(new Set()); setCategoryDropdown(null); setPage(1); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear filter</button>
-                          </div>
-                        </div>
+                    <button
+                      key={cat}
+                      data-category={cat}
+                      onClick={() => {
+                        if (isActive) { isDropdownOpen ? setCategoryDropdown(null) : setCategoryDropdown(cat); }
+                        else { setActiveCategory(cat); setActiveSubcategories(new Set()); setCategoryDropdown(cat); setActiveSpot(null); setPage(1); }
+                      }}
+                      className={`flex items-center gap-1 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap shrink-0 ${
+                        isActive ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white" : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
+                      }`}
+                    >
+                      {CATEGORY_LABELS[cat]}
+                      {activeSubCount > 0 && <span className="text-[10px] opacity-70">({activeSubCount})</span>}
+                      {isActive ? (
+                        <X size={12} strokeWidth={2} className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setActiveCategory(null); setActiveSubcategories(new Set()); setCategoryDropdown(null); setPage(1); }} />
+                      ) : (
+                        <ChevronDown size={10} strokeWidth={1.5} />
                       )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
-
-              {hasFilters && (
-                <button onClick={clearAll} className="text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors shrink-0 ml-1">
-                  Clear
-                </button>
-              )}
             </div>
+
+            {/* Category dropdown — rendered outside scrollable pills so it isn't clipped */}
+            {categoryDropdown && (() => {
+              const cat = categoryDropdown;
+              const subs = SUBCATEGORIES[cat].filter((sub) =>
+                allSpots.some((s) => s.category.includes(cat) && s.subcategory?.includes(sub))
+              );
+              const activeSubCount = activeCategory === cat ? activeSubcategories.size : 0;
+              const btn = categoryRef.current?.querySelector(`[data-category="${cat}"]`) as HTMLElement | null;
+              const bar = categoryRef.current?.parentElement?.parentElement;
+              const left = btn && bar ? btn.getBoundingClientRect().left - bar.getBoundingClientRect().left : 0;
+              return (
+                <div ref={categoryDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
+                  <div className="relative" style={{ marginLeft: left }}>
+                    <div className="mt-1.5 w-48 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-64 overflow-y-auto scrollbar-hide">
+                      <button onClick={() => { setActiveSubcategories(new Set()); setPage(1); }} className={`block w-full text-left px-4 py-2 text-xs transition-colors ${activeSubCount === 0 ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
+                        All {CATEGORY_LABELS[cat]}
+                      </button>
+                      {subs.map((sub) => {
+                        const isSubActive = activeSubcategories.has(sub);
+                        return (
+                          <button key={sub} onClick={() => { setActiveSubcategories((prev) => { const next = new Set(prev); isSubActive ? next.delete(sub) : next.add(sub); return next; }); setPage(1); }} className={`flex w-full items-center gap-2.5 px-4 py-2 text-xs transition-colors ${isSubActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
+                            <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isSubActive ? "bg-brand-900 border-brand-900" : "border-neutral-300 dark:border-neutral-600"}`}>
+                              {isSubActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                            </span>
+                            {sub}
+                          </button>
+                        );
+                      })}
+                      <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
+                        <button onClick={() => { setActiveCategory(null); setActiveSubcategories(new Set()); setCategoryDropdown(null); setPage(1); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear filter</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>}
 
           {/* Scrollable content */}
@@ -216,17 +240,30 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
           ) : (
             <div className="p-4 pt-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6">
-                {paginated.map((spot) => (
-                  <div key={spot.id} className="cursor-pointer" onMouseEnter={() => setActiveSpot(spot)} onMouseLeave={() => setActiveSpot(null)}>
+                <AnimatePresence mode="popLayout">
+                {paginated.map((spot, i) => (
+                  <motion.div
+                    key={spot.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.3, delay: i * 0.05, ease: [0.25, 0.1, 0.25, 1] }}
+                    className="cursor-pointer"
+                    onMouseEnter={() => setActiveSpot(spot)}
+                    onMouseLeave={() => setActiveSpot(null)}
+                  >
                     <Link href={`/miami/${spot.id}`}>
                       <ImageCarousel images={spot.images} alt={spot.name} />
                     </Link>
                     <div className="mt-3">
                       <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
-                      <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">{spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")} · {spot.neighborhood}</p>
+                      <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">
+                        {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")} · {spot.neighborhood}
+                      </p>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
+                </AnimatePresence>
               </div>
 
               {totalPages > 1 && (
@@ -248,7 +285,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
         </div>
 
         {/* Map — right */}
-        <div className={`md:flex-1 md:block relative px-3 pt-1.5 pb-3 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "flex-1 pb-[5rem]" : "hidden"}`}>
+        <div className={`md:flex-1 md:min-w-0 md:block relative px-3 pt-1.5 pb-3 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "flex-1 pb-[5rem]" : "hidden"}`}>
           <div className="w-full h-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative">
             <Map spots={filtered} activeSpot={activeSpot} onSpotSelect={handleSpotSelect} />
 
@@ -266,7 +303,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
                   >
                     {activeSpot.images[0] && (
                       <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
-                        <img src={activeSpot.images[0]} alt={activeSpot.name} className="w-full h-full object-cover" />
+                        <img src={activeSpot.images[0]} alt={activeSpot.name} loading="lazy" className="w-full h-full object-cover" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0 py-0.5">
@@ -313,7 +350,7 @@ export default function MiamiClient({ spots: allSpots }: MiamiClientProps) {
             onClick={() => setMobileView(mobileView === "list" ? "map" : "list")}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-900 text-white text-sm font-medium rounded-full shrink-0"
           >
-            {mobileView === "list" ? (<><MapIcon size={15} strokeWidth={2} />Map</>) : (<><List size={15} strokeWidth={2} />List</>)}
+            {mobileView === "list" ? "Map" : "List"}
           </button>
         </div>
       </div>

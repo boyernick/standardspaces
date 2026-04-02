@@ -1,14 +1,14 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useRef, useState, useCallback, useEffect, memo } from "react";
+import { ChevronLeft, ChevronRight, X, Grid2x2 } from "lucide-react";
 
 interface SpotGalleryProps {
   images: string[];
   name: string;
 }
 
-function GalleryImage({ src, alt, onClick }: { src: string; alt: string; onClick?: () => void }) {
+const GalleryImage = memo(function GalleryImage({ src, alt, onClick }: { src: string; alt: string; onClick?: () => void }) {
   if (src === "/placeholder.jpg") {
     return <div className="w-full h-full bg-neutral-100 dark:bg-neutral-800" />;
   }
@@ -25,7 +25,7 @@ function GalleryImage({ src, alt, onClick }: { src: string; alt: string; onClick
       />
     </div>
   );
-}
+});
 
 function Lightbox({
   images,
@@ -269,7 +269,7 @@ export default function SpotGallery({ images, name }: SpotGalleryProps) {
   return (
     <>
       {/* Mobile: horizontal scroll */}
-      <div className="md:hidden">
+      <div className="md:hidden relative">
         <div
           ref={scrollRef}
           onScroll={handleScroll}
@@ -287,33 +287,35 @@ export default function SpotGallery({ images, name }: SpotGalleryProps) {
           ))}
         </div>
         {realImages.length > 1 && (
-          <div className="flex justify-center gap-1.5 py-3">
-            {realImages.map((_, i) => (
-              <div
-                key={i}
-                className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                  i === scrollIndex ? "bg-neutral-900" : "bg-neutral-300"
-                }`}
-              />
-            ))}
+          <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm tabular-nums">
+            {scrollIndex + 1} / {realImages.length}
           </div>
         )}
       </div>
 
-      {/* Desktop: grid */}
-      <div className="hidden md:block max-w-5xl mx-auto px-6 pt-6">
-        <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[400px] rounded-xl overflow-hidden">
-          <div className="col-span-2 row-span-2">
-            <GalleryImage
-              src={imgs[0]}
-              alt={`${name} 1`}
-              onClick={() => openLightbox(0)}
-            />
+      {/* Desktop: 3-photo full-width strip */}
+      <div className="hidden md:block">
+        <div className="relative">
+          <div className="grid grid-cols-3 gap-1 aspect-[3/1]">
+            <div>
+              <GalleryImage src={imgs[0]} alt={`${name} 1`} onClick={() => openLightbox(0)} />
+            </div>
+            <div>
+              <GalleryImage src={imgs[1]} alt={`${name} 2`} onClick={() => openLightbox(1)} />
+            </div>
+            <div>
+              <GalleryImage src={imgs[2]} alt={`${name} 3`} onClick={() => openLightbox(2)} />
+            </div>
           </div>
-          <div><GalleryImage src={imgs[1]} alt={`${name} 2`} onClick={() => openLightbox(1)} /></div>
-          <div><GalleryImage src={imgs[2]} alt={`${name} 3`} onClick={() => openLightbox(2)} /></div>
-          <div><GalleryImage src={imgs[3]} alt={`${name} 4`} onClick={() => openLightbox(3)} /></div>
-          <div><GalleryImage src={imgs[4]} alt={`${name} 5`} onClick={() => openLightbox(4)} /></div>
+          {realImages.length > 3 && (
+            <button
+              onClick={() => openLightbox(0)}
+              className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-surface/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 rounded-full text-xs font-medium hover:bg-surface transition-colors"
+            >
+              <Grid2x2 size={12} />
+              All photos
+            </button>
+          )}
         </div>
       </div>
 

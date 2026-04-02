@@ -1,8 +1,9 @@
-"use client";
+import Link from "next/link";
+import LandingVideo from "@/components/LandingVideo";
 
 export default function Home() {
   return (
-    <div className="relative h-screen w-full overflow-hidden" style={{ backgroundColor: "var(--color-surface)" }}>
+    <div className="relative h-full w-full overflow-hidden" style={{ backgroundColor: "var(--color-surface)" }}>
       {/* Header */}
       <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-5 py-4">
         <div className="flex items-center gap-1">
@@ -12,12 +13,20 @@ export default function Home() {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <a href="/login" className="text-sm font-medium text-black/60 hover:text-black transition-colors" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
+          <Link
+            href="/login"
+            className="text-sm font-medium text-black/60 hover:text-black transition-colors"
+            style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}
+          >
             Log in
-          </a>
-          <a href="/apply" className="px-5 py-2 text-sm font-medium text-black border border-black/30 rounded-full hover:bg-black/5 transition-colors" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
+          </Link>
+          <Link
+            href="/apply"
+            className="px-5 py-2 text-sm font-medium text-black border border-black/30 rounded-full hover:bg-black/5 transition-colors"
+            style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}
+          >
             Apply to join
-          </a>
+          </Link>
         </div>
       </div>
 
@@ -29,16 +38,7 @@ export default function Home() {
       </div>
 
       {/* Video overlay — covers viewport */}
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        ref={(el) => { if (el) el.playbackRate = 0.33; }}
-        className="absolute inset-0 w-full h-full object-cover"
-      >
-        <source src="/landing-bg.mp4" type="video/mp4" />
-      </video>
+      <LandingVideo />
     </div>
   );
 }

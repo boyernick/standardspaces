@@ -2,22 +2,16 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { ChevronDown, Menu, X, Search, Moon, Sun } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Menu, X, Search, Moon, Sun } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-const cities = [
-  { name: "Miami", slug: "miami" },
-];
-
 export default function Navbar() {
-  const pathname = usePathname();
   const router = useRouter();
-  const [cityOpen, setCityOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [themeMode, setThemeMode] = useState<"auto" | "light" | "dark">("auto");
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,19 +22,22 @@ export default function Navbar() {
     } else {
       setThemeMode("auto");
     }
-  }, []);
 
-  const currentCity =
-    cities.find((c) => pathname.startsWith(`/${c.slug}`)) ?? cities[0];
+    // Check admin status — single chained call
+    let cancelled = false;
+    const supabase = createClient();
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled || !user) return;
+      const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+      if (!cancelled && data?.role === "admin") setIsAdmin(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setCityOpen(false);
-      }
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -58,40 +55,6 @@ export default function Navbar() {
             </span>
           </Link>
 
-
-          <div ref={dropdownRef} className="relative">
-            <button
-              onClick={() => setCityOpen(!cityOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-full border border-transparent hover:border-neutral-400 dark:hover:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-            >
-              {currentCity.name}
-              <ChevronDown size={12} strokeWidth={1.5} className={`transition-transform ${cityOpen ? "rotate-180" : ""}`} />
-            </button>
-
-            {cityOpen && (
-              <div className="absolute top-full left-0 mt-2 w-44 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 z-50">
-                {cities.map((city) => (
-                  <Link
-                    key={city.slug}
-                    href={`/${city.slug}`}
-                    onClick={() => setCityOpen(false)}
-                    className={`block px-4 py-2 text-sm transition-colors ${
-                      currentCity.slug === city.slug
-                        ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900"
-                        : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"
-                    }`}
-                  >
-                    {city.name}
-                  </Link>
-                ))}
-                <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
-                  <span className="block px-4 py-2 text-xs text-neutral-300 dark:text-neutral-600">
-                    More cities coming soon
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Center: Search (desktop) */}
@@ -121,6 +84,9 @@ export default function Navbar() {
 
           {menuOpen && (
             <div className="absolute top-full right-0 mt-2 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-lg py-1.5 z-50">
+              <Link href="/miami/saved" onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
+                Saved
+              </Link>
               <Link href="/recommend" onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
                 Recommend a space
               </Link>
@@ -152,6 +118,11 @@ export default function Navbar() {
                   {themeMode === "auto" ? "auto" : ""}
                 </span>
               </button>
+              {isAdmin && (
+                <Link href="/admin" onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
+                  Admin
+                </Link>
+              )}
               <div className="border-t border-neutral-100 dark:border-neutral-800 my-0.5" />
               <button
                 onClick={async () => {

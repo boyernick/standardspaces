@@ -1,40 +1,97 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { getSpotById, getSpotsByCity, getAllSpotIds } from "@/lib/data";
 import { CATEGORY_LABELS } from "@/lib/types";
 import Navbar from "@/components/Navbar";
 import SpotGallery from "@/components/SpotGallery";
-import SpotMap from "@/components/SpotMap";
-import ImageCarousel from "@/components/ImageCarousel";
+import SpotLocationMap from "@/components/SpotLocationMap";
+import ShareButton from "@/components/ShareButton";
+import SaveButtonClient from "@/components/SaveButtonClient";
+import CheckInButton from "@/components/CheckInButton";
 import { Clock, Shirt, Car, MapPin, ExternalLink, Phone, Globe, AtSign } from "lucide-react";
 import MobileBackButton from "@/components/MobileBackButton";
+import { FadeIn, GalleryReveal, SectionReveal } from "@/components/ListingAnimations";
 
 export async function generateStaticParams() {
   const ids = await getAllSpotIds();
   return ids.map((id) => ({ id }));
 }
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const spot = await getSpotById(id);
+  if (!spot) return { title: "Not Found | Standard Spaces" };
+
+  const title = `${spot.name} | Standard Spaces`;
+  const description = spot.description.length > 160
+    ? spot.description.slice(0, 157) + "..."
+    : spot.description;
+  const subtitle = [
+    spot.category.map((c) => CATEGORY_LABELS[c]).join(", "),
+    spot.neighborhood,
+    spot.city,
+  ].join(" · ");
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title: spot.name,
+      description: `${subtitle}${spot.priceRange ? ` · ${spot.priceRange}` : ""} — ${description}`,
+      siteName: "Standard Spaces",
+      type: "website",
+      images: spot.images[0] ? [{ url: spot.images[0], width: 1200, height: 630 }] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: spot.name,
+      description: subtitle,
+      images: spot.images[0] ? [spot.images[0]] : [],
+    },
+  };
+}
+
 function HoursDisplay({ hours }: { hours: string }) {
-  // Parse "Mon 7AM–11AM, 12AM–4PM · Tue 7AM–11AM" or "Daily 11AM–11PM" format
+  const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const lines: { day: string; times: string }[] = [];
 
-  // Check for simple "Daily X–Y" format
+  // "Daily X–Y"
   const dailyMatch = hours.match(/^Daily\s+(.+)$/i);
   if (dailyMatch) {
-    return <span className="text-sm text-neutral-700 dark:text-neutral-300">{hours}</span>;
+    ALL_DAYS.forEach((d) => lines.push({ day: d, times: dailyMatch[1].trim() }));
   }
 
-  // Split by day abbreviations
-  const dayPattern = /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/g;
-  const parts = hours.split(dayPattern).filter(Boolean);
+  // "Mon - Sun 6PM-2AM" or "Mon-Sun 6PM-2AM" (range format)
+  if (lines.length === 0) {
+    const rangeMatch = hours.match(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*[-–]\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(.+)$/i);
+    if (rangeMatch) {
+      const startIdx = ALL_DAYS.indexOf(rangeMatch[1]);
+      const endIdx = ALL_DAYS.indexOf(rangeMatch[2]);
+      const times = rangeMatch[3].trim();
+      if (startIdx >= 0 && endIdx >= 0) {
+        let i = startIdx;
+        while (true) {
+          lines.push({ day: ALL_DAYS[i], times });
+          if (i === endIdx) break;
+          i = (i + 1) % 7;
+        }
+      }
+    }
+  }
 
-  for (let i = 0; i < parts.length - 1; i += 2) {
-    const day = parts[i].trim();
-    let times = parts[i + 1].replace(/^[,\s·]+/, "").replace(/[,\s·]+$/, "").trim();
-    // Clean up separators between time blocks
-    times = times.replace(/,\s*/g, ", ");
-    if (day && times) {
-      lines.push({ day, times });
+  // Individual days: "Mon 7AM–11AM · Tue 7AM–11AM"
+  if (lines.length === 0) {
+    const dayPattern = /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/g;
+    const parts = hours.split(dayPattern).filter(Boolean);
+    for (let i = 0; i < parts.length - 1; i += 2) {
+      const day = parts[i].trim();
+      let times = parts[i + 1].replace(/^[,\s·]+/, "").replace(/[,\s·]+$/, "").trim();
+      times = times.replace(/,\s*/g, ", ");
+      if (day && times) lines.push({ day, times });
     }
   }
 
@@ -42,18 +99,16 @@ function HoursDisplay({ hours }: { hours: string }) {
     return <span className="text-sm text-neutral-700 dark:text-neutral-300">{hours}</span>;
   }
 
-  // Check if all days have the same hours
-  const allSame = lines.length === 7 && lines.every((l) => l.times === lines[0].times);
-  if (allSame) {
-    return <span className="text-sm text-neutral-700 dark:text-neutral-300">Daily {lines[0].times}</span>;
-  }
+  // Fill missing days with "Closed"
+  const dayMap = new Map(lines.map((l) => [l.day, l.times]));
+  const full = ALL_DAYS.map((d) => ({ day: d, times: dayMap.get(d) ?? "Closed" }));
 
   return (
-    <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-      {lines.map(({ day, times }) => (
-        <div key={day} className="contents text-sm">
-          <span className="text-neutral-500 dark:text-neutral-400 font-medium">{day}</span>
-          <span className="text-neutral-700 dark:text-neutral-300">{times}</span>
+    <div className="flex justify-between">
+      {full.map(({ day, times }) => (
+        <div key={day} className="flex flex-col items-center text-center min-w-0">
+          <span className="text-xs text-neutral-400 dark:text-neutral-500">{day}</span>
+          <span className={`text-sm mt-1 ${times === "Closed" ? "text-neutral-300 dark:text-neutral-600" : "text-neutral-700 dark:text-neutral-300"}`}>{times}</span>
         </div>
       ))}
     </div>
@@ -70,11 +125,11 @@ function InfoRow({ icon, label, value, href }: { icon: React.ReactNode; label: s
   );
 
   return (
-    <div className="flex items-start gap-3 py-3">
-      <div className="w-5 h-5 mt-0.5 shrink-0 text-neutral-400 dark:text-neutral-500">{icon}</div>
+    <div className="flex items-center gap-3 py-3.5 border-b border-neutral-100 dark:border-neutral-800">
+      <div className="w-5 h-5 shrink-0 text-neutral-400 dark:text-neutral-500">{icon}</div>
       <div className="min-w-0">
         <p className="text-xs text-neutral-400 dark:text-neutral-500">{label}</p>
-        <p className="text-sm text-neutral-700 dark:text-neutral-300 mt-0.5">{content}</p>
+        <p className="text-[13px] text-neutral-700 dark:text-neutral-300 mt-0.5">{content}</p>
       </div>
     </div>
   );
@@ -95,224 +150,159 @@ export default async function SpotPage({
   const allCitySpots = await getSpotsByCity(spot.city);
   const nearby = allCitySpots
     .filter((s) => s.neighborhood === spot.neighborhood && s.id !== spot.id)
-    .slice(0, 4);
+    .slice(0, 3);
 
-  const hasContact = spot.phone || spot.website || spot.instagram;
-  const hasInfo = spot.hours || spot.dressCode || spot.parking;
+  const hasDetails = spot.hours || spot.dressCode || spot.parking || spot.phone || spot.website || spot.instagram || spot.menuUrl;
+
+  const bookingLabel = spot.bookingPlatform === "Resy"
+    ? "Reserve on Resy"
+    : spot.bookingPlatform === "OpenTable"
+    ? "Reserve on OpenTable"
+    : spot.bookingPlatform === "SevenRooms"
+    ? "Reserve"
+    : spot.category.includes("hotels")
+    ? "Book a stay"
+    : "Book now";
 
   return (
     <div className="h-screen flex flex-col bg-surface">
       <Navbar />
       <div className="flex-1 overflow-y-auto relative">
         <MobileBackButton />
-        <SpotGallery images={spot.images} name={spot.name} />
+        <GalleryReveal>
+          <SpotGallery images={spot.images} name={spot.name} />
+        </GalleryReveal>
 
         <div className="max-w-3xl mx-auto px-4 md:px-6">
           {/* Header */}
-          <div className="flex items-start justify-between gap-4 pt-6">
-            <div>
-              <h1 className="text-3xl font-semibold tracking-tight">{spot.name}</h1>
-              <p className="text-base text-neutral-500 dark:text-neutral-400 mt-1.5">
-                {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")} · {spot.neighborhood}, {spot.city}
-                {spot.priceRange && <span> · {spot.priceRange}</span>}
+          <FadeIn delay={0.1}>
+            <div className="pt-7 pb-2">
+              <h1 className="text-[26px] font-semibold tracking-tight">{spot.name}</h1>
+              <div className="flex items-center gap-2 mt-2 flex-wrap justify-between">
+                <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                  {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")} · {spot.neighborhood}, {spot.city}
+                  {spot.priceRange && <span> · {spot.priceRange}</span>}
+                </span>
+                {spot.vibes && spot.vibes.length > 0 && (
+                  <div className="flex gap-2">
+                    {spot.vibes.map((vibe) => (
+                      <span key={vibe} className="shrink-0 text-xs px-2.5 py-1 rounded-full bg-stone-200/60 dark:bg-stone-800/40 text-stone-600 dark:text-stone-400">
+                        {vibe}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className="text-[15px] text-neutral-600 dark:text-neutral-400 leading-relaxed mt-4">
+                {spot.description}
               </p>
             </div>
-            {spot.bookingUrl && (
-              <a
-                href={spot.bookingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hidden md:inline-flex shrink-0 items-center bg-brand-900 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-brand-800 transition-colors"
-              >
-                {spot.bookingPlatform === "Resy"
-                  ? "Reserve on Resy"
-                  : spot.bookingPlatform === "OpenTable"
-                  ? "Reserve on OpenTable"
-                  : spot.bookingPlatform === "SevenRooms"
-                  ? "Reserve"
-                  : spot.category.includes("hotels")
-                  ? "Book a stay"
-                  : "Book now"}
-              </a>
-            )}
-          </div>
+          </FadeIn>
 
-          {/* Vibes */}
-          {spot.vibes && spot.vibes.length > 0 && (
-            <div className="flex gap-2 mt-4 overflow-x-auto scrollbar-hide">
-              {spot.vibes.map((vibe) => (
-                <span key={vibe} className="shrink-0 text-xs px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
-                  {vibe}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <hr className="my-6 border-neutral-200 dark:border-neutral-800" />
-
-          {/* About */}
-          <div>
-            <h2 className="text-lg font-medium mb-3">About</h2>
-            <p className="text-base text-neutral-600 dark:text-neutral-400 leading-relaxed">
-              {spot.description}
-            </p>
-          </div>
-
-          {/* Essential Info + Contact — combined two-column grid */}
-          {(hasInfo || hasContact || spot.menuUrl) && (
-            <>
-              <hr className="my-6 border-neutral-200 dark:border-neutral-800" />
+          {/* Details */}
+          {hasDetails && (
+            <SectionReveal>
+              <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
               <div>
-                <h2 className="text-lg font-medium mb-2">Details</h2>
-                {/* Hours — full width above the grid */}
+                <h2 className="text-xl font-semibold mb-4">Details</h2>
+
+                {/* Hours — horizontal day layout */}
                 {spot.hours && (
-                  <div className="flex items-start gap-3 py-3 border-b border-neutral-100 dark:border-neutral-800">
-                    <div className="w-5 h-5 mt-0.5 shrink-0 text-neutral-400 dark:text-neutral-500"><Clock size={20} strokeWidth={1.5} /></div>
-                    <div className="min-w-0">
+                  <div className="py-4 border-b border-neutral-100 dark:border-neutral-800">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Clock size={16} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500" />
                       <p className="text-xs text-neutral-400 dark:text-neutral-500">Hours</p>
-                      <div className="mt-0.5"><HoursDisplay hours={spot.hours} /></div>
                     </div>
+                    <HoursDisplay hours={spot.hours} />
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 md:gap-x-8">
-                  <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                    {spot.dressCode && (
-                      <InfoRow icon={<Shirt size={20} strokeWidth={1.5} />} label="Dress code" value={spot.dressCode} />
-                    )}
-                    {spot.parking && (
-                      <InfoRow icon={<Car size={20} strokeWidth={1.5} />} label="Parking" value={spot.parking} />
-                    )}
-                    <InfoRow icon={<MapPin size={20} strokeWidth={1.5} />} label="Address" value={spot.address} />
-                  </div>
-                  {(hasContact || spot.menuUrl) && (
-                    <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                      {spot.website && (
-                        <InfoRow icon={<Globe size={20} strokeWidth={1.5} />} label="Website" value={spot.website.replace(/^https?:\/\//, "")} href={spot.website} />
-                      )}
-                      {spot.instagram && (
-                        <InfoRow icon={<AtSign size={20} strokeWidth={1.5} />} label="Instagram" value={spot.instagram} href={`https://instagram.com/${spot.instagram.replace("@", "")}`} />
-                      )}
-                      {spot.menuUrl && (
-                        <InfoRow icon={<ExternalLink size={20} strokeWidth={1.5} />} label="Menu" value="View menu" href={spot.menuUrl} />
-                      )}
-                      {spot.phone && (
-                        <InfoRow icon={<Phone size={20} strokeWidth={1.5} />} label="Phone" value={spot.phone} href={`tel:${spot.phone}`} />
-                      )}
-                    </div>
+                {/* Detail items — 2-col grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-0">
+                  {spot.menuUrl && (
+                    <InfoRow icon={<ExternalLink size={20} strokeWidth={1.5} />} label="Menu" value="View menu" href={spot.menuUrl} />
+                  )}
+                  {spot.website && (
+                    <InfoRow icon={<Globe size={20} strokeWidth={1.5} />} label="Website" value={spot.website.replace(/^https?:\/\//, "")} href={spot.website} />
+                  )}
+                  {spot.dressCode && (
+                    <InfoRow icon={<Shirt size={20} strokeWidth={1.5} />} label="Dress code" value={spot.dressCode} />
+                  )}
+                  {spot.instagram && (
+                    <InfoRow icon={<AtSign size={20} strokeWidth={1.5} />} label="Instagram" value={spot.instagram} href={`https://instagram.com/${spot.instagram.replace("@", "")}`} />
+                  )}
+                  {spot.parking && (
+                    <InfoRow icon={<Car size={20} strokeWidth={1.5} />} label="Parking" value={spot.parking} />
+                  )}
+                  {spot.phone && (
+                    <InfoRow icon={<Phone size={20} strokeWidth={1.5} />} label="Phone" value={spot.phone} href={`tel:${spot.phone}`} />
                   )}
                 </div>
               </div>
-            </>
+            </SectionReveal>
           )}
 
           {/* Events */}
           {spot.events && spot.events.length > 0 && (
-            <>
-              <hr className="my-6 border-neutral-200 dark:border-neutral-800" />
+            <SectionReveal>
+              <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
               <div>
-                <h2 className="text-lg font-medium mb-4">Upcoming events</h2>
+                <h2 className="text-xl font-semibold mb-5">Upcoming events</h2>
                 <div className="space-y-3">
-                  {spot.events.map((event, i) => (
-                    <div key={i} className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h3 className="text-sm font-medium" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
-                            {event.name}
-                          </h3>
-                          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                            {event.description}
-                          </p>
+                  {spot.events.map((event, i) => {
+                    const d = new Date(event.date);
+                    return (
+                      <div key={i} className="flex gap-4 p-4 border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors">
+                        <div className="w-12 h-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex flex-col items-center justify-center shrink-0">
+                          <span className="text-[10px] font-medium uppercase text-neutral-400 dark:text-neutral-500 leading-none">{d.toLocaleDateString("en-US", { month: "short" })}</span>
+                          <span className="text-lg font-semibold leading-tight">{d.getDate()}</span>
                         </div>
-                        <span className="text-xs text-neutral-400 dark:text-neutral-500 whitespace-nowrap shrink-0">
-                          {new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                        </span>
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-medium">{event.name}</h3>
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-2">{event.description}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
-            </>
+            </SectionReveal>
           )}
 
-          {/* Map */}
-          <hr className="my-6 border-neutral-200 dark:border-neutral-800" />
-          <div>
-            <h2 className="text-lg font-medium mb-4">Location</h2>
-            <div className="rounded-xl overflow-hidden h-[300px]">
-              <SpotMap lng={spot.lng} lat={spot.lat} name={spot.name} />
-            </div>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-3">{spot.address}</p>
-          </div>
+          {/* Where you'll find it */}
+          <SectionReveal>
+          <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+          <SpotLocationMap
+            spot={{ id: spot.id, name: spot.name, category: spot.category, neighborhood: spot.neighborhood, images: spot.images, lng: spot.lng, lat: spot.lat }}
+            nearby={nearby.map((s) => ({ id: s.id, name: s.name, category: s.category, neighborhood: s.neighborhood, images: s.images, lng: s.lng, lat: s.lat }))}
+            address={spot.address}
+          />
+          </SectionReveal>
 
-          {/* Nearby — with thumbnails */}
-          {nearby.length > 0 && (
-            <>
-              <hr className="my-6 border-neutral-200 dark:border-neutral-800" />
-              <div>
-                <h2 className="text-lg font-medium mb-4">
-                  More in {spot.neighborhood}
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {nearby.map((s) => (
-                    <Link
-                      key={s.id}
-                      href={`/miami/${s.id}`}
-                      className="group overflow-hidden border border-neutral-200 dark:border-neutral-800 rounded-xl hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
-                    >
-                      {s.images.length > 0 && (
-                        <div className="aspect-[16/9] overflow-hidden">
-                          <img
-                            src={s.images[0]}
-                            alt={s.name}
-                            loading="lazy"
-                            className="w-full h-full object-cover spot-img group-hover:scale-[1.02] transition-transform duration-300"
-                          />
-                        </div>
-                      )}
-                      <div className="p-3.5">
-                        <h3 className="text-sm font-medium group-hover:text-neutral-900 dark:group-hover:text-white" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
-                          {s.name}
-                        </h3>
-                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
-                          {s.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
-                        </p>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5 line-clamp-2 leading-relaxed">
-                          {s.description}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          <div className={spot.bookingUrl ? "h-24 md:h-12" : "h-12"} />
+          <div className="h-12" />
         </div>
       </div>
 
-      {/* Sticky mobile booking button */}
-      {spot.bookingUrl && (
-        <div className="md:hidden sticky bottom-0 z-30 bg-surface/90 backdrop-blur-lg border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <a
-            href={spot.bookingUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block w-full text-center bg-brand-900 text-white py-3 rounded-lg text-sm font-medium hover:bg-brand-800 transition-colors"
-          >
-            {spot.bookingPlatform === "Resy"
-              ? "Reserve on Resy"
-              : spot.bookingPlatform === "OpenTable"
-              ? "Reserve on OpenTable"
-              : spot.bookingPlatform === "SevenRooms"
-              ? "Reserve"
-              : spot.category.includes("hotels")
-              ? "Book a stay"
-              : "Book now"}
-          </a>
+      {/* Bottom action bar — fixed to viewport on all sizes */}
+      <div className="shrink-0 bg-surface border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="max-w-3xl mx-auto flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <ShareButton spotName={spot.name} variant="icon" />
+            <CheckInButton spotId={spot.id} variant="icon" />
+            <SaveButtonClient spotId={spot.id} size="icon" />
+          </div>
+          {spot.bookingUrl && (
+            <a
+              href={spot.bookingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto px-6 py-2.5 text-center bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-full text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+            >
+              Book
+            </a>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
