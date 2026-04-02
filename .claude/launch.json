@@ -1,11 +1,9 @@
 {
   "version": "0.0.1",
-  "configurations": [
-    {
-      "name": "standardspaces",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
-    }
-  ]
+  "launch": {
+    "runtimeExecutable": "npm",
+    "runtimeArgs": ["run", "dev"],
+    "port": 3000,
+    "autoVerify": true
+  }
 }
