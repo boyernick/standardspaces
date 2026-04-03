@@ -127,22 +127,6 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
                     <ChevronDown size={10} strokeWidth={1.5} className={`transition-transform ${neighborhoodOpen ? "rotate-180" : ""}`} />
                   )}
                 </button>
-                {neighborhoodOpen && (
-                  <div className="absolute top-full left-0 mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 z-50 max-h-60 overflow-y-auto scrollbar-hide">
-                    <button onClick={() => { setActiveNeighborhood(null); setNeighborhoodOpen(false); setPage(1); }} className={`block w-full text-left px-4 py-2.5 text-xs transition-colors ${!activeNeighborhood ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
-                      All neighborhoods
-                    </button>
-                    {neighborhoods.map((n) => {
-                      const count = allSpots.filter((s) => s.neighborhood === n).length;
-                      return (
-                        <button key={n} onClick={() => { setActiveNeighborhood(activeNeighborhood === n ? null : n); setNeighborhoodOpen(false); setPage(1); }} className={`flex w-full items-center justify-between px-4 py-2.5 text-xs transition-colors ${activeNeighborhood === n ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
-                          {n}
-                          <span className="text-neutral-300 dark:text-neutral-600">{count}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
 
               <div className="w-px h-5 bg-neutral-200 dark:bg-neutral-700 shrink-0" />
@@ -177,6 +161,28 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
                 })}
               </div>
             </div>
+
+            {/* Neighborhood dropdown — rendered outside scrollable container so it isn't clipped on mobile */}
+            {neighborhoodOpen && (
+              <div className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
+                <div className="ml-4">
+                  <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-60 overflow-y-auto scrollbar-hide">
+                    <button onClick={() => { setActiveNeighborhood(null); setNeighborhoodOpen(false); setPage(1); }} className={`block w-full text-left px-4 py-2.5 text-xs transition-colors ${!activeNeighborhood ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
+                      All neighborhoods
+                    </button>
+                    {neighborhoods.map((n) => {
+                      const count = allSpots.filter((s) => s.neighborhood === n).length;
+                      return (
+                        <button key={n} onClick={() => { setActiveNeighborhood(activeNeighborhood === n ? null : n); setNeighborhoodOpen(false); setPage(1); }} className={`flex w-full items-center justify-between px-4 py-2.5 text-xs transition-colors ${activeNeighborhood === n ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
+                          {n}
+                          <span className="text-neutral-300 dark:text-neutral-600">{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Category dropdown — rendered outside scrollable pills so it isn't clipped */}
             {categoryDropdown && (() => {
@@ -285,7 +291,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
         </div>
 
         {/* Map — right */}
-        <div className={`md:flex-1 md:min-w-0 md:block relative px-3 pt-1.5 pb-3 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "flex-1 pb-[6.5rem]" : "hidden"}`}>
+        <div className={`md:flex-1 md:min-w-0 md:block relative px-4 pt-2.5 pb-4 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "flex-1 pb-[6.5rem]" : "hidden"}`}>
           <div className="w-full h-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative">
             <Map spots={filtered} activeSpot={activeSpot} onSpotSelect={handleSpotSelect} />
 
