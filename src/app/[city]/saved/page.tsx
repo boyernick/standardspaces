@@ -3,12 +3,18 @@ import { requireAuth } from "@/lib/auth";
 import { getUserSaves } from "@/app/actions/saves";
 import { getSpotById } from "@/lib/data";
 import { CATEGORY_LABELS, Spot } from "@/lib/types";
+import { citySlugFromName } from "@/lib/cities";
 import Navbar from "@/components/Navbar";
 import ImageCarousel from "@/components/ImageCarousel";
 import SaveButton from "@/components/SaveButton";
 import { Heart } from "lucide-react";
 
-export default async function SavedPage() {
+export default async function SavedPage({
+  params,
+}: {
+  params: Promise<{ city: string }>;
+}) {
+  const { city: citySlug } = await params;
   await requireAuth();
   const savedIds = await getUserSaves();
 
@@ -32,7 +38,7 @@ export default async function SavedPage() {
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
                 Tap the heart on any space to save it here for later.
               </p>
-              <Link href="/miami" className="inline-block mt-4 text-sm font-medium text-neutral-900 dark:text-white hover:underline">
+              <Link href={`/${citySlug}`} className="inline-block mt-4 text-sm font-medium text-neutral-900 dark:text-white hover:underline">
                 Browse spaces
               </Link>
             </div>
@@ -41,7 +47,7 @@ export default async function SavedPage() {
               {spots.map((spot) => (
                 <div key={spot.id}>
                   <div className="relative">
-                    <Link href={`/miami/${spot.id}`}>
+                    <Link href={`/${citySlugFromName(spot.city)}/${spot.id}`}>
                       <ImageCarousel images={spot.images} alt={spot.name} />
                     </Link>
                     <SaveButton spotId={spot.id} initialSaved={true} size="sm" />

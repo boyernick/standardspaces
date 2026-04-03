@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { citySlugFromName } from "@/lib/cities";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -28,7 +29,9 @@ export default function LoginPage() {
     });
 
     if (bypassRes.ok) {
-      router.push("/miami");
+      const bypassData = await bypassRes.json().catch(() => ({}));
+      const slug = bypassData.city ? citySlugFromName(bypassData.city) : "miami";
+      router.push(`/${slug}`);
       return;
     }
 
@@ -83,23 +86,35 @@ export default function LoginPage() {
       return;
     }
 
-    // Ensure profile exists
+    // Ensure profile exists and get city
+    let userCity = "Miami";
     if (data.user) {
       const { data: existing } = await supabase
         .from("profiles")
-        .select("id")
+        .select("id, city")
         .eq("id", data.user.id)
         .single();
 
-      if (!existing) {
+      if (existing) {
+        userCity = existing.city || "Miami";
+      } else {
+        // Look up city from application
+        const { data: appData } = await supabase
+          .from("applications")
+          .select("city")
+          .eq("phone", fullPhone)
+          .single();
+        userCity = appData?.city || "Miami";
+
         await supabase.from("profiles").insert({
           id: data.user.id,
           phone: fullPhone,
+          city: userCity,
         });
       }
     }
 
-    router.push("/miami");
+    router.push(`/${citySlugFromName(userCity)}`);
   }
 
   const inputStyle = "w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors";

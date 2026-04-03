@@ -91,10 +91,10 @@ export default function RecommendForm() {
           We'll review this space and add it to the guide if it meets our standards.
         </p>
         <a
-          href="/miami"
+          href="/"
           className="mt-6 inline-flex items-center px-6 py-3 bg-brand-900 text-white text-sm font-medium rounded-full hover:bg-brand-800 transition-colors"
         >
-          Back to Miami
+          Back to guide
         </a>
         <div className="mt-3">
           <button

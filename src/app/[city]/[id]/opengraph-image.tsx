@@ -8,7 +8,7 @@ export const contentType = "image/png";
 export default async function OGImage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ city: string; id: string }>;
 }) {
   const { id } = await params;
   const spot = await getSpotById(id);

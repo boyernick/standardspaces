@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { submitApplication } from "@/app/actions/apply";
+import { getPopulatedCities } from "@/app/actions/cities";
+import { CITIES } from "@/lib/cities";
 import Link from "next/link";
 
 type Step = "phone" | "verify" | "details" | "submitted";
@@ -14,8 +16,15 @@ export default function ApplyPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [instagram, setInstagram] = useState("");
+  const [city, setCity] = useState("Miami");
+  const [populatedCities, setPopulatedCities] = useState<string[]>([]);
+  const [cityWarning, setCityWarning] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    getPopulatedCities().then(setPopulatedCities);
+  }, []);
 
   const fullPhone = phone.startsWith("+") ? phone : `+1${phone.replace(/\D/g, "")}`;
 
@@ -69,6 +78,7 @@ export default function ApplyPage() {
       lastName,
       instagram,
       phone: fullPhone,
+      city,
     });
 
     if (result.error) {
@@ -220,10 +230,29 @@ export default function ApplyPage() {
               className={inputStyle}
               style={fontCalibre}
             />
+            <select
+              value={city}
+              onChange={(e) => {
+                const picked = e.target.value;
+                setCity(picked);
+                if (populatedCities.length > 0 && !populatedCities.includes(picked)) {
+                  setCityWarning(`We're not in ${picked} yet — pick another city to start with.`);
+                } else {
+                  setCityWarning("");
+                }
+              }}
+              className={inputStyle}
+              style={fontCalibre}
+            >
+              {CITIES.map((c) => (
+                <option key={c.slug} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+            {cityWarning && <p className="text-xs text-amber-600" style={fontCalibre}>{cityWarning}</p>}
             {error && <p className="text-xs text-red-600" style={fontCalibre}>{error}</p>}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !!cityWarning}
               className="w-full py-2.5 text-sm font-medium text-white bg-brand-900 rounded-lg hover:bg-brand-800 transition-colors disabled:opacity-50"
               style={fontCalibre}
             >

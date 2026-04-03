@@ -10,8 +10,9 @@ export async function submitApplication(formData: {
   lastName: string;
   instagram: string;
   phone: string;
+  city: string;
 }) {
-  const { firstName, lastName, instagram, phone } = formData;
+  const { firstName, lastName, instagram, phone, city } = formData;
 
   if (!firstName.trim() || !lastName.trim() || !instagram.trim() || !phone.trim()) {
     return { error: "All fields are required." };
@@ -38,6 +39,7 @@ export async function submitApplication(formData: {
     last_name: lastName.trim(),
     instagram: instagram.trim().replace("@", ""),
     phone: phone.trim(),
+    city: city.trim() || "Miami",
   });
 
   if (insertError) {
@@ -52,13 +54,14 @@ export async function submitApplication(formData: {
       await resend.emails.send({
         from: "Standard Spaces <onboarding@resend.dev>",
         to: NOTIFY_EMAIL,
-        subject: `New application: ${firstName.trim()} ${lastName.trim()}`,
+        subject: `New application: ${firstName.trim()} ${lastName.trim()} (${city.trim()})`,
         html: `
           <div style="font-family: system-ui, sans-serif; max-width: 480px;">
             <h2 style="margin: 0 0 8px;">New membership application</h2>
             <p><strong>${firstName.trim()} ${lastName.trim()}</strong></p>
             <p style="color: #666;">${phone.trim()}</p>
             <p style="color: #666;">@${instagram.trim().replace("@", "")}</p>
+            <p style="color: #666;">City: ${city.trim()}</p>
             <p style="margin-top: 16px;">
               <a href="${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/admin/applications" style="color: #6A001E; font-weight: 500;">
                 Review applications &rarr;

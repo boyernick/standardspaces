@@ -10,12 +10,15 @@ import { ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, X, MapPin
 import { motion, AnimatePresence } from "framer-motion";
 import SaveButton from "@/components/SaveButton";
 
-interface MiamiClientProps {
+interface CityClientProps {
   spots: Spot[];
   savedSpotIds?: string[];
+  cityName: string;
+  citySlug: string;
+  userCitySlug: string;
 }
 
-export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: MiamiClientProps) {
+export default function CityClient({ spots: allSpots, savedSpotIds = [], cityName, citySlug, userCitySlug }: CityClientProps) {
   const activeCategories = useMemo(() => new Set(allSpots.flatMap((s) => s.category)), [allSpots]);
   const categories = useMemo(() => CATEGORY_ORDER.filter((c) => activeCategories.has(c)), [activeCategories]);
   const neighborhoods = useMemo(() => [...new Set(allSpots.map((s) => s.neighborhood))].sort(), [allSpots]);
@@ -120,8 +123,12 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide px-4">
               {/* City */}
               <div className="relative shrink-0">
-                <button className="flex items-center justify-between gap-1.5 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white">
-                  Miami
+                <button className={`flex items-center justify-between gap-1.5 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${
+                  citySlug !== userCitySlug
+                    ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
+                    : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
+                }`}>
+                  {cityName}
                   <ChevronDown size={10} strokeWidth={1.5} />
                 </button>
               </div>
@@ -255,7 +262,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
               </div>
               <h3 className="text-base font-medium">No spaces yet</h3>
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
-                We're curating the best spots in Miami.<br />Know a place that belongs here?
+                We&apos;re curating the best spots in {cityName}.<br />Know a place that belongs here?
               </p>
               <Link href="/recommend" className="inline-block mt-4 text-sm font-medium text-brand-900 hover:underline">
                 Recommend a space
@@ -281,7 +288,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
                     onMouseEnter={() => setActiveSpot(spot)}
                     onMouseLeave={() => setActiveSpot(null)}
                   >
-                    <Link href={`/miami/${spot.id}`}>
+                    <Link href={`/${citySlug}/${spot.id}`}>
                       <ImageCarousel images={spot.images} alt={spot.name} />
                     </Link>
                     <div className="mt-3">
@@ -329,7 +336,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
                   style={{ animation: "map-card-in 0.2s ease-out" }}
                 >
                   <Link
-                    href={`/miami/${activeSpot.id}`}
+                    href={`/${citySlug}/${activeSpot.id}`}
                     className="flex gap-3 p-3"
                     onClick={() => setActiveSpot(null)}
                   >

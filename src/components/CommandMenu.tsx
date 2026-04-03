@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { CATEGORY_LABELS, CATEGORY_ORDER, TOP_VIBES, Category, Spot } from "@/lib/types";
+import { citySlugFromName } from "@/lib/cities";
 import { Search, MapPin } from "lucide-react";
 
 function Highlight({ text, query }: { text: string; query: string }) {
@@ -144,7 +145,7 @@ export default function CommandMenu() {
       const spot = spots.find((s) => s.id === item.value);
       if (spot) {
         setOpen(false);
-        router.push(`/${spot.city.toLowerCase()}/${spot.id}`);
+        router.push(`/${citySlugFromName(spot.city)}/${spot.id}`);
       }
     } else {
       setQuery(item.type === "category" ? CATEGORY_LABELS[item.value as Category] : item.value);
@@ -228,7 +229,7 @@ export default function CommandMenu() {
                       key={spot.id}
                       onClick={() => {
                         setOpen(false);
-                        router.push(`/${spot.city.toLowerCase()}/${spot.id}`);
+                        router.push(`/${citySlugFromName(spot.city)}/${spot.id}`);
                       }}
                       className="w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
                     >

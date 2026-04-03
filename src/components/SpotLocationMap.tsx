@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
@@ -27,6 +28,8 @@ interface SpotLocationMapProps {
 }
 
 export default function SpotLocationMap({ spot, nearby, address }: SpotLocationMapProps) {
+  const pathname = usePathname();
+  const citySlug = pathname.split("/")[1] || "miami";
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markerEls = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -144,7 +147,7 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
         {/* Hover card from map dot */}
         {hoveredFromMap && (
           <Link
-            href={`/miami/${hoveredFromMap.id}`}
+            href={`/${citySlug}/${hoveredFromMap.id}`}
             className="absolute bottom-3 right-3 z-10 w-56 bg-surface rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
           >
             {hoveredFromMap.images.length > 0 && (
@@ -176,7 +179,7 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
             {nearby.slice(0, 3).map((s) => (
               <Link
                 key={s.id}
-                href={`/miami/${s.id}`}
+                href={`/${citySlug}/${s.id}`}
                 className="group rounded-xl overflow-hidden transition-all"
                 onMouseEnter={() => setHoveredId(s.id)}
                 onMouseLeave={() => setHoveredId(null)}

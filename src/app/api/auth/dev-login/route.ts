@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 
   // Now use setSession on a proper Supabase SSR client to set cookies correctly
   const response = NextResponse.redirect(
-    new URL("/miami", request.nextUrl.origin)
+    new URL("/miami", request.nextUrl.origin) // Default, will be updated below
   );
 
   const supabase = createServerClient(

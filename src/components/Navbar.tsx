@@ -2,12 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Menu, X, Search, Moon, Sun } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
+  const citySlug = pathname.split("/")[1] || "miami";
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [themeMode, setThemeMode] = useState<"auto" | "light" | "dark">("auto");
@@ -48,7 +50,7 @@ export default function Navbar() {
       <div className="px-4 py-2.5 flex items-center">
         {/* Left: Logo + City */}
         <div className="flex-1 flex items-center gap-5">
-          <Link href="/miami" className="flex items-center gap-1">
+          <Link href={`/${citySlug}`} className="flex items-center gap-1">
             <img src="/logo.svg" alt="Standard Spaces" className="h-5 w-5 nav-logo dark:invert" />
             <span className="text-lg tracking-tight whitespace-nowrap text-neutral-900 dark:text-white nav-title" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
               Standard Spaces
@@ -84,7 +86,7 @@ export default function Navbar() {
 
           {menuOpen && (
             <div className="absolute top-full right-0 mt-2 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-lg py-1.5 z-50">
-              <Link href="/miami/saved" onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
+              <Link href={`/${citySlug}/saved`} onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
                 Saved
               </Link>
               <Link href="/recommend" onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">

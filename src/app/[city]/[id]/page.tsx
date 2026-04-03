@@ -138,7 +138,7 @@ function InfoRow({ icon, label, value, href }: { icon: React.ReactNode; label: s
 export default async function SpotPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ city: string; id: string }>;
 }) {
   const { id } = await params;
   const spot = await getSpotById(id);

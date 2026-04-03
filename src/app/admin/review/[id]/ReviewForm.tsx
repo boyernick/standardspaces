@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, VIBES, Category } from "@/lib/types";
+import { citySlugFromName } from "@/lib/cities";
 import { ChevronDown, Loader2, CheckCircle, X, Plus, GripVertical, Upload, Trash2 } from "lucide-react";
 
 // --- Constants ---
@@ -306,7 +307,7 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
           {name} is now live on the map.
         </p>
-        <button onClick={() => router.push("/miami")} className="mt-4 text-sm text-brand-900 hover:underline">
+        <button onClick={() => router.push(`/${citySlugFromName(city)}`)} className="mt-4 text-sm text-brand-900 hover:underline">
           View on map
         </button>
       </div>
@@ -467,7 +468,7 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
               setError("Failed to delete. Please try again.");
               return;
             }
-            router.push("/miami");
+            router.push(`/${citySlugFromName(city)}`);
           }}
           disabled={publishing || deleting}
           className="text-sm text-red-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-60 transition-colors flex items-center gap-1.5 shrink-0"
