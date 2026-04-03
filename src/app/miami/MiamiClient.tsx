@@ -152,7 +152,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
               <div className="w-px h-5 bg-neutral-200 dark:bg-neutral-700 shrink-0" />
 
               {/* Category pills — scrollable, dropdowns rendered outside */}
-              <div ref={categoryRef} className="flex gap-1.5 md:overflow-x-auto scrollbar-hide min-w-0 pr-4">
+              <div ref={categoryRef} className="flex gap-1.5 md:overflow-x-auto scrollbar-hide shrink-0">
                 {categories.map((cat) => {
                   const isActive = activeCategory === cat;
                   const isDropdownOpen = categoryDropdown === cat;
