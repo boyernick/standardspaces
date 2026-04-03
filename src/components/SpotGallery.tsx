@@ -296,14 +296,14 @@ export default function SpotGallery({ images, name }: SpotGalleryProps) {
       {/* Desktop: 3-photo full-width strip */}
       <div className="hidden md:block">
         <div className="relative">
-          <div className="grid grid-cols-3 gap-1 aspect-[3/1]">
-            <div>
+          <div className="grid grid-cols-3 gap-2 px-2">
+            <div className="aspect-square overflow-hidden rounded-lg">
               <GalleryImage src={imgs[0]} alt={`${name} 1`} onClick={() => openLightbox(0)} />
             </div>
-            <div>
+            <div className="aspect-square overflow-hidden rounded-lg">
               <GalleryImage src={imgs[1]} alt={`${name} 2`} onClick={() => openLightbox(1)} />
             </div>
-            <div>
+            <div className="aspect-square overflow-hidden rounded-lg">
               <GalleryImage src={imgs[2]} alt={`${name} 3`} onClick={() => openLightbox(2)} />
             </div>
           </div>

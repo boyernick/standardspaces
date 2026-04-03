@@ -294,7 +294,7 @@ export default function CityClient({ spots: allSpots, savedSpotIds = [], cityNam
                     <div className="mt-3">
                       <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
                       <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">
-                        {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")} · {spot.neighborhood}
+                        {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
                       </p>
                     </div>
                   </motion.div>
@@ -308,7 +308,7 @@ export default function CityClient({ spots: allSpots, savedSpotIds = [], cityNam
                     <ChevronLeft size={12} strokeWidth={1.5} />
                   </button>
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <button key={p} onClick={() => setPage(p)} className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${p === page ? "bg-brand-900 text-white" : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"}`}>{p}</button>
+                    <button key={p} onClick={() => setPage(p)} className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${p === page ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"}`}>{p}</button>
                   ))}
                   <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 rounded-full border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-neutral-500 hover:border-neutral-400 disabled:opacity-30 disabled:cursor-default transition-colors">
                     <ChevronRight size={12} strokeWidth={1.5} />
@@ -348,7 +348,7 @@ export default function CityClient({ spots: allSpots, savedSpotIds = [], cityNam
                     <div className="flex-1 min-w-0 py-0.5">
                       <h3 className="text-sm font-medium truncate">{activeSpot.name}</h3>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                        {activeSpot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")} · {activeSpot.neighborhood}
+                        {activeSpot.neighborhood} · {activeSpot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
                       </p>
                       {activeSpot.priceRange && (
                         <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">{activeSpot.priceRange}</p>
