@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ImageCarouselProps {
@@ -10,6 +10,8 @@ interface ImageCarouselProps {
 
 export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
   const [current, setCurrent] = useState(0);
+  const touchStart = useRef<number | null>(null);
+  const touchDelta = useRef(0);
 
   const count = images.length;
 
@@ -25,8 +27,35 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
     setCurrent((c) => (c + 1) % count);
   };
 
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStart.current = e.touches[0].clientX;
+    touchDelta.current = 0;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (touchStart.current === null) return;
+    touchDelta.current = e.touches[0].clientX - touchStart.current;
+  };
+
+  const onTouchEnd = () => {
+    if (Math.abs(touchDelta.current) > 50) {
+      if (touchDelta.current < 0 && current < count - 1) {
+        setCurrent((c) => c + 1);
+      } else if (touchDelta.current > 0 && current > 0) {
+        setCurrent((c) => c - 1);
+      }
+    }
+    touchStart.current = null;
+    touchDelta.current = 0;
+  };
+
   return (
-    <div className="group/carousel relative aspect-[4/3] rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+    <div
+      className="group/carousel relative aspect-[4/3] rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
       {/* Images */}
       <div
         className="flex h-full transition-transform duration-300 ease-out"
