@@ -377,7 +377,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
           </button>
           <button
             onClick={() => setMobileView(mobileView === "list" ? "map" : "list")}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-900 text-white text-sm font-medium rounded-full shrink-0"
+            className="flex items-center justify-center w-[70px] py-2.5 bg-brand-900 text-white text-sm font-medium rounded-full shrink-0"
           >
             {mobileView === "list" ? "Map" : "List"}
           </button>
