@@ -223,7 +223,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
           </div>}
 
           {/* Scrollable content — hidden on mobile map view */}
-          <div ref={panelRef} className={`flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-28 md:pb-0 ${mobileView === "map" ? "hidden md:block" : ""}`}>
+          <div ref={panelRef} className={`flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-36 md:pb-0 ${mobileView === "map" ? "hidden md:block" : ""}`}>
           {/* Cards */}
           {allSpots.length === 0 ? (
             <div className="px-6 py-20 text-center">
@@ -291,7 +291,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
         </div>
 
         {/* Map — right */}
-        <div className={`md:flex-1 md:min-w-0 md:block relative px-4 pt-2.5 pb-4 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "flex-1 pb-[6.5rem]" : "hidden"}`}>
+        <div className={`md:flex-1 md:min-w-0 md:block relative px-4 pt-2.5 pb-4 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "flex-1 pb-[8.5rem]" : "hidden"}`}>
           <div className="w-full h-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative">
             <Map spots={filtered} activeSpot={activeSpot} onSpotSelect={handleSpotSelect} />
 
