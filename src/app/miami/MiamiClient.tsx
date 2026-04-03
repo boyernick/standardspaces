@@ -71,7 +71,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
       if (!filterBar || !bottomBar) return;
       const filterBottom = filterBar.getBoundingClientRect().bottom;
       const bottomBarHeight = bottomBar.getBoundingClientRect().height;
-      setMapHeight(window.innerHeight - filterBottom - bottomBarHeight);
+      setMapHeight(window.innerHeight - filterBottom - bottomBarHeight - 10);
     }
     compute();
     window.addEventListener("resize", compute);
@@ -116,7 +116,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
         {/* Panel — left */}
         <div className={`w-full md:w-[55%] lg:w-1/2 md:min-w-[420px] md:flex md:flex-col md:shrink-0 ${mobileView === "list" ? "flex flex-col flex-1 min-h-0" : "flex flex-col md:flex"}`}>
           {/* Filters bar */}
-          {allSpots.length > 0 && <div ref={filterBarRef} className="relative z-20 bg-surface py-2.5 shrink-0">
+          {allSpots.length > 0 && <div ref={filterBarRef} className="relative z-20 bg-surface py-2.5 shrink-0 md:overflow-hidden">
             <div className="flex items-center gap-2 overflow-x-auto md:overflow-x-visible scrollbar-hide px-4">
               {/* City */}
               <div className="relative shrink-0">
@@ -314,7 +314,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
         </div>
 
         {/* Map — right */}
-        <div className={`md:flex-1 md:min-w-0 md:block relative px-4 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "" : "hidden"}`}>
+        <div className={`md:flex-1 md:min-w-0 md:block relative px-4 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "pb-2.5" : "hidden"}`}>
           <div
             className="w-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative md:h-full"
             style={mapHeight && mobileView === "map" ? { height: mapHeight } : undefined}
