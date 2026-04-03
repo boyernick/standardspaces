@@ -12,6 +12,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
   const [current, setCurrent] = useState(0);
   const touchStart = useRef<number | null>(null);
   const touchDelta = useRef(0);
+  const swiped = useRef(false);
 
   const count = images.length;
 
@@ -30,11 +31,15 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
   const onTouchStart = (e: React.TouchEvent) => {
     touchStart.current = e.touches[0].clientX;
     touchDelta.current = 0;
+    swiped.current = false;
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
     if (touchStart.current === null) return;
     touchDelta.current = e.touches[0].clientX - touchStart.current;
+    if (Math.abs(touchDelta.current) > 10) {
+      swiped.current = true;
+    }
   };
 
   const onTouchEnd = () => {
@@ -49,9 +54,18 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
     touchDelta.current = 0;
   };
 
+  const onClickCapture = (e: React.MouseEvent) => {
+    if (swiped.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      swiped.current = false;
+    }
+  };
+
   return (
     <div
       className="group/carousel relative aspect-[4/3] rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800"
+      onClickCapture={onClickCapture}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
