@@ -34,6 +34,7 @@ export default function CityClient({ spots: allSpots, savedSpotIds = [], cityNam
   const perPage = 6;
 
   const neighborhoodRef = useRef<HTMLDivElement>(null);
+  const neighborhoodDropdownRef = useRef<HTMLDivElement>(null);
   const categoryRef = useRef<HTMLDivElement>(null);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -44,7 +45,13 @@ export default function CityClient({ spots: allSpots, savedSpotIds = [], cityNam
   useEffect(() => {
     if (!neighborhoodOpen) return;
     function handleClick(e: MouseEvent) {
-      if (neighborhoodRef.current && !neighborhoodRef.current.contains(e.target as Node)) setNeighborhoodOpen(false);
+      const target = e.target as Node;
+      if (
+        neighborhoodRef.current && !neighborhoodRef.current.contains(target) &&
+        neighborhoodDropdownRef.current && !neighborhoodDropdownRef.current.contains(target)
+      ) {
+        setNeighborhoodOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -193,7 +200,7 @@ export default function CityClient({ spots: allSpots, savedSpotIds = [], cityNam
               const bar = filterBarRef.current;
               const left = btn && bar ? btn.getBoundingClientRect().left - bar.getBoundingClientRect().left : 16;
               return (
-              <div className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
+              <div ref={neighborhoodDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                 <div className="relative" style={{ marginLeft: left }}>
                   <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-60 overflow-y-auto scrollbar-hide">
                     <button onClick={() => { setActiveNeighborhood(null); setNeighborhoodOpen(false); setPage(1); }} className={`block w-full text-left px-4 py-2.5 text-xs transition-colors ${!activeNeighborhood ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
