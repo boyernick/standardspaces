@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Send, Check } from "lucide-react";
+import { Link2, Check } from "lucide-react";
 
 export default function ShareButton({ spotName, variant }: { spotName?: string; variant?: "icon" } = {}) {
   const [copied, setCopied] = useState(false);
@@ -49,7 +49,7 @@ export default function ShareButton({ spotName, variant }: { spotName?: string; 
         aria-label="Share"
         title={copied ? "Copied!" : "Share"}
       >
-        {copied ? <Check size={16} strokeWidth={2} className="text-green-600" /> : <Send size={16} strokeWidth={2} className="text-neutral-600 dark:text-neutral-300" />}
+        {copied ? <Check size={16} strokeWidth={2} className="text-green-600" /> : <Link2 size={16} strokeWidth={2} className="text-neutral-600 dark:text-neutral-300" />}
       </button>
     );
   }
@@ -59,7 +59,7 @@ export default function ShareButton({ spotName, variant }: { spotName?: string; 
       onClick={handleShare}
       className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors underline underline-offset-2 decoration-neutral-300 dark:decoration-neutral-600"
     >
-      {copied ? <><Check size={14} /> Copied</> : <><Send size={14} /> Share</>}
+      {copied ? <><Check size={14} /> Copied</> : <><Link2 size={14} /> Share</>}
     </button>
   );
 }

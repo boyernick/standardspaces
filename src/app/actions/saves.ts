@@ -75,3 +75,18 @@ export async function getCheckinCount(spotId: string): Promise<number> {
 
   return count ?? 0;
 }
+
+export async function uncheckIn(spotId: string): Promise<{ success: boolean }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { success: false };
+
+  await supabase
+    .from("user_checkins")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("spot_id", spotId);
+
+  return { success: true };
+}
