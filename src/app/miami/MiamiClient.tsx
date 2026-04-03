@@ -118,8 +118,8 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
         {/* Panel — left */}
         <div className={`w-full md:w-[55%] lg:w-1/2 md:min-w-[420px] md:flex md:flex-col md:shrink-0 ${mobileView === "list" ? "flex flex-col flex-1 min-h-0" : "flex flex-col md:flex"}`}>
           {/* Filters bar */}
-          {allSpots.length > 0 && <div ref={filterBarRef} className="relative z-20 bg-surface px-4 py-2.5 shrink-0">
-            <div className="flex items-center gap-2 overflow-x-auto md:overflow-x-visible scrollbar-hide pr-4 -mr-4">
+          {allSpots.length > 0 && <div ref={filterBarRef} className="relative z-20 bg-surface px-4 py-2.5 shrink-0 overflow-visible">
+            <div className="flex items-center gap-2 overflow-x-visible md:overflow-x-visible scrollbar-hide">
               {/* City */}
               <div className="relative shrink-0">
                 <button className="flex items-center justify-between gap-1.5 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white">
