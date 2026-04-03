@@ -36,6 +36,7 @@ export default function CityClient({ spots: allSpots, savedSpotIds = [], cityNam
   const neighborhoodRef = useRef<HTMLDivElement>(null);
   const neighborhoodDropdownRef = useRef<HTMLDivElement>(null);
   const categoryRef = useRef<HTMLDivElement>(null);
+  const filterScrollRef = useRef<HTMLDivElement>(null);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const filterBarRef = useRef<HTMLDivElement>(null);
@@ -127,7 +128,7 @@ export default function CityClient({ spots: allSpots, savedSpotIds = [], cityNam
         <div className={`w-full md:w-[55%] lg:w-1/2 md:min-w-[420px] md:flex md:flex-col md:shrink-0 ${mobileView === "list" ? "flex flex-col flex-1 min-h-0" : "flex flex-col md:flex"}`}>
           {/* Filters bar */}
           {allSpots.length > 0 && <div ref={filterBarRef} className="relative z-20 bg-surface py-2.5 shrink-0 md:overflow-x-clip">
-            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide px-4">
+            <div ref={filterScrollRef} className="flex items-center gap-2 overflow-x-auto scrollbar-hide px-4">
               {/* City */}
               <div className="relative shrink-0">
                 <button className={`flex items-center justify-between gap-1.5 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${
@@ -173,11 +174,52 @@ export default function CityClient({ spots: allSpots, savedSpotIds = [], cityNam
                     <button
                       key={cat}
                       data-category={cat}
-                      onClick={() => {
-                        if (isActive) { isDropdownOpen ? setCategoryDropdown(null) : setCategoryDropdown(cat); }
-                        else { setActiveCategory(cat); setActiveSubcategories(new Set()); setCategoryDropdown(cat); setActiveSpot(null); setPage(1); }
+                      onClick={(e) => {
+                        if (isActive) {
+                          // Already active — just toggle dropdown
+                          isDropdownOpen ? setCategoryDropdown(null) : setCategoryDropdown(cat);
+                          return;
+                        }
+
+                        const btn = e.currentTarget;
+                        const container = filterScrollRef.current;
+                        const scrollToCenter = () => {
+                          if (container) {
+                            const btnRect = btn.getBoundingClientRect();
+                            const containerRect = container.getBoundingClientRect();
+                            const scrollLeft = container.scrollLeft + (btnRect.left - containerRect.left) - (containerRect.width / 2) + (btnRect.width / 2);
+                            container.scrollTo({ left: scrollLeft, behavior: "smooth" });
+                          }
+                        };
+
+                        if (activeCategory) {
+                          // Switching filters: close dropdown, immediately switch category (no null gap)
+                          setCategoryDropdown(null);
+                          // Scroll new pill into view while dropdown closes
+                          setTimeout(() => {
+                            scrollToCenter();
+                            // Switch category directly — feed updates instantly, pill transitions via CSS
+                            setTimeout(() => {
+                              setActiveCategory(cat);
+                              setActiveSubcategories(new Set());
+                              setActiveSpot(null);
+                              setPage(1);
+                              setTimeout(() => setCategoryDropdown(cat), 200);
+                            }, 250);
+                          }, 150);
+                        } else {
+                          // Fresh selection: scroll, activate, open
+                          scrollToCenter();
+                          setTimeout(() => {
+                            setActiveCategory(cat);
+                            setActiveSubcategories(new Set());
+                            setActiveSpot(null);
+                            setPage(1);
+                            setTimeout(() => setCategoryDropdown(cat), 200);
+                          }, 250);
+                        }
                       }}
-                      className={`flex items-center gap-1 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap shrink-0 ${
+                      className={`flex items-center gap-1 px-3.5 py-1.5 text-sm rounded-full border whitespace-nowrap shrink-0 transition-all duration-200 ease-in-out ${
                         isActive ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white" : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
                       }`}
                     >
@@ -198,11 +240,17 @@ export default function CityClient({ spots: allSpots, savedSpotIds = [], cityNam
             {neighborhoodOpen && (() => {
               const btn = neighborhoodRef.current;
               const bar = filterBarRef.current;
-              const left = btn && bar ? btn.getBoundingClientRect().left - bar.getBoundingClientRect().left : 16;
+              const barWidth = bar?.getBoundingClientRect().width ?? 375;
+              const dropdownWidth = 208; // w-52
+              let left = btn && bar ? btn.getBoundingClientRect().left - bar.getBoundingClientRect().left : 16;
+              if (left + dropdownWidth > barWidth - 8) {
+                left = btn && bar ? btn.getBoundingClientRect().right - bar.getBoundingClientRect().left - dropdownWidth : left;
+              }
+              left = Math.max(8, left);
               return (
               <div ref={neighborhoodDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                 <div className="relative" style={{ marginLeft: left }}>
-                  <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-60 overflow-y-auto scrollbar-hide">
+                  <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-60 overflow-y-auto scrollbar-hide animate-[fadeSlideDown_150ms_ease-out]">
                     <button onClick={() => { setActiveNeighborhood(null); setNeighborhoodOpen(false); setPage(1); }} className={`block w-full text-left px-4 py-2.5 text-xs transition-colors ${!activeNeighborhood ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
                       All neighborhoods
                     </button>
@@ -230,11 +278,18 @@ export default function CityClient({ spots: allSpots, savedSpotIds = [], cityNam
               const activeSubCount = activeCategory === cat ? activeSubcategories.size : 0;
               const btn = categoryRef.current?.querySelector(`[data-category="${cat}"]`) as HTMLElement | null;
               const bar = filterBarRef.current;
-              const left = btn && bar ? btn.getBoundingClientRect().left - bar.getBoundingClientRect().left : 0;
+              const barWidth = bar?.getBoundingClientRect().width ?? 375;
+              const dropdownWidth = 192; // w-48
+              let left = btn && bar ? btn.getBoundingClientRect().left - bar.getBoundingClientRect().left : 0;
+              // If dropdown overflows right, align right edge to pill's right edge
+              if (left + dropdownWidth > barWidth - 8) {
+                left = btn && bar ? btn.getBoundingClientRect().right - bar.getBoundingClientRect().left - dropdownWidth : left;
+              }
+              left = Math.max(8, left);
               return (
                 <div ref={categoryDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                   <div className="relative" style={{ marginLeft: left }}>
-                    <div className="mt-1.5 w-48 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-64 overflow-y-auto scrollbar-hide">
+                    <div className="mt-1.5 w-48 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-64 overflow-y-auto scrollbar-hide animate-[fadeSlideDown_150ms_ease-out]">
                       <button onClick={() => { setActiveSubcategories(new Set()); setPage(1); }} className={`block w-full text-left px-4 py-2 text-xs transition-colors ${activeSubCount === 0 ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
                         All {CATEGORY_LABELS[cat]}
                       </button>
