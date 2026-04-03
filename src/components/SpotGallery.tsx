@@ -310,7 +310,7 @@ export default function SpotGallery({ images, name }: SpotGalleryProps) {
           {realImages.length > 3 && (
             <button
               onClick={() => openLightbox(0)}
-              className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-surface/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 rounded-full text-xs font-medium hover:bg-surface transition-colors"
+              className="absolute bottom-3 right-5 flex items-center gap-1.5 px-3 py-1.5 bg-surface/90 backdrop-blur-sm border border-neutral-300 dark:border-neutral-700 rounded-full text-xs font-medium hover:bg-surface transition-colors"
             >
               <Grid2x2 size={12} />
               All photos
