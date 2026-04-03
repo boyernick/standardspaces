@@ -34,6 +34,9 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
   const categoryRef = useRef<HTMLDivElement>(null);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const filterBarRef = useRef<HTMLDivElement>(null);
+  const bottomBarRef = useRef<HTMLDivElement>(null);
+  const [mapHeight, setMapHeight] = useState<number | null>(null);
 
   useEffect(() => {
     if (!neighborhoodOpen) return;
@@ -59,6 +62,23 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
   useEffect(() => {
     panelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [page]);
+
+  // Compute map height so padding above and below the map is equal on mobile
+  useEffect(() => {
+    function compute() {
+      const filterBar = filterBarRef.current;
+      const bottomBar = bottomBarRef.current;
+      if (!filterBar || !bottomBar) return;
+      const filterBottom = filterBar.getBoundingClientRect().bottom;
+      const bottomBarTop = bottomBar.getBoundingClientRect().top;
+      const available = bottomBarTop - filterBottom;
+      const gap = 10; // px gap above and below map
+      setMapHeight(available - gap * 2);
+    }
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, [mobileView]);
 
   const filtered = useMemo(() => {
     let result = allSpots;
@@ -98,7 +118,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
         {/* Panel — left */}
         <div className={`w-full md:w-[55%] lg:w-1/2 md:min-w-[420px] md:flex md:flex-col md:shrink-0 ${mobileView === "list" ? "flex flex-col flex-1 min-h-0" : "flex flex-col md:flex"}`}>
           {/* Filters bar */}
-          {allSpots.length > 0 && <div className="relative z-20 bg-surface px-4 py-2.5 shrink-0">
+          {allSpots.length > 0 && <div ref={filterBarRef} className="relative z-20 bg-surface px-4 py-2.5 shrink-0">
             <div className="flex items-center gap-2 overflow-x-auto md:overflow-x-visible scrollbar-hide">
               {/* City */}
               <div className="relative shrink-0">
@@ -291,8 +311,11 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
         </div>
 
         {/* Map — right */}
-        <div className={`md:flex-1 md:min-w-0 md:block relative px-4 pt-2.5 pb-4 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "flex-1 pb-[8.5rem]" : "hidden"}`}>
-          <div className="w-full h-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative">
+        <div className={`md:flex-1 md:min-w-0 md:block relative px-4 pt-2.5 pb-4 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "flex items-center justify-center" : "hidden"}`}>
+          <div
+            className="w-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative md:h-full"
+            style={mapHeight && mobileView === "map" ? { height: mapHeight } : undefined}
+          >
             <Map spots={filtered} activeSpot={activeSpot} onSpotSelect={handleSpotSelect} />
 
             {/* Map card */}
@@ -343,7 +366,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
       </div>
 
       {/* Mobile bottom bar */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-surface border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div ref={bottomBarRef} className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-surface border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-2">
           <button
             onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
