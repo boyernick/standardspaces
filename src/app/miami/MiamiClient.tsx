@@ -181,9 +181,13 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
             </div>
 
             {/* Neighborhood dropdown — rendered outside scrollable container so it isn't clipped on mobile */}
-            {neighborhoodOpen && (
+            {neighborhoodOpen && (() => {
+              const btn = neighborhoodRef.current;
+              const bar = filterBarRef.current;
+              const left = btn && bar ? btn.getBoundingClientRect().left - bar.getBoundingClientRect().left : 16;
+              return (
               <div className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
-                <div className="ml-4">
+                <div className="relative" style={{ marginLeft: left }}>
                   <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-60 overflow-y-auto scrollbar-hide">
                     <button onClick={() => { setActiveNeighborhood(null); setNeighborhoodOpen(false); setPage(1); }} className={`block w-full text-left px-4 py-2.5 text-xs transition-colors ${!activeNeighborhood ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
                       All neighborhoods
@@ -200,7 +204,8 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
                   </div>
                 </div>
               </div>
-            )}
+              );
+            })()}
 
             {/* Category dropdown — rendered outside scrollable pills so it isn't clipped */}
             {categoryDropdown && (() => {
@@ -210,7 +215,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
               );
               const activeSubCount = activeCategory === cat ? activeSubcategories.size : 0;
               const btn = categoryRef.current?.querySelector(`[data-category="${cat}"]`) as HTMLElement | null;
-              const bar = categoryRef.current?.parentElement?.parentElement;
+              const bar = filterBarRef.current;
               const left = btn && bar ? btn.getBoundingClientRect().left - bar.getBoundingClientRect().left : 0;
               return (
                 <div ref={categoryDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
