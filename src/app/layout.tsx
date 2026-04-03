@@ -28,12 +28,6 @@ const martinaPlantijn = localFont({
 export const metadata: Metadata = {
   title: "Standard Spaces",
   description: "A curated guide to the finest spaces in every city.",
-  icons: {
-    icon: [
-      { url: "/logo.svg", type: "image/svg+xml" },
-    ],
-    apple: "/logo.svg",
-  },
 };
 
 export const viewport: Viewport = {
