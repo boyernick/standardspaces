@@ -127,7 +127,7 @@ export default function RecommendForm() {
             onChange={(e) => { setUrl(e.target.value); setError(""); }}
             onKeyDown={(e) => { if (e.key === "Enter") handleUrlContinue(); }}
             placeholder="Paste a URL — website, Google Maps, Apple Maps, Instagram..."
-            className="w-full pl-10 pr-4 py-3 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
+            className="w-full pl-10 pr-4 py-3 text-base border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
             autoFocus
           />
         </div>
@@ -165,7 +165,7 @@ export default function RecommendForm() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="What's the place called?"
-                className="w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
+                className="w-full px-4 py-2.5 text-base border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
               />
             </div>
 
@@ -176,7 +176,7 @@ export default function RecommendForm() {
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full appearance-none px-4 py-2.5 pr-10 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
+                  className="w-full appearance-none px-4 py-2.5 pr-10 text-base border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
                 >
                   <option value="">Select a category</option>
                   {CATEGORY_ORDER.map((cat) => (
@@ -195,7 +195,7 @@ export default function RecommendForm() {
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
                 placeholder="e.g. Wynwood, Brickell, South Beach"
-                className="w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
+                className="w-full px-4 py-2.5 text-base border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
               />
             </div>
 
@@ -207,7 +207,7 @@ export default function RecommendForm() {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="What makes it special? Any tips for first-timers?"
                 rows={3}
-                className="w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors resize-none"
+                className="w-full px-4 py-2.5 text-base border border-neutral-200 dark:border-neutral-800 rounded-xl bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors resize-none"
               />
             </div>
           </div>

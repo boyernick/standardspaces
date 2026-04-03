@@ -182,7 +182,7 @@ export default function CommandMenu() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search by name, neighborhood, or vibe..."
-            className="flex-1 py-4 text-sm bg-transparent outline-none placeholder-neutral-400 dark:placeholder-neutral-500"
+            className="flex-1 py-4 text-base bg-transparent outline-none placeholder-neutral-400 dark:placeholder-neutral-500"
           />
           {query && (
             <button

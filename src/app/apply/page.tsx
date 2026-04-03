@@ -31,7 +31,7 @@ export default function ApplyPage() {
     setLoading(false);
   }
 
-  const inputStyle = "w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors";
+  const inputStyle = "w-full px-4 py-2.5 text-base border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors";
   const fontCalibr = { fontFamily: "var(--font-calibre), system-ui, sans-serif" };
 
   return (
