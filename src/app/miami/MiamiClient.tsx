@@ -314,7 +314,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
         <div className={`md:flex-1 md:min-w-0 md:block relative px-4 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "" : "hidden"}`}>
           <div
             className="w-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative md:h-full"
-            style={mapHeight && mobileView === "map" ? { height: mapHeight, marginTop: 10 } : undefined}
+            style={mapHeight && mobileView === "map" ? { height: mapHeight } : undefined}
           >
             <Map spots={filtered} activeSpot={activeSpot} onSpotSelect={handleSpotSelect} />
 
