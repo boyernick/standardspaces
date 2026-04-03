@@ -30,8 +30,14 @@
 
 html, body {
   background: var(--color-surface);
+  background-color: var(--color-surface);
   color: var(--color-text);
   font-family: var(--font-calibre), system-ui, sans-serif;
+}
+
+/* Ensure safe area background matches on iOS */
+html {
+  background-color: #F7F7F3;
 }
 
 .dark {
@@ -42,7 +48,11 @@ html, body {
 }
 .dark, .dark body {
   background: #13120A;
+  background-color: #13120A;
   color: #ededed;
+}
+html.dark {
+  background-color: #13120A;
 }
 .dark .nav-logo { filter: invert(1); }
 .dark .nav-title { color: #ededed !important; }

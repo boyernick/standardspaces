@@ -36,7 +36,7 @@ export default function SpotMap({ lng, lat, name }: SpotMapProps) {
     el.style.cssText = `
       width: 14px;
       height: 14px;
-      background: ${dark ? THEME.light.surface : THEME.dark.surface};
+      background: ${THEME.brand};
       border-radius: 50%;
       border: 2px solid ${THEME.white};
       box-shadow: 0 2px 6px rgba(0,0,0,0.25);

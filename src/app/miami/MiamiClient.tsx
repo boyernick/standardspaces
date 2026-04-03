@@ -96,7 +96,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
 
       <div className="flex-1 min-h-0 flex flex-col md:flex-row">
         {/* Panel — left */}
-        <div className={`w-full md:w-[55%] lg:w-1/2 md:min-w-[420px] md:flex md:flex-col md:shrink-0 ${mobileView === "list" ? "flex flex-col flex-1 min-h-0" : "hidden md:flex"}`}>
+        <div className={`w-full md:w-[55%] lg:w-1/2 md:min-w-[420px] md:flex md:flex-col md:shrink-0 ${mobileView === "list" ? "flex flex-col flex-1 min-h-0" : "flex flex-col md:flex"}`}>
           {/* Filters bar */}
           {allSpots.length > 0 && <div className="relative z-20 bg-surface px-4 py-2.5 shrink-0">
             <div className="flex items-center gap-2 overflow-x-auto md:overflow-x-visible scrollbar-hide">
@@ -216,8 +216,8 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
             })()}
           </div>}
 
-          {/* Scrollable content */}
-          <div ref={panelRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-20 md:pb-0">
+          {/* Scrollable content — hidden on mobile map view */}
+          <div ref={panelRef} className={`flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-28 md:pb-0 ${mobileView === "map" ? "hidden md:block" : ""}`}>
           {/* Cards */}
           {allSpots.length === 0 ? (
             <div className="px-6 py-20 text-center">
@@ -285,7 +285,7 @@ export default function MiamiClient({ spots: allSpots, savedSpotIds = [] }: Miam
         </div>
 
         {/* Map — right */}
-        <div className={`md:flex-1 md:min-w-0 md:block relative px-3 pt-1.5 pb-3 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "flex-1 pb-[5rem]" : "hidden"}`}>
+        <div className={`md:flex-1 md:min-w-0 md:block relative px-3 pt-1.5 pb-3 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "flex-1 pb-[6.5rem]" : "hidden"}`}>
           <div className="w-full h-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative">
             <Map spots={filtered} activeSpot={activeSpot} onSpotSelect={handleSpotSelect} />
 

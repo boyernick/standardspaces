@@ -189,10 +189,61 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
     Array.isArray(scraped.vibes) ? scraped.vibes : []
   );
 
+  const [sourceUrl, setSourceUrl] = useState(rec.url);
+  const [rescraping, setRescraping] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+
+  async function handleRescrape() {
+    if (!sourceUrl.trim()) return;
+    setRescraping(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/admin/rescrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recommendationId: rec.id, url: sourceUrl.trim() }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(body?.error || "Re-scrape failed. Please try again.");
+        setRescraping(false);
+        return;
+      }
+
+      const { data, photos } = await res.json();
+
+      // Apply scraped data to form fields — only overwrite if new data exists
+      if (data.name) setName(data.name);
+      if (data.category) {
+        const cats = Array.isArray(data.category) ? data.category : [data.category];
+        setCategory(cats);
+      }
+      if (data.subcategory && Array.isArray(data.subcategory)) setSubcategory(data.subcategory);
+      if (data.neighborhood) setNeighborhood(data.neighborhood);
+      if (data.description) setDescription(data.description);
+      if (data.address) setAddress(data.address);
+      if (data.phone) setPhone(data.phone);
+      if (data.website) setWebsite(data.website);
+      if (data.instagram) setInstagram(data.instagram);
+      if (data.hours) setHours(parseHoursString(data.hours));
+      if (data.priceRange) setPriceRange(data.priceRange);
+      if (data.dressCode) setDressCode(data.dressCode);
+      if (data.parking) setParking(data.parking);
+      if (data.bookingUrl) setBookingUrl(data.bookingUrl);
+      if (data.menuUrl) setMenuUrl(data.menuUrl);
+      if (data.vibes && Array.isArray(data.vibes)) setVibes(data.vibes);
+      if (photos && photos.length > 0) setImages(photos);
+    } catch {
+      setError("Re-scrape failed. Please try again.");
+    }
+
+    setRescraping(false);
+  }
 
   async function handlePublish() {
     if (!name.trim() || category.length === 0 || !neighborhood.trim() || !city.trim()) {
@@ -264,17 +315,29 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
 
   return (
     <div className="space-y-6">
-      {/* Source reference */}
-      <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800">
-        <div className="min-w-0">
-          <p className="text-xs text-neutral-400 dark:text-neutral-500">Source</p>
-          <a href={rec.url} target="_blank" rel="noopener noreferrer" className="text-sm text-neutral-700 dark:text-white underline underline-offset-2 decoration-neutral-300 dark:decoration-neutral-600 hover:decoration-neutral-500 dark:hover:decoration-neutral-400 transition-colors truncate block">{rec.url}</a>
+      {/* Source URL — editable with re-scrape */}
+      <div className="px-4 py-3 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800">
+        <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-1.5">Source</p>
+        <div className="flex items-center gap-2">
+          <input
+            type="url"
+            value={sourceUrl}
+            onChange={(e) => setSourceUrl(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleRescrape(); }}
+            placeholder="Paste a new URL to re-scrape..."
+            className="flex-1 min-w-0 px-3 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-surface placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
+          />
+          <button
+            type="button"
+            onClick={handleRescrape}
+            disabled={rescraping || !sourceUrl.trim()}
+            className="shrink-0 px-4 py-2 text-sm font-medium rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-500 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+          >
+            {rescraping ? <><Loader2 size={14} className="animate-spin" /> Scraping...</> : "Re-scrape"}
+          </button>
         </div>
         {rec.notes && (
-          <div className="shrink-0 text-right">
-            <p className="text-xs text-neutral-400 dark:text-neutral-500">Note</p>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 italic max-w-[200px] truncate">"{rec.notes}"</p>
-          </div>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 italic mt-2">User note: "{rec.notes}"</p>
         )}
       </div>
 

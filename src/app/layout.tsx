@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import Navbar from "@/components/Navbar";
 import CommandMenu from "@/components/CommandMenu";
+import PageTransition from "@/components/PageTransition";
 import "./globals.css";
 
 const calibre = localFont({
@@ -28,12 +29,19 @@ export const metadata: Metadata = {
   title: "Standard Spaces",
   description: "A curated guide to the finest spaces in every city.",
   icons: {
-    icon: "/logo.svg",
+    icon: [
+      { url: "/logo.svg", type: "image/svg+xml" },
+    ],
+    apple: "/logo.svg",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f0ebe0",
+  maximumScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F7F7F3" },
+    { media: "(prefers-color-scheme: dark)", color: "#13120A" },
+  ],
 };
 
 export default function RootLayout({
@@ -63,7 +71,7 @@ export default function RootLayout({
       </head>
       <body className="h-full flex flex-col overflow-hidden">
         <CommandMenu />
-        <main className="flex-1 overflow-hidden">{children}</main>
+        <PageTransition>{children}</PageTransition>
       </body>
     </html>
   );

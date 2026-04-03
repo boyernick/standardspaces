@@ -6,16 +6,15 @@ import { Resend } from "resend";
 const NOTIFY_EMAIL = "nickboyer.bizz@gmail.com";
 
 export async function submitApplication(formData: {
-  name: string;
-  email: string;
+  firstName: string;
+  lastName: string;
   instagram: string;
-  reason: string;
-  referral: string;
+  phone: string;
 }) {
-  const { name, email, instagram, reason, referral } = formData;
+  const { firstName, lastName, instagram, phone } = formData;
 
-  if (!name.trim() || !email.trim()) {
-    return { error: "Name and email are required." };
+  if (!firstName.trim() || !lastName.trim() || !instagram.trim() || !phone.trim()) {
+    return { error: "All fields are required." };
   }
 
   const supabase = createAdminClient();
@@ -24,7 +23,7 @@ export async function submitApplication(formData: {
   const { data: existing } = await supabase
     .from("applications")
     .select("id, status")
-    .eq("email", email.toLowerCase().trim())
+    .eq("phone", phone.trim())
     .single();
 
   if (existing) {
@@ -35,11 +34,10 @@ export async function submitApplication(formData: {
   }
 
   const { error: insertError } = await supabase.from("applications").insert({
-    name: name.trim(),
-    email: email.toLowerCase().trim(),
-    instagram: instagram.trim() || null,
-    reason: reason.trim() || null,
-    referral: referral.trim() || null,
+    first_name: firstName.trim(),
+    last_name: lastName.trim(),
+    instagram: instagram.trim().replace("@", ""),
+    phone: phone.trim(),
   });
 
   if (insertError) {
@@ -54,15 +52,13 @@ export async function submitApplication(formData: {
       await resend.emails.send({
         from: "Standard Spaces <onboarding@resend.dev>",
         to: NOTIFY_EMAIL,
-        subject: `New application: ${name.trim()}`,
+        subject: `New application: ${firstName.trim()} ${lastName.trim()}`,
         html: `
           <div style="font-family: system-ui, sans-serif; max-width: 480px;">
             <h2 style="margin: 0 0 8px;">New membership application</h2>
-            <p><strong>${name.trim()}</strong></p>
-            <p style="color: #666;">${email.toLowerCase().trim()}</p>
-            ${instagram.trim() ? `<p style="color: #666;">@${instagram.trim().replace("@", "")}</p>` : ""}
-            ${reason.trim() ? `<p style="color: #444; margin-top: 12px;"><em>"${reason.trim()}"</em></p>` : ""}
-            ${referral.trim() ? `<p style="color: #999; font-size: 13px;">Referral: ${referral.trim()}</p>` : ""}
+            <p><strong>${firstName.trim()} ${lastName.trim()}</strong></p>
+            <p style="color: #666;">${phone.trim()}</p>
+            <p style="color: #666;">@${instagram.trim().replace("@", "")}</p>
             <p style="margin-top: 16px;">
               <a href="${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/admin/applications" style="color: #6A001E; font-weight: 500;">
                 Review applications &rarr;

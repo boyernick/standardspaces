@@ -323,9 +323,9 @@ function inferDressCode(category?: string, subcategories?: string[]): string | u
     if (subs.includes("Speakeasy") || subs.includes("Lounge")) return "Smart casual";
     return "Casual";
   }
-  if (category === "hotels") return "Resort casual";
+  if (category === "hotels") return "Resort chic";
   if (category === "members") return "Smart casual";
-  return undefined;
+  return "No dress code";
 }
 
 // Infer parking from address context
@@ -340,7 +340,7 @@ function inferParking(address?: string): string | undefined {
   if (/coral\s*gables|33134|33146/.test(lc)) return "Street parking";
   // Wynwood / Design District
   if (/wynwood|design\s*district|33127|33137/.test(lc)) return "Street parking";
-  return undefined;
+  return "Street parking";
 }
 
 // Format openingHoursSpecification into a readable string
@@ -659,9 +659,13 @@ function inferSubcategories(data: Partial<ScrapedData>, $: cheerio.CheerioAPI): 
       "Café": ["cafe", "café"],
       "Matcha": ["matcha", "ceremonial matcha"],
       "Tea house": ["tea house", "tea room", "loose leaf"],
-      "Bakery café": ["bakery", "pastry", "viennoiserie", "croissant"],
+      "Bakery café": ["bakery café", "bakery cafe", "coffee and pastry"],
       "Espresso bar": ["espresso bar", "espresso"],
       "Coffee lab": ["coffee lab", "coffee tasting"],
+      "Bakery": ["bakery", "boulangerie", "pastry", "pastries", "viennoiserie", "croissant", "sourdough", "artisan bread"],
+      "Patisserie": ["patisserie", "pâtisserie", "macaron", "french pastry"],
+      "Juice bar": ["juice bar", "cold pressed", "smoothie bar", "fresh juice"],
+      "Açaí bar": ["açaí", "acai", "acai bowl"],
     },
     wellness: {
       "Gym": ["gym", "fitness center"],
@@ -756,6 +760,7 @@ function inferSubcategories(data: Partial<ScrapedData>, $: cheerio.CheerioAPI): 
     foodestablishment: "dining",
     barorpub: "drinks",
     cafeorcoffeeshop: "coffee",
+    bakery: "coffee",
     hotel: "hotels",
     lodgingbusiness: "hotels",
     healthclub: "wellness",
@@ -923,6 +928,8 @@ function inferVibes(
 const IMAGE_REJECT_PATTERNS = [
   /logo/i, /icon/i, /favicon/i, /sprite/i, /spacer/i, /pixel/i, /tracking/i,
   /badge/i, /avatar/i, /profile[-_]?pic/i, /gravatar/i, /widget/i, /button/i,
+  /team[-_]?photo/i, /headshot/i, /portrait/i, /staff[-_]?photo/i, /employee/i,
+  /family/i, /selfie/i, /person/i, /people/i, /founder/i, /about[-_]?us/i,
   /\.svg(\?|$)/i, /\.gif(\?|$)/i, /1x1/i, /transparent/i, /blank\./i,
   /facebook\.com/i, /twitter\.com/i, /google-analytics/i, /doubleclick/i,
   /adsystem/i, /adserver/i, /cloudflare/i, /recaptcha/i,

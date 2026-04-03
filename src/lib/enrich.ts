@@ -45,10 +45,24 @@ async function searchGooglePlaces(query: string): Promise<PlaceResult | null> {
     const detail = detailData.result;
     if (!detail) return null;
 
-    // Build photo URLs
+    // Build photo URLs — prefer owner photos over user-contributed ones
     const photos: string[] = [];
     if (detail.photos) {
-      for (const photo of detail.photos.slice(0, 10)) {
+      // Sort: owner/business photos first (they have attributions matching the business name),
+      // then by width descending (larger = higher quality)
+      const sorted = [...detail.photos].sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+        const aOwner = Array.isArray(a.html_attributions) && a.html_attributions.some((attr: string) =>
+          attr.toLowerCase().includes(detail.name?.toLowerCase() || "___")
+        );
+        const bOwner = Array.isArray(b.html_attributions) && b.html_attributions.some((attr: string) =>
+          attr.toLowerCase().includes(detail.name?.toLowerCase() || "___")
+        );
+        if (aOwner && !bOwner) return -1;
+        if (!aOwner && bOwner) return 1;
+        return ((b.width as number) || 0) - ((a.width as number) || 0);
+      });
+
+      for (const photo of sorted.slice(0, 5)) {
         photos.push(
           `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${photo.photo_reference}&key=${GOOGLE_API_KEY}`
         );
@@ -263,7 +277,7 @@ export async function enrichScrapedData(
     enriched.neighborhood = inferNeighborhood(enriched.address, enriched.description);
   }
 
-  // Photos — merge and deduplicate
+  // Photos — website first (curated), then Google (owner-prioritized, max 5), then Yelp
   const allPhotos = [
     ...(enriched.imageUrls || []),
     ...(googleResult?.photos || []),

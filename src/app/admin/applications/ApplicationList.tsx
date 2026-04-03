@@ -4,11 +4,10 @@ import { useState } from "react";
 
 type Application = {
   id: string;
-  name: string;
-  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
   instagram: string | null;
-  reason: string | null;
-  referral: string | null;
   status: string;
   created_at: string;
 };
@@ -68,8 +67,8 @@ export default function ApplicationList({ applications: initial }: { application
             <div key={app.id} className="border border-black/10 rounded-lg p-4 bg-white">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm font-medium" style={fontCalibre}>{app.name}</p>
-                  <p className="text-xs text-black/50" style={fontCalibre}>{app.email}</p>
+                  <p className="text-sm font-medium" style={fontCalibre}>{app.first_name} {app.last_name}</p>
+                  <p className="text-xs text-black/50" style={fontCalibre}>{app.phone}</p>
                   {app.instagram && (
                     <p className="text-xs text-black/40 mt-0.5" style={fontCalibre}>@{app.instagram.replace("@", "")}</p>
                   )}
@@ -87,12 +86,6 @@ export default function ApplicationList({ applications: initial }: { application
                   {app.status}
                 </span>
               </div>
-              {app.reason && (
-                <p className="text-xs text-black/60 mt-2 italic" style={fontCalibre}>&ldquo;{app.reason}&rdquo;</p>
-              )}
-              {app.referral && (
-                <p className="text-xs text-black/40 mt-1" style={fontCalibre}>Referral: {app.referral}</p>
-              )}
               <p className="text-xs text-black/30 mt-2" style={fontCalibre}>
                 {new Date(app.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </p>
@@ -104,7 +97,7 @@ export default function ApplicationList({ applications: initial }: { application
                     className="px-3 py-1.5 text-xs font-medium text-white bg-brand-900 rounded-full hover:bg-brand-800 transition-colors disabled:opacity-50"
                     style={fontCalibre}
                   >
-                    {processing === app.id ? "..." : "Approve & send invite"}
+                    {processing === app.id ? "..." : "Approve & send SMS"}
                   </button>
                   <button
                     onClick={() => handleAction(app.id, "reject")}

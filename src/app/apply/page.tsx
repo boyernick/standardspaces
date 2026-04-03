@@ -1,25 +1,75 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 import { submitApplication } from "@/app/actions/apply";
+import Link from "next/link";
+
+type Step = "phone" | "verify" | "details" | "submitted";
 
 export default function ApplyPage() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [step, setStep] = useState<Step>("phone");
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [instagram, setInstagram] = useState("");
-  const [reason, setReason] = useState("");
-  const [referral, setReferral] = useState("");
-  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  const fullPhone = phone.startsWith("+") ? phone : `+1${phone.replace(/\D/g, "")}`;
+
+  async function handleSendCode(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const result = await submitApplication({ name, email, instagram, reason, referral });
+    const supabase = createClient();
+    const { error: otpError } = await supabase.auth.signInWithOtp({ phone: fullPhone });
+
+    if (otpError) {
+      setError(otpError.message);
+      setLoading(false);
+      return;
+    }
+
+    setStep("verify");
+    setLoading(false);
+  }
+
+  async function handleVerifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    const supabase = createClient();
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      phone: fullPhone,
+      token: otp.trim(),
+      type: "sms",
+    });
+
+    if (verifyError) {
+      setError(verifyError.message);
+      setLoading(false);
+      return;
+    }
+
+    setStep("details");
+    setLoading(false);
+  }
+
+  async function handleSubmitApplication(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    const result = await submitApplication({
+      firstName,
+      lastName,
+      instagram,
+      phone: fullPhone,
+    });
 
     if (result.error) {
       setError(result.error);
@@ -27,12 +77,13 @@ export default function ApplyPage() {
       return;
     }
 
-    setSubmitted(true);
+    setStep("submitted");
     setLoading(false);
   }
 
   const inputStyle = "w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors";
-  const fontCalibr = { fontFamily: "var(--font-calibre), system-ui, sans-serif" };
+  const fontCalibre = { fontFamily: "var(--font-calibre), system-ui, sans-serif" };
+  const fontMartina = { fontFamily: "var(--font-martina), Georgia, serif" };
 
   return (
     <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "var(--color-surface)" }}>
@@ -40,101 +91,158 @@ export default function ApplyPage() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-1 mb-6">
             <img src="/logo.svg" alt="Standard Spaces" className="h-5 w-5 dark:invert" />
-            <span className="text-lg tracking-tight text-neutral-900 dark:text-white" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
+            <span className="text-lg tracking-tight text-neutral-900 dark:text-white" style={fontMartina}>
               Standard Spaces
             </span>
           </div>
 
-          {submitted ? (
+          {step === "submitted" ? (
             <>
-              <h1 className="text-xl font-medium mb-3" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
-                Application received
-              </h1>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400" style={fontCalibr}>
-                We&apos;ll review your application and send you a login link if approved.
+              <h1 className="text-xl font-medium mb-3" style={fontMartina}>Application received</h1>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400" style={fontCalibre}>
+                We&apos;ll review your application and text you when you&apos;re approved.
+              </p>
+            </>
+          ) : step === "details" ? (
+            <>
+              <h1 className="text-xl font-medium mb-1" style={fontMartina}>Almost there</h1>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400" style={fontCalibre}>
+                Tell us a bit about yourself.
+              </p>
+            </>
+          ) : step === "verify" ? (
+            <>
+              <h1 className="text-xl font-medium mb-1" style={fontMartina}>Enter your code</h1>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400" style={fontCalibre}>
+                6-digit code sent to {fullPhone}
               </p>
             </>
           ) : (
             <>
-              <h1 className="text-xl font-medium mb-1" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
-                Apply to join
-              </h1>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400" style={fontCalibr}>
+              <h1 className="text-xl font-medium mb-1" style={fontMartina}>Apply to join</h1>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400" style={fontCalibre}>
                 Standard Spaces is a curated, members-only guide.
               </p>
             </>
           )}
         </div>
 
-        {!submitted && (
-          <form onSubmit={handleSubmit} className="space-y-3">
+        {step === "phone" && (
+          <form onSubmit={handleSendCode} className="space-y-3">
+            <div className="flex gap-2">
+              <span className="flex items-center px-3 text-sm text-neutral-500 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-neutral-50 dark:bg-neutral-800" style={fontCalibre}>
+                +1
+              </span>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                placeholder="(555) 123-4567"
+                required
+                className={inputStyle}
+                style={fontCalibre}
+                autoFocus
+              />
+            </div>
+            {error && <p className="text-xs text-red-600" style={fontCalibre}>{error}</p>}
+            <button
+              type="submit"
+              disabled={loading || phone.replace(/\D/g, "").length < 10}
+              className="w-full py-2.5 text-sm font-medium text-white bg-brand-900 rounded-lg hover:bg-brand-800 transition-colors disabled:opacity-50"
+              style={fontCalibre}
+            >
+              {loading ? "Sending..." : "Send verification code"}
+            </button>
+          </form>
+        )}
+
+        {step === "verify" && (
+          <form onSubmit={handleVerifyCode} className="space-y-3">
             <input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Full name"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="000000"
+              required
+              className={`${inputStyle} text-center tracking-[0.3em]`}
+              style={fontCalibre}
+              autoFocus
+            />
+            {error && <p className="text-xs text-red-600" style={fontCalibre}>{error}</p>}
+            <button
+              type="submit"
+              disabled={loading || otp.length !== 6}
+              className="w-full py-2.5 text-sm font-medium text-white bg-brand-900 rounded-lg hover:bg-brand-800 transition-colors disabled:opacity-50"
+              style={fontCalibre}
+            >
+              {loading ? "Verifying..." : "Verify"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setStep("phone"); setOtp(""); setError(""); }}
+              className="w-full py-2 text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+              style={fontCalibre}
+            >
+              Use a different number
+            </button>
+          </form>
+        )}
+
+        {step === "details" && (
+          <form onSubmit={handleSubmitApplication} className="space-y-3">
+            <input
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="First name"
               required
               className={inputStyle}
-              style={fontCalibr}
+              style={fontCalibre}
+              autoFocus
             />
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="Last name"
               required
               className={inputStyle}
-              style={fontCalibr}
+              style={fontCalibre}
             />
             <input
               type="text"
               value={instagram}
               onChange={(e) => setInstagram(e.target.value)}
-              placeholder="Instagram handle (optional)"
+              placeholder="Instagram handle"
+              required
               className={inputStyle}
-              style={fontCalibr}
+              style={fontCalibre}
             />
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Why do you want to join? (optional)"
-              rows={3}
-              className={`${inputStyle} resize-none`}
-              style={fontCalibr}
-            />
-            <input
-              type="text"
-              value={referral}
-              onChange={(e) => setReferral(e.target.value)}
-              placeholder="How did you hear about us? (optional)"
-              className={inputStyle}
-              style={fontCalibr}
-            />
-            {error && (
-              <p className="text-xs text-red-600" style={fontCalibr}>
-                {error}
-              </p>
-            )}
+            {error && <p className="text-xs text-red-600" style={fontCalibre}>{error}</p>}
             <button
               type="submit"
               disabled={loading}
               className="w-full py-2.5 text-sm font-medium text-white bg-brand-900 rounded-lg hover:bg-brand-800 transition-colors disabled:opacity-50"
-              style={fontCalibr}
+              style={fontCalibre}
             >
               {loading ? "Submitting..." : "Submit application"}
             </button>
           </form>
         )}
 
-        <div className="mt-6 text-center">
-          <Link
-            href="/login"
-            className="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-            style={fontCalibr}
-          >
-            Already a member? Log in
-          </Link>
-        </div>
+        {step !== "submitted" && (
+          <div className="mt-6 text-center">
+            <Link
+              href="/login"
+              className="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+              style={fontCalibre}
+            >
+              Already a member? Log in
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

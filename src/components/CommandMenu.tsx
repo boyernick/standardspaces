@@ -33,29 +33,30 @@ export default function CommandMenu() {
   // Fetch spots once on first open
   useEffect(() => {
     if (!open || spots.length > 0) return;
+    let cancelled = false;
     createClient()
       .from("spots")
       .select("*")
       .order("name")
       .then(({ data }) => {
-        if (data) {
-          setSpots(data.map((r: Record<string, unknown>) => ({
-            id: r.id as string,
-            name: r.name as string,
-            category: r.category as Category[],
-            subcategory: r.subcategory as string[] | undefined,
-            vibes: r.vibes as string[] | undefined,
-            neighborhood: r.neighborhood as string,
-            city: r.city as string,
-            description: r.description as string,
-            address: r.address as string,
-            images: r.images as string[],
-            lng: r.lng as number,
-            lat: r.lat as number,
-            priceRange: r.price_range as string | undefined,
-          } as Spot)));
-        }
+        if (cancelled || !data) return;
+        setSpots(data.map((r: Record<string, unknown>) => ({
+          id: r.id as string,
+          name: r.name as string,
+          category: r.category as Category[],
+          subcategory: r.subcategory as string[] | undefined,
+          vibes: r.vibes as string[] | undefined,
+          neighborhood: r.neighborhood as string,
+          city: r.city as string,
+          description: r.description as string,
+          address: r.address as string,
+          images: r.images as string[],
+          lng: r.lng as number,
+          lat: r.lat as number,
+          priceRange: r.price_range as string | undefined,
+        } as Spot)));
       });
+    return () => { cancelled = true; };
   }, [open, spots.length]);
 
   const neighborhoods = useMemo(() => [...new Set(spots.map((s) => s.neighborhood))].sort(), [spots]);

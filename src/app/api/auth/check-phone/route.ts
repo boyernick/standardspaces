@@ -2,17 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: NextRequest) {
-  const { email } = await req.json();
+  const { phone } = await req.json();
 
-  if (!email) {
-    return NextResponse.json({ error: "Email required." }, { status: 400 });
+  if (!phone) {
+    return NextResponse.json({ error: "Phone required." }, { status: 400 });
   }
 
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("applications")
     .select("status")
-    .eq("email", email.toLowerCase())
+    .eq("phone", phone.trim())
     .single();
 
   if (!data) {

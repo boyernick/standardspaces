@@ -8,7 +8,7 @@ export type Category =
   | "hotels";
 
 export const CATEGORY_LABELS: Record<Category, string> = {
-  coffee: "Coffee",
+  coffee: "Café",
   dining: "Dining",
   drinks: "Drinks",
   wellness: "Wellness",
@@ -22,6 +22,7 @@ export const SUBCATEGORIES: Record<Category, string[]> = {
   coffee: [
     "Specialty coffee", "Roastery", "Café", "Matcha", "Tea house",
     "Bakery café", "Espresso bar", "Coffee lab",
+    "Bakery", "Patisserie", "Juice bar", "Açaí bar",
   ],
   dining: [
     "Fine dining", "Omakase", "Seafood", "Tasting menu",

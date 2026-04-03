@@ -3,7 +3,7 @@ import LandingVideo from "@/components/LandingVideo";
 
 export default function Home() {
   return (
-    <div className="relative h-full w-full overflow-hidden" style={{ backgroundColor: "var(--color-surface)" }}>
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-surface">
       {/* Header */}
       <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-5 py-4">
         <div className="flex items-center gap-1">
