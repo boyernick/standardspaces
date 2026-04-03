@@ -9,8 +9,8 @@ export const CITIES = [
 export type CitySlug = (typeof CITIES)[number]["slug"];
 export type CityName = (typeof CITIES)[number]["name"];
 
-const slugToName = new Map(CITIES.map((c) => [c.slug, c.name]));
-const nameToSlug = new Map(CITIES.map((c) => [c.name, c.slug]));
+const slugToName = new Map<string, string>(CITIES.map((c) => [c.slug, c.name]));
+const nameToSlug = new Map<string, string>(CITIES.map((c) => [c.name, c.slug]));
 
 export function cityNameFromSlug(slug: string): string | undefined {
   return slugToName.get(slug);
