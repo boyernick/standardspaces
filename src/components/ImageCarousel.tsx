@@ -10,9 +10,11 @@ interface ImageCarouselProps {
 
 export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
   const [current, setCurrent] = useState(0);
-  const touchStart = useRef<number | null>(null);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
   const touchDelta = useRef(0);
   const swiped = useRef(false);
+  const directionLocked = useRef<"horizontal" | "vertical" | null>(null);
 
   const count = images.length;
 
@@ -29,29 +31,43 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
-    touchStart.current = e.touches[0].clientX;
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
     touchDelta.current = 0;
     swiped.current = false;
+    directionLocked.current = null;
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    if (touchStart.current === null) return;
-    touchDelta.current = e.touches[0].clientX - touchStart.current;
-    if (Math.abs(touchDelta.current) > 10) {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const dx = e.touches[0].clientX - touchStartX.current;
+    const dy = e.touches[0].clientY - touchStartY.current;
+    touchDelta.current = dx;
+
+    // Lock direction once movement exceeds threshold
+    if (!directionLocked.current && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      directionLocked.current = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
+    }
+
+    if (directionLocked.current === "horizontal") {
+      // Prevent browser back/forward swipe and page scroll
+      e.preventDefault();
       swiped.current = true;
     }
   };
 
   const onTouchEnd = () => {
-    if (Math.abs(touchDelta.current) > 50) {
+    if (directionLocked.current === "horizontal" && Math.abs(touchDelta.current) > 50) {
       if (touchDelta.current < 0 && current < count - 1) {
         setCurrent((c) => c + 1);
       } else if (touchDelta.current > 0 && current > 0) {
         setCurrent((c) => c - 1);
       }
     }
-    touchStart.current = null;
+    touchStartX.current = null;
+    touchStartY.current = null;
     touchDelta.current = 0;
+    directionLocked.current = null;
   };
 
   const onClickCapture = (e: React.MouseEvent) => {
