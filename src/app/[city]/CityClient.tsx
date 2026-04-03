@@ -345,14 +345,11 @@ export default function CityClient({ spots: allSpots, savedSpotIds = [], cityNam
                         <img src={activeSpot.images[0]} alt={activeSpot.name} loading="lazy" className="w-full h-full object-cover" />
                       </div>
                     )}
-                    <div className="flex-1 min-w-0 py-0.5">
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
                       <h3 className="text-sm font-medium truncate">{activeSpot.name}</h3>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                         {activeSpot.neighborhood} · {activeSpot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
                       </p>
-                      {activeSpot.priceRange && (
-                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">{activeSpot.priceRange}</p>
-                      )}
                     </div>
                   </Link>
                   <button

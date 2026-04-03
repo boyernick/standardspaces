@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
+import { MapPin } from "lucide-react";
 import { THEME } from "@/lib/theme";
 import { CATEGORY_LABELS, Category } from "@/lib/types";
 import { getCustomMapStyle } from "./mapStyle";
@@ -41,7 +42,7 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
     if (!el) return;
     const dark = document.documentElement.classList.contains("dark");
     if (active) {
-      el.style.background = THEME.brand;
+      el.style.background = "#015C07";
       el.style.width = "14px";
       el.style.height = "14px";
       el.style.zIndex = "3";
@@ -140,62 +141,67 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
     <div>
       <h2 className="text-xl font-semibold mb-4">Where you&apos;ll find it</h2>
 
+      {/* Directions */}
+      <div className="mb-4">
+        <a
+          href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm rounded-full border border-neutral-200 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors"
+        >
+          <MapPin size={14} strokeWidth={1.5} />
+          {address}
+        </a>
+      </div>
+
       {/* Map */}
       <div className="relative">
-        <div ref={container} className="w-full h-[350px] rounded-2xl overflow-hidden" />
+        <div ref={container} className="w-full h-[350px] rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800" />
 
         {/* Hover card from map dot */}
         {hoveredFromMap && (
           <Link
             href={`/${citySlug}/${hoveredFromMap.id}`}
-            className="absolute bottom-3 right-3 z-10 w-56 bg-surface rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
+            className="absolute bottom-3 left-3 right-3 md:left-auto md:right-3 md:w-72 z-10 bg-surface rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
           >
-            {hoveredFromMap.images.length > 0 && (
-              <div className="h-24 overflow-hidden">
-                <img src={hoveredFromMap.images[0]} alt={hoveredFromMap.name} className="w-full h-full object-cover spot-img" />
+            <div className="flex gap-3 p-3">
+              {hoveredFromMap.images.length > 0 && (
+                <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                  <img src={hoveredFromMap.images[0]} alt={hoveredFromMap.name} className="w-full h-full object-cover spot-img" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0 flex flex-col justify-center">
+                <p className="text-sm font-medium truncate">{hoveredFromMap.name}</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                  {hoveredFromMap.neighborhood} · {hoveredFromMap.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
+                </p>
               </div>
-            )}
-            <div className="p-2.5">
-              <p className="text-sm font-medium truncate">{hoveredFromMap.name}</p>
-              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
-                {hoveredFromMap.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
-              </p>
             </div>
           </Link>
         )}
       </div>
 
-      {/* Address below map */}
-      <div className="mt-4">
-        <p className="text-[15px] font-medium">{spot.neighborhood}, {spot.name.split("|")[0].trim()}</p>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">{address}</p>
-      </div>
-
       {/* Nearby */}
       {nearby.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-4">More places nearby</h3>
-          <div className="grid grid-cols-3 gap-4">
+        <div className="mt-10">
+          <h3 className="text-sm font-medium text-neutral-900 dark:text-white mb-4">More Nearby</h3>
+          <div className="grid grid-cols-3 gap-3">
             {nearby.slice(0, 3).map((s) => (
               <Link
                 key={s.id}
                 href={`/${citySlug}/${s.id}`}
-                className="group rounded-xl overflow-hidden transition-all"
+                className="group relative aspect-[4/5] overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800"
                 onMouseEnter={() => setHoveredId(s.id)}
                 onMouseLeave={() => setHoveredId(null)}
               >
                 {s.images.length > 0 && (
-                  <div className="aspect-square overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800">
-                    <img
-                      src={s.images[0]}
-                      alt={s.name}
-                      loading="lazy"
-                      className="w-full h-full object-cover spot-img group-hover:scale-[1.03] transition-transform duration-300"
-                    />
-                  </div>
+                  <img src={s.images[0]} alt={s.name} loading="lazy" className="w-full h-full object-cover spot-img group-hover:scale-[1.03] transition-transform duration-300" />
                 )}
-                <div className="pt-2.5">
-                  <h4 className="text-sm font-medium truncate">{s.name}</h4>
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-16">
+                  <h4 className="text-sm font-medium text-white truncate">{s.name}</h4>
+                  <p className="text-xs text-white/70 mt-0.5 truncate">
+                    {s.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
+                  </p>
                 </div>
               </Link>
             ))}

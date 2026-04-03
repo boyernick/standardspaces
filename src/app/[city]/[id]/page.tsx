@@ -8,7 +8,7 @@ import SpotLocationMap from "@/components/SpotLocationMap";
 import ShareButton from "@/components/ShareButton";
 import SaveButtonClient from "@/components/SaveButtonClient";
 import CheckInButton from "@/components/CheckInButton";
-import { Clock, Shirt, Car, MapPin, ExternalLink, Phone, Globe, AtSign } from "lucide-react";
+import { Clock, Shirt, Car, MapPin, Newspaper, Smartphone, Globe, AtSign, CalendarCheck } from "lucide-react";
 import MobileBackButton from "@/components/MobileBackButton";
 import { FadeIn, GalleryReveal, SectionReveal } from "@/components/ListingAnimations";
 
@@ -55,7 +55,163 @@ export async function generateMetadata({
   };
 }
 
-function HoursDisplay({ hours }: { hours: string }) {
+function getCompactHours(hours: string): string | null {
+  const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const lines: { day: string; times: string }[] = [];
+
+  const dailyMatch = hours.match(/^Daily\s+(.+)$/i);
+  if (dailyMatch) return `Daily ${dailyMatch[1].trim()}`;
+
+  const rangeMatch = hours.match(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*[-–]\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(.+)$/i);
+  if (rangeMatch) {
+    const startIdx = ALL_DAYS.indexOf(rangeMatch[1]);
+    const endIdx = ALL_DAYS.indexOf(rangeMatch[2]);
+    const times = rangeMatch[3].trim();
+    if (startIdx >= 0 && endIdx >= 0) {
+      let i = startIdx;
+      while (true) {
+        lines.push({ day: ALL_DAYS[i], times });
+        if (i === endIdx) break;
+        i = (i + 1) % 7;
+      }
+    }
+  }
+
+  if (lines.length === 0) {
+    const dayPattern = /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/g;
+    const parts = hours.split(dayPattern).filter(Boolean);
+    for (let i = 0; i < parts.length - 1; i += 2) {
+      const day = parts[i].trim();
+      let times = parts[i + 1].replace(/^[,\s·]+/, "").replace(/[,\s·]+$/, "").trim();
+      times = times.replace(/,\s*/g, ", ");
+      if (day && times) lines.push({ day, times });
+    }
+  }
+
+  if (lines.length === 0) return null;
+
+  const dayMap = new Map(lines.map((l) => [l.day, l.times]));
+  const full = ALL_DAYS.map((d) => dayMap.get(d) ?? "Closed");
+  const unique = [...new Set(full.filter((t) => t !== "Closed"))];
+
+  if (unique.length === 1 && full.every((t) => t !== "Closed")) {
+    return `Daily ${unique[0]}`;
+  }
+
+  const weekday = full.slice(0, 5);
+  const weekend = full.slice(5);
+  const uniqueWeekday = [...new Set(weekday)];
+  const uniqueWeekend = [...new Set(weekend)];
+
+  if (uniqueWeekday.length === 1 && uniqueWeekend.length === 1) {
+    if (uniqueWeekend[0] === "Closed") return `Mon–Fri ${uniqueWeekday[0]}`;
+    if (uniqueWeekday[0] === uniqueWeekend[0]) return `Daily ${uniqueWeekday[0]}`;
+    return `Mon–Fri ${uniqueWeekday[0]} · Sat–Sun ${uniqueWeekend[0]}`;
+  }
+
+  return null;
+}
+
+function getOpenStatus(hours: string): string | null {
+  const ALL_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const now = new Date();
+  const today = ALL_DAYS[now.getDay()];
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // Parse hours into day map
+  const compact = getCompactHours(hours);
+  let todayTimes: string | null = null;
+
+  // Try "Daily X" format
+  const dailyMatch = hours.match(/^Daily\s+(.+)$/i);
+  if (dailyMatch) todayTimes = dailyMatch[1].trim();
+
+  // Try range/individual format
+  if (!todayTimes) {
+    const ALL_DAYS_FULL = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const lines: { day: string; times: string }[] = [];
+    const rangeMatch = hours.match(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*[-–]\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(.+)$/i);
+    if (rangeMatch) {
+      const startIdx = ALL_DAYS_FULL.indexOf(rangeMatch[1]);
+      const endIdx = ALL_DAYS_FULL.indexOf(rangeMatch[2]);
+      const times = rangeMatch[3].trim();
+      if (startIdx >= 0 && endIdx >= 0) {
+        let i = startIdx;
+        while (true) {
+          lines.push({ day: ALL_DAYS_FULL[i], times });
+          if (i === endIdx) break;
+          i = (i + 1) % 7;
+        }
+      }
+    }
+    if (lines.length === 0) {
+      const dayPattern = /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/g;
+      const parts = hours.split(dayPattern).filter(Boolean);
+      for (let i = 0; i < parts.length - 1; i += 2) {
+        const day = parts[i].trim();
+        let times = parts[i + 1].replace(/^[,\s·]+/, "").replace(/[,\s·]+$/, "").trim();
+        if (day && times) lines.push({ day, times });
+      }
+    }
+    const dayMap = new Map(lines.map((l) => [l.day, l.times]));
+    todayTimes = dayMap.get(today) ?? null;
+  }
+
+  if (!todayTimes || todayTimes.toLowerCase() === "closed") {
+    // Find next opening
+    return compact ? `Closed · ${compact}` : "Closed";
+  }
+
+  // Parse time like "6AM–11:30PM" or "6PM-2AM"
+  function parseTime(t: string): number | null {
+    const m = t.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+    if (!m) return null;
+    let h = parseInt(m[1]);
+    const min = m[2] ? parseInt(m[2]) : 0;
+    const period = m[3].toUpperCase();
+    if (period === "PM" && h !== 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+    return h * 60 + min;
+  }
+
+  const parts = todayTimes.split(/[-–]/);
+  if (parts.length === 2) {
+    const open = parseTime(parts[0]);
+    const close = parseTime(parts[1]);
+    if (open !== null && close !== null) {
+      const closeStr = parts[1].trim();
+      // Handle overnight (e.g., 6PM-2AM)
+      const openStr = parts[0].trim();
+      const isOvernight = close <= open;
+      if (isOvernight) {
+        if (currentMinutes >= open || currentMinutes < close) {
+          return `Open now · Closes at ${closeStr}`;
+        } else {
+          return `Closed · Opens at ${openStr}`;
+        }
+      } else {
+        if (currentMinutes >= open && currentMinutes < close) {
+          return `Open now · Closes at ${closeStr}`;
+        } else if (currentMinutes < open) {
+          return `Closed · Opens at ${openStr}`;
+        } else {
+          return `Closed · Opens at ${openStr}`;
+        }
+      }
+    }
+  }
+
+  return compact ?? todayTimes;
+}
+
+function HoursDisplay({ hours, compact = false }: { hours: string; compact?: boolean }) {
+  if (compact) {
+    const summary = getCompactHours(hours);
+    if (summary) {
+      return <span className="text-sm text-neutral-700 dark:text-neutral-300">{summary}</span>;
+    }
+  }
+
   const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const lines: { day: string; times: string }[] = [];
 
@@ -152,7 +308,7 @@ export default async function SpotPage({
     .filter((s) => s.neighborhood === spot.neighborhood && s.id !== spot.id)
     .slice(0, 3);
 
-  const hasDetails = spot.hours || spot.dressCode || spot.parking || spot.phone || spot.website || spot.instagram || spot.menuUrl;
+  const hasPlanVisit = spot.hours || spot.dressCode || spot.parking || spot.reservations || spot.menuUrl || spot.instagram || spot.website || spot.phone;
 
   const bookingLabel = spot.bookingPlatform === "Resy"
     ? "Reserve on Resy"
@@ -175,78 +331,30 @@ export default async function SpotPage({
         <div className="max-w-3xl mx-auto px-4 md:px-6">
           {/* Header */}
           <FadeIn delay={0.1}>
-            <div className="pt-7 pb-2">
+            <div className="pt-7 pb-2 space-y-3">
+              {spot.vibes && spot.vibes.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {spot.vibes.map((vibe) => (
+                    <span key={vibe} className="text-xs px-2.5 py-1 rounded-full border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400">
+                      {vibe}
+                    </span>
+                  ))}
+                </div>
+              )}
               <h1 className="text-[26px] font-semibold tracking-tight">{spot.name}</h1>
-              <div className="flex items-center gap-2 mt-2 flex-wrap justify-between">
-                <span className="text-sm text-neutral-500 dark:text-neutral-400">
-                  {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")} · {spot.neighborhood}, {spot.city}
-                  {spot.priceRange && <span> · {spot.priceRange}</span>}
-                </span>
-                {spot.vibes && spot.vibes.length > 0 && (
-                  <div className="flex gap-2">
-                    {spot.vibes.map((vibe) => (
-                      <span key={vibe} className="shrink-0 text-xs px-2.5 py-1 rounded-full bg-stone-200/60 dark:bg-stone-800/40 text-stone-600 dark:text-stone-400">
-                        {vibe}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <p className="text-[15px] text-neutral-600 dark:text-neutral-400 leading-relaxed mt-4">
+              <p className="text-[15px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
                 {spot.description}
               </p>
             </div>
           </FadeIn>
 
-          {/* Details */}
-          {hasDetails && (
-            <SectionReveal>
-              <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Details</h2>
-
-                {/* Hours — horizontal day layout */}
-                {spot.hours && (
-                  <div className="py-4 border-b border-neutral-100 dark:border-neutral-800">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Clock size={16} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500" />
-                      <p className="text-xs text-neutral-400 dark:text-neutral-500">Hours</p>
-                    </div>
-                    <HoursDisplay hours={spot.hours} />
-                  </div>
-                )}
-
-                {/* Detail items — 2-col grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-0">
-                  {spot.menuUrl && (
-                    <InfoRow icon={<ExternalLink size={20} strokeWidth={1.5} />} label="Menu" value="View menu" href={spot.menuUrl} />
-                  )}
-                  {spot.website && (
-                    <InfoRow icon={<Globe size={20} strokeWidth={1.5} />} label="Website" value={spot.website.replace(/^https?:\/\//, "")} href={spot.website} />
-                  )}
-                  {spot.dressCode && (
-                    <InfoRow icon={<Shirt size={20} strokeWidth={1.5} />} label="Dress code" value={spot.dressCode} />
-                  )}
-                  {spot.instagram && (
-                    <InfoRow icon={<AtSign size={20} strokeWidth={1.5} />} label="Instagram" value={spot.instagram} href={`https://instagram.com/${spot.instagram.replace("@", "")}`} />
-                  )}
-                  {spot.parking && (
-                    <InfoRow icon={<Car size={20} strokeWidth={1.5} />} label="Parking" value={spot.parking} />
-                  )}
-                  {spot.phone && (
-                    <InfoRow icon={<Phone size={20} strokeWidth={1.5} />} label="Phone" value={spot.phone} href={`tel:${spot.phone}`} />
-                  )}
-                </div>
-              </div>
-            </SectionReveal>
-          )}
 
           {/* Events */}
           {spot.events && spot.events.length > 0 && (
             <SectionReveal>
               <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
               <div>
-                <h2 className="text-xl font-semibold mb-5">Upcoming events</h2>
+                <h2 className="text-lg font-semibold mb-5">Upcoming events</h2>
                 <div className="space-y-3">
                   {spot.events.map((event, i) => {
                     const d = new Date(event.date);
@@ -263,6 +371,74 @@ export default async function SpotPage({
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            </SectionReveal>
+          )}
+
+          {/* Plan your visit */}
+          {hasPlanVisit && (
+            <SectionReveal>
+              <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+              <div>
+                <h2 className="text-lg font-semibold mb-6">Plan your visit</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-6">
+                  {spot.menuUrl && (
+                    <div>
+                      <Newspaper size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Menu</p>
+                      <a href={spot.menuUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline underline-offset-2">View full menu</a>
+                    </div>
+                  )}
+                  {spot.website && (
+                    <div>
+                      <Globe size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Website</p>
+                      <a href={spot.website} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline underline-offset-2">View website</a>
+                    </div>
+                  )}
+                  {spot.instagram && (
+                    <div>
+                      <AtSign size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Instagram</p>
+                      <a href={`https://instagram.com/${spot.instagram.replace("@", "")}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline underline-offset-2">@{spot.instagram.replace("@", "")}</a>
+                    </div>
+                  )}
+                  {spot.phone && (
+                    <div>
+                      <Smartphone size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Phone</p>
+                      <a href={`tel:${spot.phone}`} className="text-sm font-medium hover:underline underline-offset-2">{spot.phone}</a>
+                    </div>
+                  )}
+                  {spot.hours && (
+                    <div>
+                      <Clock size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Hours</p>
+                      <p className="text-sm font-medium">{getOpenStatus(spot.hours)}</p>
+                    </div>
+                  )}
+                  {spot.dressCode && (
+                    <div>
+                      <Shirt size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Dress code</p>
+                      <p className="text-sm font-medium">{spot.dressCode}</p>
+                    </div>
+                  )}
+                  {spot.reservations && (
+                    <div>
+                      <CalendarCheck size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Reservations</p>
+                      <p className="text-sm font-medium">{spot.reservations}</p>
+                    </div>
+                  )}
+                  {spot.parking && (
+                    <div>
+                      <Car size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Parking</p>
+                      <p className="text-sm font-medium">{spot.parking}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </SectionReveal>
@@ -286,7 +462,7 @@ export default async function SpotPage({
       <div className="shrink-0 bg-surface border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <div className="flex items-center gap-1">
-            <ShareButton spotName={spot.name} variant="icon" />
+            <ShareButton spotName={spot.name} variant="icon" spotInstagram={spot.instagram} />
             <CheckInButton spotId={spot.id} variant="icon" />
             <SaveButtonClient spotId={spot.id} size="icon" />
           </div>
