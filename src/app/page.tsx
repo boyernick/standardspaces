@@ -1,5 +1,6 @@
 import Link from "next/link";
 import LandingVideo from "@/components/LandingVideo";
+import LandingMenu from "@/components/LandingMenu";
 
 export default function Home() {
   return (
@@ -12,13 +13,14 @@ export default function Home() {
             Standard Spaces
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        {/* Desktop buttons */}
+        <div className="hidden md:flex items-center gap-3">
           <Link
             href="/login"
-            className="text-sm font-medium text-black/60 hover:text-black transition-colors"
+            className="px-3 py-1.5 text-sm font-medium text-black/60 hover:text-black transition-colors"
             style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}
           >
-            Log in
+            Sign in
           </Link>
           <Link
             href="/apply"
@@ -28,14 +30,13 @@ export default function Home() {
             Apply to join
           </Link>
         </div>
+        {/* Mobile hamburger */}
+        <LandingMenu />
       </div>
 
-      {/* Footer */}
-      <div className="absolute bottom-0 inset-x-0 z-10 flex justify-center px-5 py-4">
-        <span className="text-xs text-black/40" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
-          A curated guide to the spaces worth knowing.
-        </span>
-      </div>
+
+      {/* Background */}
+      <div className="absolute inset-0" style={{ backgroundColor: "#E8E0D0" }} />
 
       {/* Video overlay — covers viewport */}
       <LandingVideo />

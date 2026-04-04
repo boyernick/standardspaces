@@ -26,7 +26,15 @@ export default function ApplyPage() {
     getPopulatedCities().then(setPopulatedCities);
   }, []);
 
-  const fullPhone = phone.startsWith("+") ? phone : `+1${phone.replace(/\D/g, "")}`;
+  function formatPhone(digits: string): string {
+    if (digits.length === 0) return "";
+    if (digits.length <= 3) return `(${digits}`;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)} - ${digits.slice(6, 10)}`;
+  }
+
+  const rawDigits = phone.replace(/\D/g, "");
+  const fullPhone = phone.startsWith("+") ? phone : `+1${rawDigits}`;
 
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault();
@@ -91,7 +99,7 @@ export default function ApplyPage() {
     setLoading(false);
   }
 
-  const inputStyle = "w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors";
+  const inputStyle = "w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-transparent text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors";
   const fontCalibre = { fontFamily: "var(--font-calibre), system-ui, sans-serif" };
   const fontMartina = { fontFamily: "var(--font-martina), Georgia, serif" };
 
@@ -99,11 +107,8 @@ export default function ApplyPage() {
     <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "var(--color-surface)" }}>
       <div className="w-full max-w-sm px-6">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-1 mb-6">
-            <img src="/logo.svg" alt="Standard Spaces" className="h-5 w-5 dark:invert" />
-            <span className="text-lg tracking-tight text-neutral-900 dark:text-white" style={fontMartina}>
-              Standard Spaces
-            </span>
+          <div className="flex justify-center mb-6">
+            <img src="/logo.svg" alt="Standard Spaces" className="h-6 w-6 dark:invert" />
           </div>
 
           {step === "submitted" ? (
@@ -139,17 +144,14 @@ export default function ApplyPage() {
 
         {step === "phone" && (
           <form onSubmit={handleSendCode} className="space-y-3">
-            <div className="flex gap-2">
-              <span className="flex items-center px-3 text-sm text-neutral-500 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-neutral-50 dark:bg-neutral-800" style={fontCalibre}>
-                +1
-              </span>
+            <div>
               <input
                 type="tel"
-                value={phone}
+                value={formatPhone(rawDigits)}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                placeholder="(555) 123-4567"
+                placeholder="(555) 123 - 4567"
                 required
-                className={inputStyle}
+                className={`${inputStyle} text-center`}
                 style={fontCalibre}
                 autoFocus
               />
@@ -157,8 +159,8 @@ export default function ApplyPage() {
             {error && <p className="text-xs text-red-600" style={fontCalibre}>{error}</p>}
             <button
               type="submit"
-              disabled={loading || phone.replace(/\D/g, "").length < 10}
-              className="w-full py-2.5 text-sm font-medium text-white bg-brand-900 rounded-lg hover:bg-brand-800 transition-colors disabled:opacity-50"
+              disabled={loading || rawDigits.length < 10}
+              className="w-full py-2.5 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50"
               style={fontCalibre}
             >
               {loading ? "Sending..." : "Send verification code"}
@@ -184,7 +186,7 @@ export default function ApplyPage() {
             <button
               type="submit"
               disabled={loading || otp.length !== 6}
-              className="w-full py-2.5 text-sm font-medium text-white bg-brand-900 rounded-lg hover:bg-brand-800 transition-colors disabled:opacity-50"
+              className="w-full py-2.5 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50"
               style={fontCalibre}
             >
               {loading ? "Verifying..." : "Verify"}
@@ -253,7 +255,7 @@ export default function ApplyPage() {
             <button
               type="submit"
               disabled={loading || !!cityWarning}
-              className="w-full py-2.5 text-sm font-medium text-white bg-brand-900 rounded-lg hover:bg-brand-800 transition-colors disabled:opacity-50"
+              className="w-full py-2.5 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50"
               style={fontCalibre}
             >
               {loading ? "Submitting..." : "Submit application"}
@@ -268,7 +270,7 @@ export default function ApplyPage() {
               className="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
               style={fontCalibre}
             >
-              Already a member? Log in
+              Already a member? Sign in
             </Link>
           </div>
         )}
