@@ -176,7 +176,7 @@ export default function CommandMenu() {
       >
         {/* Search input — large and prominent */}
         <div className="relative px-5 pt-5 pb-4">
-          <Search size={20} strokeWidth={2} className="absolute left-8 top-1/2 -translate-y-1/2 text-neutral-300 dark:text-neutral-600" />
+          <Search size={18} strokeWidth={2} className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-300 dark:text-neutral-600" />
           <input
             ref={inputRef}
             type="text"
@@ -184,16 +184,14 @@ export default function CommandMenu() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search spaces..."
-            className="w-full pl-10 pr-10 py-3 text-base bg-transparent outline-none placeholder-neutral-400 dark:placeholder-neutral-500 border-b border-neutral-100 dark:border-neutral-800"
+            className="w-full pl-7 pr-8 py-3 text-base bg-transparent outline-none placeholder-neutral-400 dark:placeholder-neutral-500 border-b border-neutral-100 dark:border-neutral-800"
           />
-          {query && (
-            <button
-              onClick={() => { setQuery(""); inputRef.current?.focus(); }}
-              className="absolute right-8 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-            >
-              <X size={12} strokeWidth={2} className="text-neutral-500" />
-            </button>
-          )}
+          <button
+            onClick={() => { if (query) { setQuery(""); inputRef.current?.focus(); } else { setOpen(false); } }}
+            className="absolute right-5 top-1/2 -translate-y-1/2 text-neutral-300 dark:text-neutral-600 hover:text-neutral-500 dark:hover:text-neutral-400 transition-colors"
+          >
+            <X size={18} strokeWidth={2} />
+          </button>
         </div>
 
         {/* Content */}
@@ -202,7 +200,7 @@ export default function CommandMenu() {
             <div className="px-5 pb-5 space-y-4">
               {/* Vibes — single scrollable row */}
               <div>
-                <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wide mb-2">
+                <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mb-2">
                   Vibes
                 </p>
                 <div className="flex gap-1.5 overflow-x-auto scrollbar-hide -mx-5 px-5">
@@ -221,7 +219,7 @@ export default function CommandMenu() {
               {/* Trending — with thumbnails */}
               {spots.length > 0 && (
                 <div>
-                  <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wide mb-2">
+                  <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mb-2">
                     Trending
                   </p>
                   <div className="space-y-1 -mx-2">
@@ -264,7 +262,7 @@ export default function CommandMenu() {
               {matchingNeighborhoods.length > 0 && (
                 <div>
                   <div className="px-5 pt-1 pb-1">
-                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wide">Neighborhoods</p>
+                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Neighborhoods</p>
                   </div>
                   {matchingNeighborhoods.map((n) => {
                     const idx = flatIdx++;
@@ -295,7 +293,7 @@ export default function CommandMenu() {
               {matchingCategories.length > 0 && (
                 <div>
                   <div className="px-5 pt-2 pb-1">
-                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wide">Categories</p>
+                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Categories</p>
                   </div>
                   {matchingCategories.map((c) => {
                     const idx = flatIdx++;
@@ -326,7 +324,7 @@ export default function CommandMenu() {
               {results.length > 0 && (
                 <div>
                   <div className="px-5 pt-2 pb-1">
-                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wide">Spaces</p>
+                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Spaces</p>
                   </div>
                   {results.map((spot) => {
                     const idx = flatIdx++;
