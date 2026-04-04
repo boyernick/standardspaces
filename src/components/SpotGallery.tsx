@@ -113,6 +113,8 @@ function Lightbox({
   const thumbEnd = Math.min(images.length, thumbStart + 9);
   const thumbs = images.slice(thumbStart, thumbEnd);
 
+  if (typeof document === "undefined") return null;
+
   return createPortal(
     <div
       className="fixed inset-0 z-[100] bg-black"

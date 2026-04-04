@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, Category, Spot } from "@/lib/types";
 import dynamic from "next/dynamic";
-const Map = dynamic(() => import("@/components/Map"), { ssr: false });
+const SpotMap = dynamic(() => import("@/components/Map"), { ssr: false });
 import ImageCarousel from "@/components/ImageCarousel";
 import Navbar from "@/components/Navbar";
 import { ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, X, MapPin, Search } from "lucide-react";
@@ -393,7 +393,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
             className="w-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative md:h-full"
             style={mapHeight && mobileView === "map" ? { height: mapHeight } : undefined}
           >
-            <Map spots={filtered} activeSpot={activeSpot} onSpotSelect={handleSpotSelect} />
+            <SpotMap spots={filtered} activeSpot={activeSpot} onSpotSelect={handleSpotSelect} />
 
             {/* Map card */}
             {activeSpot && (

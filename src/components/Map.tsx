@@ -23,10 +23,11 @@ interface MapProps {
   onSpotSelect: (spot: Spot | null) => void;
 }
 
-export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
+export default function SpotMap(props: MapProps) {
+  const { spots = [], activeSpot = null, onSpotSelect = () => {} } = props ?? {};
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const markers = useRef<Map<string, { marker: mapboxgl.Marker; el: HTMLDivElement }>>(new Map());
+  const markers = useRef<globalThis.Map<string, { marker: mapboxgl.Marker; el: HTMLDivElement }>>(new globalThis.Map());
   const [mapReady, setMapReady] = useState(false);
   const [dark, setDark] = useState(false);
   const spotsRef = useRef(spots);
