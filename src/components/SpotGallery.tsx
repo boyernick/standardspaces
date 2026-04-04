@@ -152,14 +152,14 @@ function Lightbox({
 
       {/* Main image */}
       <div
-        className="relative w-full h-full flex items-center justify-center px-16 py-20"
+        className="relative w-full h-full flex items-center justify-center px-4 md:px-16 py-4 md:py-20"
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         <div
-          className={`relative max-w-5xl max-h-full w-full h-full flex items-center justify-center transition-all duration-300 ease-out ${
+          className={`relative max-h-full w-full h-full flex items-center justify-center transition-all duration-300 ease-out ${
             direction === "left"
               ? "animate-slide-left"
               : direction === "right"

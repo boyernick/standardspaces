@@ -463,8 +463,8 @@ export default async function SpotPage({
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <div className="flex items-center gap-1">
             <ShareButton spotName={spot.name} variant="icon" spotInstagram={spot.instagram} />
-            <WishlistButtonClient spotId={spot.id} size="icon" />
             <CheckInButton spotId={spot.id} variant="icon" />
+            <WishlistButtonClient spotId={spot.id} size="icon" />
             <FavoriteButtonClient spotId={spot.id} size="icon" />
           </div>
           {spot.bookingUrl && (
