@@ -32,6 +32,7 @@ export default function SpotMap(props: MapProps) {
   const [mapReady, setMapReady] = useState(false);
   const [dark, setDark] = useState(false);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [geoResolved, setGeoResolved] = useState(false);
   const spotsRef = useRef(spots);
   const onSpotSelectRef = useRef(onSpotSelect);
   spotsRef.current = spots;
@@ -39,12 +40,15 @@ export default function SpotMap(props: MapProps) {
 
   // Request user location
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) { setGeoResolved(true); return; }
     navigator.geolocation.getCurrentPosition(
-      (pos) => setUserLocation([pos.coords.longitude, pos.coords.latitude]),
-      () => {}, // silently fail
+      (pos) => { setUserLocation([pos.coords.longitude, pos.coords.latitude]); setGeoResolved(true); },
+      () => { setGeoResolved(true); },
       { enableHighAccuracy: false, timeout: 5000 }
     );
+    // Fallback timeout in case geolocation hangs
+    const t = setTimeout(() => setGeoResolved(true), 3000);
+    return () => clearTimeout(t);
   }, []);
 
   const updateMarkerStyle = useCallback((id: string, active: boolean) => {
@@ -227,14 +231,12 @@ export default function SpotMap(props: MapProps) {
     });
   }, [spots, activeSpot, mapReady, dark, updateMarkerStyle]);
 
-  // Fit bounds when spots change — respect user location
-  const initialFitDone = useRef(false);
+  // Fit bounds — wait for geolocation to resolve before deciding
   useEffect(() => {
-    if (!map.current || !mapReady) return;
+    if (!map.current || !mapReady || !geoResolved) return;
 
-    // On first load with user location, center on user at neighborhood zoom
-    if (!initialFitDone.current && userLocation) {
-      initialFitDone.current = true;
+    if (userLocation) {
+      // User location available: center on their neighborhood
       map.current.easeTo({
         center: userLocation,
         zoom: 14,
@@ -242,30 +244,26 @@ export default function SpotMap(props: MapProps) {
         easing: (t: number) => 1 - Math.pow(1 - t, 3),
         essential: true,
       });
-      return;
-    }
-    initialFitDone.current = true;
-
-    if (spots.length > 0 && !userLocation) {
+    } else if (spots.length > 0) {
+      // No user location: fit all spots
       const bounds = new mapboxgl.LngLatBounds();
       spots.forEach((s) => bounds.extend([s.lng, s.lat]));
-
       map.current.fitBounds(bounds, {
         padding: { top: 80, bottom: 80, left: 80, right: 80 },
         maxZoom: 15,
         duration: 1200,
         essential: true,
       });
-    } else if (spots.length === 0) {
+    } else {
       map.current.easeTo({
-        center: userLocation ?? MIAMI_CENTER,
-        zoom: userLocation ? 14 : MIAMI_ZOOM,
+        center: MIAMI_CENTER,
+        zoom: MIAMI_ZOOM,
         duration: 1200,
         easing: (t: number) => 1 - Math.pow(1 - t, 3),
         essential: true,
       });
     }
-  }, [spots, mapReady, userLocation]);
+  }, [spots, mapReady, geoResolved, userLocation]);
 
   // Pan to active spot if off-screen
   useEffect(() => {
