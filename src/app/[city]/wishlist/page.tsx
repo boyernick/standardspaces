@@ -24,7 +24,7 @@ export default async function WishlistPage({
   const spots = await getSpotsByIds(wishlistIds);
 
   return (
-    <div className="h-screen flex flex-col bg-surface">
+    <div className="h-screen flex flex-col bg-surface animate-[pageIn_200ms_ease-out]">
       <Navbar />
       <WishlistClient spots={spots} citySlug={citySlug} />
     </div>

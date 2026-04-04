@@ -24,7 +24,7 @@ export default async function FavoritesPage({
   const spots = await getSpotsByIds(favoriteIds);
 
   return (
-    <div className="h-screen flex flex-col bg-surface">
+    <div className="h-screen flex flex-col bg-surface animate-[pageIn_200ms_ease-out]">
       <Navbar />
       <FavoritesClient spots={spots} citySlug={citySlug} />
     </div>
