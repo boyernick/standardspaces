@@ -58,14 +58,14 @@ export default function SpotMap(props: MapProps) {
     const img = el.querySelector("[data-img]") as HTMLDivElement | null;
     if (!img) return;
     if (active) {
-      img.style.width = "32px";
-      img.style.height = "32px";
+      img.style.width = "40px";
+      img.style.height = "40px";
       img.style.borderColor = THEME.brand;
       img.style.borderWidth = "3px";
       el.style.zIndex = "3";
     } else {
-      img.style.width = "24px";
-      img.style.height = "24px";
+      img.style.width = "30px";
+      img.style.height = "30px";
       img.style.borderColor = THEME.white;
       img.style.borderWidth = "3px";
       el.style.zIndex = "1";
@@ -149,6 +149,7 @@ export default function SpotMap(props: MapProps) {
     el.style.backgroundColor = "#2563EB";
     el.style.border = "3px solid white";
     el.style.boxShadow = "0 0 0 4px rgba(37, 99, 235, 0.25), 0 2px 6px rgba(0,0,0,0.2)";
+    el.style.zIndex = "10";
 
     userMarker.current = new mapboxgl.Marker({ element: el, anchor: "center" })
       .setLngLat(userLocation)
@@ -187,9 +188,9 @@ export default function SpotMap(props: MapProps) {
       el.style.cursor = "pointer";
 
       const img = document.createElement("div");
-      img.style.width = "24px";
-      img.style.height = "24px";
-      img.style.borderRadius = "5px";
+      img.style.width = "30px";
+      img.style.height = "30px";
+      img.style.borderRadius = "6px";
       img.style.overflow = "hidden";
       img.style.border = `3px solid ${THEME.white}`;
       img.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
@@ -205,12 +206,12 @@ export default function SpotMap(props: MapProps) {
 
       const label = document.createElement("div");
       label.textContent = s.name;
-      label.style.fontSize = "9px";
+      label.style.fontSize = "10px";
       label.style.fontWeight = "500";
       label.style.color = dark ? "#ededed" : "#1a1a1a";
       label.style.marginTop = "2px";
       label.style.whiteSpace = "nowrap";
-      label.style.maxWidth = "60px";
+      label.style.maxWidth = "70px";
       label.style.overflow = "hidden";
       label.style.textOverflow = "ellipsis";
       label.style.textAlign = "center";
