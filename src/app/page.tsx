@@ -50,10 +50,10 @@ export default function Home() {
       <div className="absolute bottom-0 inset-x-0 z-10 md:hidden px-5 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.75rem))] pt-3">
         <Link
           href="/apply"
-          className="block w-full py-3 text-center text-sm font-medium text-white bg-neutral-900 rounded-full hover:bg-neutral-800 transition-colors"
-          style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}
+          className="block w-full py-3 text-center text-sm font-medium text-white rounded-full hover:opacity-90 transition-colors"
+          style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif", backgroundColor: "#13120A" }}
         >
-          Apply for membership
+          Apply to join
         </Link>
       </div>
 
