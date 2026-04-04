@@ -151,16 +151,16 @@ function Lightbox({
         </button>
       )}
 
-      {/* Fullscreen image */}
+      {/* Image area — padded to leave room for controls and thumbnails */}
       <div
-        className="absolute inset-0 z-10"
+        className="absolute inset-0 z-10 flex items-center justify-center px-12 md:px-20 pt-14 pb-24"
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         <div
-          className={`w-full h-full transition-all duration-300 ease-out ${
+          className={`relative max-w-5xl w-full h-full flex items-center justify-center transition-all duration-300 ease-out ${
             direction === "left"
               ? "animate-slide-left"
               : direction === "right"
@@ -178,7 +178,7 @@ function Lightbox({
             src={images[index]}
             alt={`${name} ${index + 1}`}
             onLoad={() => setLoaded(true)}
-            className={`w-full h-full object-contain select-none transition-opacity duration-300 ${
+            className={`max-w-full max-h-full object-contain rounded-lg select-none transition-opacity duration-300 ${
               loaded ? "opacity-100" : "opacity-0"
             }`}
             draggable={false}
