@@ -31,7 +31,7 @@ export default function WishlistButton({ spotId, initialWishlisted, size = "sm" 
         disabled={isPending}
         className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
         aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
-        title={wishlisted ? "On wishlist" : "Add to wishlist"}
+        data-tooltip={wishlisted ? "On wishlist" : "Wishlist"}
       >
         <Bookmark size={16} strokeWidth={2} className={wishlisted ? "fill-neutral-900 text-neutral-900 dark:fill-white dark:text-white" : "text-neutral-600 dark:text-neutral-300"} />
       </button>

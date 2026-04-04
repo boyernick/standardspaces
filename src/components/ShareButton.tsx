@@ -69,7 +69,7 @@ export default function ShareButton({
           onClick={() => setMenuOpen(!menuOpen)}
           className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
           aria-label="Share"
-          title={copied ? "Copied!" : "Share"}
+          data-tooltip={copied ? "Copied!" : "Share"}
         >
           {copied ? (
             <Check size={16} strokeWidth={2} className="text-green-600" />

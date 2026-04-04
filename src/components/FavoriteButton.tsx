@@ -31,7 +31,7 @@ export default function FavoriteButton({ spotId, initialFavorited, size = "sm" }
         disabled={isPending}
         className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
         aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
-        title={favorited ? "Favorited" : "Favorite"}
+        data-tooltip={favorited ? "Favorited" : "Favorite"}
       >
         <Heart size={16} strokeWidth={2} className={favorited ? "fill-red-500 text-red-500" : "text-neutral-600 dark:text-neutral-300"} />
       </button>

@@ -68,7 +68,7 @@ export default function CheckInButton({ spotId, variant }: { spotId: string; var
           disabled={isPending}
           className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
           aria-label={isChecked ? `Visited ${count} times` : "Mark as visited"}
-          title={isChecked ? `Visited (${count})` : "Visited"}
+          data-tooltip={isChecked ? `Visited (${count})` : "Check in"}
         >
           {isChecked ? (
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
