@@ -114,7 +114,7 @@ function Lightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black"
+      className="fixed inset-0 z-[100] bg-black"
       style={{ animation: "lightbox-fade-in 0.2s ease-out" }}
     >
       {/* Close button */}
