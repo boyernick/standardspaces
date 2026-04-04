@@ -6,11 +6,15 @@ import { CATEGORY_LABELS, CATEGORY_ORDER, Category, Spot } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
 import ImageCarousel from "@/components/ImageCarousel";
 import SaveButton from "@/components/SaveButton";
-import { Heart, Search, X } from "lucide-react";
+import { Heart, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
+
+const PER_PAGE_SM = 8; // 2x4
+const PER_PAGE_LG = 9; // 3x3
 
 export default function SavedClient({ spots, citySlug }: { spots: Spot[]; citySlug: string }) {
   const [activeCategory, setActiveCategory] = useState<Category | null>(null);
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   const categories = useMemo(() => {
     const active = new Set(spots.flatMap((s) => s.category));
@@ -33,17 +37,24 @@ export default function SavedClient({ spots, citySlug }: { spots: Spot[]; citySl
     return result;
   }, [spots, activeCategory, query]);
 
+  // Reset page when filters change
+  const perPage = typeof window !== "undefined" && window.innerWidth >= 1024 ? PER_PAGE_LG : PER_PAGE_SM;
+  const totalPages = Math.ceil(filtered.length / perPage);
+  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+
   return (
     <>
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
-        <div className="max-w-3xl mx-auto px-4 md:px-6 pt-4 pb-8">
-          <h1 className="text-xl font-semibold tracking-tight mb-4">Saved spaces</h1>
+        <div className="max-w-7xl mx-auto px-4 md:px-10 pt-4 pb-8">
+          <div className="text-center mb-4">
+            <h1 className="text-xl font-medium mb-1" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>Saved spaces</h1>
+          </div>
 
           {/* Filters */}
           {spots.length > 0 && categories.length > 1 && (
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide mb-5">
+            <div className="flex justify-center gap-1.5 overflow-x-auto scrollbar-hide mb-5">
               <button
-                onClick={() => setActiveCategory(null)}
+                onClick={() => { setActiveCategory(null); setPage(1); }}
                 className={`px-3.5 py-1.5 text-sm rounded-full border transition-all duration-200 whitespace-nowrap shrink-0 ${
                   !activeCategory
                     ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
@@ -55,7 +66,7 @@ export default function SavedClient({ spots, citySlug }: { spots: Spot[]; citySl
               {categories.map((cat) => (
                 <button
                   key={cat}
-                  onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
+                  onClick={() => { setActiveCategory(activeCategory === cat ? null : cat); setPage(1); }}
                   className={`px-3.5 py-1.5 text-sm rounded-full border transition-all duration-200 whitespace-nowrap shrink-0 ${
                     activeCategory === cat
                       ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
@@ -88,24 +99,58 @@ export default function SavedClient({ spots, citySlug }: { spots: Spot[]; citySl
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6">
-              {filtered.map((spot) => (
-                <div key={spot.id}>
-                  <Link href={`/${citySlugFromName(spot.city)}/${spot.id}`}>
-                    <ImageCarousel images={spot.images} alt={spot.name} />
-                  </Link>
-                  <div className="mt-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
-                      <SaveButton spotId={spot.id} initialSaved={true} size="sm" />
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-6">
+                {paginated.map((spot) => (
+                  <div key={spot.id}>
+                    <Link href={`/${citySlugFromName(spot.city)}/${spot.id}`}>
+                      <ImageCarousel images={spot.images} alt={spot.name} />
+                    </Link>
+                    <div className="mt-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
+                        <SaveButton spotId={spot.id} initialSaved={true} size="sm" />
+                      </div>
+                      <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">
+                        {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
+                      </p>
                     </div>
-                    <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">
-                      {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
-                    </p>
                   </div>
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-8">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="w-8 h-8 rounded-full flex items-center justify-center border border-neutral-200 dark:border-neutral-700 disabled:opacity-30 hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors"
+                  >
+                    <ChevronLeft size={14} strokeWidth={2} />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${
+                        p === page
+                          ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+                          : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="w-8 h-8 rounded-full flex items-center justify-center border border-neutral-200 dark:border-neutral-700 disabled:opacity-30 hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors"
+                  >
+                    <ChevronRight size={14} strokeWidth={2} />
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>

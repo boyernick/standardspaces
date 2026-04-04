@@ -8,7 +8,7 @@ export default async function RecommendPage() {
     <div className="h-screen flex flex-col bg-surface">
       <Navbar />
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-xl mx-auto px-4 py-12">
+        <div className="w-full max-w-sm mx-auto px-6 pt-4">
           <RecommendForm />
         </div>
       </div>
