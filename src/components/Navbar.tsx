@@ -50,7 +50,7 @@ export default function Navbar() {
       <div className="px-4 py-2.5 flex items-center">
         {/* Left: Logo + City */}
         <div className="flex-1 flex items-center gap-5">
-          <Link href={`/${citySlug}`} className="flex items-center gap-1">
+          <Link href="/" className="flex items-center gap-1">
             <img src="/logo.svg" alt="Standard Spaces" className="h-5 w-5 nav-logo dark:invert" />
             <span className="text-lg tracking-tight whitespace-nowrap text-neutral-900 dark:text-white nav-title" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
               Standard Spaces
