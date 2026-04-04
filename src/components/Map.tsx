@@ -100,7 +100,7 @@ export default function SpotMap(props: MapProps) {
       container: mapContainer.current,
       style: getCustomMapStyle(dark),
       center: userLocation ?? MIAMI_CENTER,
-      zoom: userLocation ? 17 : MIAMI_ZOOM,
+      zoom: userLocation ? 16 : MIAMI_ZOOM,
       attributionControl: false,
     });
 
@@ -239,7 +239,7 @@ export default function SpotMap(props: MapProps) {
       // User location available: center on their neighborhood
       map.current.easeTo({
         center: userLocation,
-        zoom: 17,
+        zoom: 16,
         duration: 1200,
         easing: (t: number) => 1 - Math.pow(1 - t, 3),
         essential: true,
