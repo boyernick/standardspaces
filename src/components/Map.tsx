@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Spot } from "@/lib/types";
@@ -11,8 +11,6 @@ mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
 const MIAMI_CENTER: [number, number] = [-80.1918, 25.7817];
 const MIAMI_ZOOM = 12;
-const SOURCE_ID = "spots-source";
-const LAYER_ID = "spots-layer";
 
 function isDarkMode() {
   if (typeof document === "undefined") return false;
@@ -25,38 +23,37 @@ interface MapProps {
   onSpotSelect: (spot: Spot | null) => void;
 }
 
-function toGeoJSON(spots: Spot[], activeId: string | null): GeoJSON.FeatureCollection {
-  const sorted = [...spots].sort((a, b) => {
-    if (a.id === activeId) return 1;
-    if (b.id === activeId) return -1;
-    return 0;
-  });
-
-  return {
-    type: "FeatureCollection",
-    features: sorted.map((s) => ({
-      type: "Feature" as const,
-      properties: {
-        id: s.id,
-        active: s.id === activeId ? 1 : 0,
-      },
-      geometry: {
-        type: "Point" as const,
-        coordinates: [s.lng, s.lat],
-      },
-    })),
-  };
-}
-
 export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const markers = useRef<Map<string, { marker: mapboxgl.Marker; el: HTMLDivElement }>>(new Map());
   const [mapReady, setMapReady] = useState(false);
   const [dark, setDark] = useState(false);
   const spotsRef = useRef(spots);
+  const onSpotSelectRef = useRef(onSpotSelect);
   spotsRef.current = spots;
+  onSpotSelectRef.current = onSpotSelect;
 
-  // Track dark mode state via class on <html>
+  const updateMarkerStyle = useCallback((id: string, active: boolean) => {
+    const entry = markers.current.get(id);
+    if (!entry) return;
+    const { el } = entry;
+    if (active) {
+      el.style.width = "40px";
+      el.style.height = "40px";
+      el.style.borderColor = THEME.brand;
+      el.style.borderWidth = "2.5px";
+      el.style.zIndex = "3";
+    } else {
+      el.style.width = "32px";
+      el.style.height = "32px";
+      el.style.borderColor = THEME.white;
+      el.style.borderWidth = "2px";
+      el.style.zIndex = "1";
+    }
+  }, []);
+
+  // Track dark mode
   useEffect(() => {
     setDark(isDarkMode());
     const observer = new MutationObserver(() => {
@@ -71,10 +68,12 @@ export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
     if (map.current) {
       map.current.remove();
       map.current = null;
+      markers.current.clear();
       setMapReady(false);
     }
   }, [dark]);
 
+  // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
@@ -87,81 +86,9 @@ export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
     });
 
     m.on("load", () => {
-      m.addSource(SOURCE_ID, {
-        type: "geojson",
-        data: toGeoJSON(spotsRef.current, null),
-      });
-
-      // Shadow layer
-      m.addLayer({
-        id: "spots-shadow",
-        type: "circle",
-        source: SOURCE_ID,
-        paint: {
-          "circle-radius": [
-            "case",
-            ["==", ["get", "active"], 1],
-            12,
-            10,
-          ],
-          "circle-color": "#000000",
-          "circle-opacity": 0.15,
-          "circle-blur": 1,
-        },
-      });
-
-      // Main dot layer
-      m.addLayer({
-        id: LAYER_ID,
-        type: "circle",
-        source: SOURCE_ID,
-        layout: {
-          "circle-sort-key": ["get", "active"],
-        },
-        paint: {
-          "circle-radius": [
-            "case",
-            ["==", ["get", "active"], 1],
-            8,
-            6,
-          ],
-          "circle-color": [
-            "case",
-            ["==", ["get", "active"], 1],
-            THEME.brand,
-            dark ? THEME.light.surface : THEME.dark.surface,
-          ],
-          "circle-stroke-color": THEME.white,
-          "circle-stroke-width": 2,
-          "circle-opacity": 1,
-          "circle-radius-transition": { duration: 200 },
-          "circle-color-transition": { duration: 200 },
-        },
-      });
-
-      m.on("mouseenter", LAYER_ID, () => {
-        m.getCanvas().style.cursor = "pointer";
-      });
-      m.on("mouseleave", LAYER_ID, () => {
-        m.getCanvas().style.cursor = "";
-      });
-
-      m.on("click", LAYER_ID, (e) => {
-        e.originalEvent.stopPropagation();
-        const feature = e.features?.[0];
-        if (feature?.properties?.id) {
-          const spot = spotsRef.current.find(
-            (s) => s.id === feature.properties!.id
-          );
-          if (spot) onSpotSelect(spot);
-        }
-      });
-
-      m.on("click", (e) => {
-        const features = m.queryRenderedFeatures(e.point, { layers: [LAYER_ID] });
-        if (!features.length) {
-          onSpotSelect(null);
-        }
+      // Click on empty map area deselects
+      m.on("click", () => {
+        onSpotSelectRef.current(null);
       });
 
       setMapReady(true);
@@ -169,7 +96,6 @@ export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
 
     map.current = m;
 
-    // Resize map when container dimensions change (e.g. mobile view toggle)
     const ro = new ResizeObserver(() => {
       map.current?.resize();
     });
@@ -177,21 +103,71 @@ export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
 
     return () => {
       ro.disconnect();
+      markers.current.forEach(({ marker }) => marker.remove());
+      markers.current.clear();
       map.current?.remove();
       map.current = null;
       setMapReady(false);
     };
-  }, [onSpotSelect, dark]);
+  }, [dark]);
 
+  // Sync markers with spots
   useEffect(() => {
     if (!map.current || !mapReady) return;
+    const m = map.current;
+    const activeId = activeSpot?.id ?? null;
 
-    const source = map.current.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
-    if (source) {
-      source.setData(toGeoJSON(spots, activeSpot?.id ?? null));
-    }
-  }, [spots, activeSpot, mapReady]);
+    // Remove markers for spots no longer in the list
+    const currentIds = new Set(spots.map((s) => s.id));
+    markers.current.forEach(({ marker }, id) => {
+      if (!currentIds.has(id)) {
+        marker.remove();
+        markers.current.delete(id);
+      }
+    });
 
+    // Add/update markers
+    spots.forEach((s) => {
+      const existing = markers.current.get(s.id);
+      if (existing) {
+        // Update active state
+        updateMarkerStyle(s.id, s.id === activeId);
+        return;
+      }
+
+      // Create new marker element
+      const el = document.createElement("div");
+      el.style.width = "32px";
+      el.style.height = "32px";
+      el.style.borderRadius = "6px";
+      el.style.overflow = "hidden";
+      el.style.border = `2px solid ${THEME.white}`;
+      el.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
+      el.style.cursor = "pointer";
+      el.style.transition = "width 0.2s, height 0.2s, border-color 0.2s";
+      el.style.backgroundSize = "cover";
+      el.style.backgroundPosition = "center";
+      el.style.backgroundColor = dark ? "#2A2922" : "#e5e5e0";
+
+      if (s.images?.[0]) {
+        el.style.backgroundImage = `url(${s.images[0]})`;
+      }
+
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onSpotSelectRef.current(s);
+      });
+
+      const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+        .setLngLat([s.lng, s.lat])
+        .addTo(m);
+
+      markers.current.set(s.id, { marker, el });
+      updateMarkerStyle(s.id, s.id === activeId);
+    });
+  }, [spots, activeSpot, mapReady, dark, updateMarkerStyle]);
+
+  // Fit bounds when spots change
   useEffect(() => {
     if (!map.current || !mapReady) return;
 
@@ -216,6 +192,7 @@ export default function Map({ spots, activeSpot, onSpotSelect }: MapProps) {
     }
   }, [spots, mapReady]);
 
+  // Pan to active spot if off-screen
   useEffect(() => {
     if (!map.current || !mapReady || !activeSpot) return;
 
