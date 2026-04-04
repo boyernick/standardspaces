@@ -120,10 +120,15 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
   const hasFilters = activeCategory || activeNeighborhood;
 
   return (
-    <div className="h-screen flex flex-col bg-surface animate-[pageIn_200ms_ease-out]">
+    <div className="h-screen flex flex-col bg-surface">
       <Navbar />
 
-      <div className="flex-1 min-h-0 flex flex-col md:flex-row">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+        className="flex-1 min-h-0 flex flex-col md:flex-row"
+      >
         {/* Panel — left */}
         <div className={`w-full md:w-[55%] lg:w-1/2 md:min-w-[420px] md:flex md:flex-col md:shrink-0 ${mobileView === "list" ? "flex flex-col flex-1 min-h-0" : "flex flex-col md:flex"}`}>
           {/* Filters bar */}
@@ -432,7 +437,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
             }
           `}</style>
         </div>
-      </div>
+      </motion.div>
 
       {/* Mobile bottom bar */}
       <div ref={bottomBarRef} className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-surface border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">

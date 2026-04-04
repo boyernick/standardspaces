@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/auth";
 import { getSpotsByIds } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import Navbar from "@/components/Navbar";
+import PageEnter from "@/components/PageEnter";
 import FavoritesClient from "./FavoritesClient";
 
 export default async function FavoritesPage({
@@ -24,9 +25,11 @@ export default async function FavoritesPage({
   const spots = await getSpotsByIds(favoriteIds);
 
   return (
-    <div className="h-screen flex flex-col bg-surface animate-[pageIn_200ms_ease-out]">
+    <div className="h-screen flex flex-col bg-surface">
       <Navbar />
-      <FavoritesClient spots={spots} citySlug={citySlug} />
+      <PageEnter>
+        <FavoritesClient spots={spots} citySlug={citySlug} />
+      </PageEnter>
     </div>
   );
 }

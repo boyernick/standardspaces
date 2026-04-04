@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/auth";
 import { getSpotsByIds } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import Navbar from "@/components/Navbar";
+import PageEnter from "@/components/PageEnter";
 import WishlistClient from "./WishlistClient";
 
 export default async function WishlistPage({
@@ -24,9 +25,11 @@ export default async function WishlistPage({
   const spots = await getSpotsByIds(wishlistIds);
 
   return (
-    <div className="h-screen flex flex-col bg-surface animate-[pageIn_200ms_ease-out]">
+    <div className="h-screen flex flex-col bg-surface">
       <Navbar />
-      <WishlistClient spots={spots} citySlug={citySlug} />
+      <PageEnter>
+        <WishlistClient spots={spots} citySlug={citySlug} />
+      </PageEnter>
     </div>
   );
 }
