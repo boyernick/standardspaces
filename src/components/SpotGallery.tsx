@@ -114,19 +114,19 @@ function Lightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-2xl"
+      className="fixed inset-0 z-50 bg-black"
       style={{ animation: "lightbox-fade-in 0.2s ease-out" }}
     >
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 left-4 z-10 p-2.5 rounded-full bg-black/50 text-white/75 backdrop-blur-lg hover:bg-black/75 hover:text-white transition-all"
+        className="absolute top-4 left-4 z-20 p-2.5 rounded-full bg-black/40 text-white/80 backdrop-blur-lg hover:bg-black/60 hover:text-white transition-all"
       >
         <X size={20} strokeWidth={2} />
       </button>
 
       {/* Counter */}
-      <div className="absolute top-4 right-4 z-10 text-sm text-white/60 font-medium tabular-nums">
+      <div className="absolute top-4 right-4 z-20 text-sm text-white/60 font-medium tabular-nums">
         {index + 1} / {images.length}
       </div>
 
@@ -134,7 +134,7 @@ function Lightbox({
       {index > 0 && (
         <button
           onClick={goPrev}
-          className="absolute left-3 z-10 p-2.5 rounded-full bg-black/50 text-white/75 backdrop-blur-lg hover:bg-black/75 hover:text-white transition-all"
+          className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-black/40 text-white/80 backdrop-blur-lg hover:bg-black/60 hover:text-white transition-all"
         >
           <ChevronLeft size={24} strokeWidth={2} />
         </button>
@@ -144,22 +144,22 @@ function Lightbox({
       {index < images.length - 1 && (
         <button
           onClick={goNext}
-          className="absolute right-3 z-10 p-2.5 rounded-full bg-black/50 text-white/75 backdrop-blur-lg hover:bg-black/75 hover:text-white transition-all"
+          className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-black/40 text-white/80 backdrop-blur-lg hover:bg-black/60 hover:text-white transition-all"
         >
           <ChevronRight size={24} strokeWidth={2} />
         </button>
       )}
 
-      {/* Main image */}
+      {/* Fullscreen image */}
       <div
-        className="relative w-full h-full flex items-center justify-center px-4 md:px-16 py-4 md:py-20"
+        className="absolute inset-0 z-10"
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         <div
-          className={`relative max-h-full w-full h-full flex items-center justify-center transition-all duration-300 ease-out ${
+          className={`w-full h-full transition-all duration-300 ease-out ${
             direction === "left"
               ? "animate-slide-left"
               : direction === "right"
@@ -177,7 +177,7 @@ function Lightbox({
             src={images[index]}
             alt={`${name} ${index + 1}`}
             onLoad={() => setLoaded(true)}
-            className={`max-w-full max-h-full object-contain rounded-lg select-none transition-opacity duration-300 ${
+            className={`w-full h-full object-contain select-none transition-opacity duration-300 ${
               loaded ? "opacity-100" : "opacity-0"
             }`}
             draggable={false}
