@@ -227,11 +227,26 @@ export default function SpotMap(props: MapProps) {
     });
   }, [spots, activeSpot, mapReady, dark, updateMarkerStyle]);
 
-  // Fit bounds when spots change
+  // Fit bounds when spots change — respect user location
+  const initialFitDone = useRef(false);
   useEffect(() => {
     if (!map.current || !mapReady) return;
 
-    if (spots.length > 0) {
+    // On first load with user location, center on user at neighborhood zoom
+    if (!initialFitDone.current && userLocation) {
+      initialFitDone.current = true;
+      map.current.easeTo({
+        center: userLocation,
+        zoom: 14,
+        duration: 1200,
+        easing: (t: number) => 1 - Math.pow(1 - t, 3),
+        essential: true,
+      });
+      return;
+    }
+    initialFitDone.current = true;
+
+    if (spots.length > 0 && !userLocation) {
       const bounds = new mapboxgl.LngLatBounds();
       spots.forEach((s) => bounds.extend([s.lng, s.lat]));
 
@@ -241,16 +256,16 @@ export default function SpotMap(props: MapProps) {
         duration: 1200,
         essential: true,
       });
-    } else {
+    } else if (spots.length === 0) {
       map.current.easeTo({
-        center: MIAMI_CENTER,
-        zoom: MIAMI_ZOOM,
+        center: userLocation ?? MIAMI_CENTER,
+        zoom: userLocation ? 14 : MIAMI_ZOOM,
         duration: 1200,
         easing: (t: number) => 1 - Math.pow(1 - t, 3),
         essential: true,
       });
     }
-  }, [spots, mapReady]);
+  }, [spots, mapReady, userLocation]);
 
   // Pan to active spot if off-screen
   useEffect(() => {
