@@ -25,6 +25,5 @@ export default function WishlistButtonClient({ spotId, size = "md" }: { spotId: 
     })();
   }, [spotId]);
 
-  if (!loaded) return <WishlistButton spotId={spotId} initialWishlisted={false} size={size} />;
-  return <WishlistButton spotId={spotId} initialWishlisted={wishlisted} size={size} />;
+  return <WishlistButton key={`${spotId}-${loaded}`} spotId={spotId} initialWishlisted={wishlisted} size={size} />;
 }

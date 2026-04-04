@@ -25,6 +25,5 @@ export default function FavoriteButtonClient({ spotId, size = "md" }: { spotId: 
     })();
   }, [spotId]);
 
-  if (!loaded) return <FavoriteButton spotId={spotId} initialFavorited={false} size={size} />;
-  return <FavoriteButton spotId={spotId} initialFavorited={favorited} size={size} />;
+  return <FavoriteButton key={`${spotId}-${loaded}`} spotId={spotId} initialFavorited={favorited} size={size} />;
 }
