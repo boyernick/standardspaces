@@ -34,6 +34,20 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Logged-in user hitting landing page → redirect to their city
+  if (user && pathname === "/") {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("city")
+      .eq("id", user.id)
+      .single();
+    const city = profile?.city || "Miami";
+    const slug = city.toLowerCase().replace(/ /g, "-");
+    const url = request.nextUrl.clone();
+    url.pathname = `/${slug}`;
+    return NextResponse.redirect(url);
+  }
+
   // Redirect unauthenticated users on protected paths
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
