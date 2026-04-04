@@ -27,11 +27,8 @@ export const metadata: Metadata = {
   title: "Standard Spaces",
   description: "A curated guide to the finest spaces in every city.",
   icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-    ],
+    icon: "/favicon.png",
     apple: "/apple-touch-icon.png",
-    shortcut: "/favicon.svg",
   },
 };
 
@@ -51,8 +48,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${calibre.variable} ${martinaPlantijn.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
             var theme = localStorage.getItem('theme');

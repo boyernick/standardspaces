@@ -136,7 +136,7 @@ export default function ApplyPage() {
             <>
               <h1 className="text-xl font-medium mb-1" style={fontMartina}>Apply to join</h1>
               <p className="text-sm text-neutral-500 dark:text-neutral-400" style={fontCalibre}>
-                Standard Spaces is a curated, members-only guide.
+                Standard Spaces is a members-only, curated guide.
               </p>
             </>
           )}

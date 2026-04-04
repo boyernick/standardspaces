@@ -2,29 +2,40 @@
 
 import { useEffect } from "react";
 
-/** Sets the html background to beige on mount, restores on unmount.
- *  This ensures iOS safe areas (status bar, home indicator) match the landing page. */
+/** Overrides html, body, and theme-color to beige (#E8E0D0) on mount.
+ *  Restores original values on unmount.
+ *  iOS renders safe areas (status bar, home indicator, overscroll) from
+ *  the html/body background — this ensures they match the landing page. */
 export default function LandingTheme() {
   useEffect(() => {
     const html = document.documentElement;
-    const prev = html.style.backgroundColor;
-    html.style.backgroundColor = "#E8E0D0";
+    const body = document.body;
+    const prevHtml = html.style.backgroundColor;
+    const prevBody = body.style.backgroundColor;
 
-    // Also update theme-color meta tag for status bar
-    let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
-    const prevTheme = meta?.content;
-    if (meta) {
-      meta.content = "#E8E0D0";
-    } else {
-      meta = document.createElement("meta");
+    html.style.backgroundColor = "#E8E0D0";
+    body.style.backgroundColor = "#E8E0D0";
+
+    // Update all theme-color meta tags
+    const metas = document.querySelectorAll('meta[name="theme-color"]');
+    const prevThemes = Array.from(metas).map((m) => (m as HTMLMetaElement).content);
+    metas.forEach((m) => { (m as HTMLMetaElement).content = "#E8E0D0"; });
+
+    // Add one if none exist
+    if (metas.length === 0) {
+      const meta = document.createElement("meta");
       meta.name = "theme-color";
       meta.content = "#E8E0D0";
       document.head.appendChild(meta);
     }
 
     return () => {
-      html.style.backgroundColor = prev;
-      if (meta && prevTheme) meta.content = prevTheme;
+      html.style.backgroundColor = prevHtml;
+      body.style.backgroundColor = prevBody;
+      const currentMetas = document.querySelectorAll('meta[name="theme-color"]');
+      currentMetas.forEach((m, i) => {
+        if (prevThemes[i]) (m as HTMLMetaElement).content = prevThemes[i];
+      });
     };
   }, []);
 
