@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import Navbar from "@/components/Navbar";
 import CommandMenu from "@/components/CommandMenu";
-import PageTransition from "@/components/PageTransition";
 import "./globals.css";
 
 const calibre = localFont({
@@ -73,7 +72,7 @@ export default function RootLayout({
       </head>
       <body className="h-full flex flex-col overflow-hidden">
         <CommandMenu />
-        <PageTransition>{children}</PageTransition>
+        {children}
       </body>
     </html>
   );
