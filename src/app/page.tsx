@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import LandingVideo from "@/components/LandingVideo";
+import LandingTheme from "@/components/LandingTheme";
 
 export const metadata: Metadata = {
   other: { "theme-color": "#E8E0D0" },
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <div className="relative h-[100dvh] w-full overflow-hidden" style={{ backgroundColor: "#E8E0D0" }}>
+      <LandingTheme />
       {/* Header */}
       <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-5 py-4">
         <div className="flex items-center gap-1">
@@ -45,7 +47,7 @@ export default function Home() {
       </div>
 
       {/* Mobile fixed bottom apply CTA */}
-      <div className="absolute bottom-0 inset-x-0 z-10 md:hidden px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+      <div className="absolute bottom-0 inset-x-0 z-10 md:hidden px-5 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.75rem))] pt-3">
         <Link
           href="/apply"
           className="block w-full py-3 text-center text-sm font-medium text-white bg-neutral-900 rounded-full hover:bg-neutral-800 transition-colors"
