@@ -8,17 +8,16 @@ import ImageCarousel from "@/components/ImageCarousel";
 import Navbar from "@/components/Navbar";
 import { ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, X, MapPin, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import SaveButton from "@/components/SaveButton";
 
 interface CityClientProps {
   spots: Spot[];
-  savedSpotIds?: string[];
+  favoritedSpotIds?: string[];
   cityName: string;
   citySlug: string;
   userCitySlug: string;
 }
 
-export default function CityClient({ spots: allSpots, savedSpotIds = [], cityName, citySlug, userCitySlug }: CityClientProps) {
+export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cityName, citySlug, userCitySlug }: CityClientProps) {
   const activeCategories = useMemo(() => new Set(allSpots.flatMap((s) => s.category)), [allSpots]);
   const categories = useMemo(() => CATEGORY_ORDER.filter((c) => activeCategories.has(c)), [activeCategories]);
   const neighborhoods = useMemo(() => [...new Set(allSpots.map((s) => s.neighborhood))].sort(), [allSpots]);

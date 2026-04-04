@@ -86,11 +86,14 @@ export default function Navbar() {
 
           {menuOpen && (
             <div className="absolute top-full right-0 mt-2 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-lg py-1.5 z-50">
-              <Link href={`/${citySlug}/saved`} onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
-                Saved
+              <Link href={`/${citySlug}/wishlist`} onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
+                Wishlist
+              </Link>
+              <Link href={`/${citySlug}/favorites`} onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
+                Favorites
               </Link>
               <Link href="/recommend" onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
-                Recommend a space
+                Recommendations
               </Link>
               <button
                 onClick={() => {

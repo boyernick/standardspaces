@@ -6,7 +6,8 @@ import Navbar from "@/components/Navbar";
 import SpotGallery from "@/components/SpotGallery";
 import SpotLocationMap from "@/components/SpotLocationMap";
 import ShareButton from "@/components/ShareButton";
-import SaveButtonClient from "@/components/SaveButtonClient";
+import FavoriteButtonClient from "@/components/FavoriteButtonClient";
+import WishlistButtonClient from "@/components/WishlistButtonClient";
 import CheckInButton from "@/components/CheckInButton";
 import { Clock, Shirt, Car, MapPin, Newspaper, Smartphone, Globe, AtSign, CalendarCheck } from "lucide-react";
 import MobileBackButton from "@/components/MobileBackButton";
@@ -463,8 +464,9 @@ export default async function SpotPage({
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <div className="flex items-center gap-1">
             <ShareButton spotName={spot.name} variant="icon" spotInstagram={spot.instagram} />
+            <WishlistButtonClient spotId={spot.id} size="icon" />
             <CheckInButton spotId={spot.id} variant="icon" />
-            <SaveButtonClient spotId={spot.id} size="icon" />
+            <FavoriteButtonClient spotId={spot.id} size="icon" />
           </div>
           {spot.bookingUrl && (
             <a

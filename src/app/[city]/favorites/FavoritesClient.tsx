@@ -5,13 +5,13 @@ import Link from "next/link";
 import { CATEGORY_LABELS, CATEGORY_ORDER, Category, Spot } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
 import ImageCarousel from "@/components/ImageCarousel";
-import SaveButton from "@/components/SaveButton";
+import FavoriteButton from "@/components/FavoriteButton";
 import { Heart, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 
 const PER_PAGE_SM = 8; // 2x4
 const PER_PAGE_LG = 9; // 3x3
 
-export default function SavedClient({ spots, citySlug }: { spots: Spot[]; citySlug: string }) {
+export default function FavoritesClient({ spots, citySlug }: { spots: Spot[]; citySlug: string }) {
   const [activeCategory, setActiveCategory] = useState<Category | null>(null);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -47,7 +47,7 @@ export default function SavedClient({ spots, citySlug }: { spots: Spot[]; citySl
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
         <div className="max-w-7xl mx-auto px-4 md:px-10 pt-4 pb-8">
           <div className="text-center mb-4">
-            <h1 className="text-xl font-medium mb-1" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>Saved spaces</h1>
+            <h1 className="text-xl font-medium mb-1" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>Favorites</h1>
           </div>
 
           {/* Filters */}
@@ -85,11 +85,11 @@ export default function SavedClient({ spots, citySlug }: { spots: Spot[]; citySl
                 <Heart size={20} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500" />
               </div>
               <h3 className="text-base font-medium">
-                {spots.length === 0 ? "No saved spaces yet" : "No matches"}
+                {spots.length === 0 ? "No favorites yet" : "No matches"}
               </h3>
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
                 {spots.length === 0
-                  ? "Tap the heart on any space to save it here for later."
+                  ? "Tap the heart on any space to add it to your favorites."
                   : "Try a different filter or search term."}
               </p>
               {spots.length === 0 && (
@@ -109,7 +109,7 @@ export default function SavedClient({ spots, citySlug }: { spots: Spot[]; citySl
                     <div className="mt-3">
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
-                        <SaveButton spotId={spot.id} initialSaved={true} size="sm" />
+                        <FavoriteButton spotId={spot.id} initialFavorited={true} size="sm" />
                       </div>
                       <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">
                         {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
@@ -164,7 +164,7 @@ export default function SavedClient({ spots, citySlug }: { spots: Spot[]; citySl
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search saved spaces"
+              placeholder="Search favorites"
               className="w-full pl-9 pr-9 py-2.5 text-sm bg-neutral-100 dark:bg-neutral-900 border-0 rounded-full text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:focus:ring-neutral-700"
             />
             {query && (
