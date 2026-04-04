@@ -1,7 +1,6 @@
 import { requireAuth } from "@/lib/auth";
 import { getUserFavorites } from "@/app/actions/saves";
-import { getSpotById } from "@/lib/data";
-import { Spot } from "@/lib/types";
+import { getSpotsByIds } from "@/lib/data";
 import Navbar from "@/components/Navbar";
 import FavoritesClient from "./FavoritesClient";
 
@@ -13,10 +12,7 @@ export default async function FavoritesPage({
   const { city: citySlug } = await params;
   await requireAuth();
   const favoriteIds = await getUserFavorites();
-
-  const spots = (
-    await Promise.all(favoriteIds.map((id) => getSpotById(id)))
-  ).filter((s): s is Spot => s !== null);
+  const spots = await getSpotsByIds(favoriteIds);
 
   return (
     <div className="h-screen flex flex-col bg-surface">

@@ -4,9 +4,10 @@
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": ["-c", "source ~/.nvm/nvm.sh && npm run dev"],
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }

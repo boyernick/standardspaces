@@ -10,7 +10,6 @@ import FavoriteButtonClient from "@/components/FavoriteButtonClient";
 import WishlistButtonClient from "@/components/WishlistButtonClient";
 import CheckInButton from "@/components/CheckInButton";
 import { Clock, Shirt, Car, MapPin, Newspaper, Smartphone, Globe, AtSign, CalendarCheck } from "lucide-react";
-import MobileBackButton from "@/components/MobileBackButton";
 import { FadeIn, GalleryReveal, SectionReveal } from "@/components/ListingAnimations";
 
 export async function generateStaticParams() {

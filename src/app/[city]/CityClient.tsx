@@ -3,7 +3,8 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, Category, Spot } from "@/lib/types";
-import Map from "@/components/Map";
+import dynamic from "next/dynamic";
+const Map = dynamic(() => import("@/components/Map"), { ssr: false });
 import ImageCarousel from "@/components/ImageCarousel";
 import Navbar from "@/components/Navbar";
 import { ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, X, MapPin, Search } from "lucide-react";

@@ -63,6 +63,24 @@ export async function getSpotById(id: string): Promise<Spot | null> {
   return data ? mapRow(data) : null;
 }
 
+export async function getSpotsByIds(ids: string[]): Promise<Spot[]> {
+  if (ids.length === 0) return [];
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("spots")
+    .select("*")
+    .in("id", ids);
+
+  if (error) {
+    console.error("Error fetching spots by IDs:", error);
+    return [];
+  }
+
+  // Preserve the order of the input IDs
+  const mapped = new Map((data ?? []).map((row) => [row.id as string, mapRow(row)]));
+  return ids.map((id) => mapped.get(id)).filter((s): s is Spot => s !== null);
+}
+
 export async function getAllSpotIds(): Promise<string[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase

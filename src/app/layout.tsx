@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
-import Navbar from "@/components/Navbar";
 import CommandMenu from "@/components/CommandMenu";
 import "./globals.css";
 
