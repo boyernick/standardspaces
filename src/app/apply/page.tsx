@@ -160,7 +160,7 @@ export default function ApplyPage() {
             <button
               type="submit"
               disabled={loading || rawDigits.length < 10}
-              className="w-full py-2.5 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50"
+              className="w-full py-2.5 text-sm font-medium text-white bg-neutral-900 dark:bg-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50"
               style={fontCalibre}
             >
               {loading ? "Sending..." : "Send verification code"}
@@ -186,7 +186,7 @@ export default function ApplyPage() {
             <button
               type="submit"
               disabled={loading || otp.length !== 6}
-              className="w-full py-2.5 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50"
+              className="w-full py-2.5 text-sm font-medium text-white bg-neutral-900 dark:bg-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50"
               style={fontCalibre}
             >
               {loading ? "Verifying..." : "Verify"}
@@ -255,7 +255,7 @@ export default function ApplyPage() {
             <button
               type="submit"
               disabled={loading || !!cityWarning}
-              className="w-full py-2.5 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50"
+              className="w-full py-2.5 text-sm font-medium text-white bg-neutral-900 dark:bg-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50"
               style={fontCalibre}
             >
               {loading ? "Submitting..." : "Submit application"}

@@ -76,7 +76,7 @@ export default function RecommendForm() {
         </p>
         <a
           href="/"
-          className="mt-6 inline-flex items-center px-6 py-3 bg-neutral-900 text-white text-sm font-medium rounded-full hover:bg-neutral-800 transition-colors"
+          className="mt-6 inline-flex items-center px-6 py-3 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-full hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
         >
           Back to guide
         </a>
@@ -124,7 +124,7 @@ export default function RecommendForm() {
         <button
           onClick={handleSubmit}
           disabled={!urlType || submitting}
-          className="w-full py-2.5 text-sm font-medium rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-default transition-colors flex items-center justify-center gap-2"
+          className="w-full py-2.5 text-sm font-medium rounded-lg bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-default transition-colors flex items-center justify-center gap-2"
         >
           {submitting ? (
             <><Loader2 size={16} className="animate-spin" /> Submitting...</>
