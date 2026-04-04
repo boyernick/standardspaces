@@ -28,28 +28,42 @@ export default function SpotMap(props: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<globalThis.Map<string, { marker: mapboxgl.Marker; el: HTMLDivElement }>>(new globalThis.Map());
+  const userMarker = useRef<mapboxgl.Marker | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [dark, setDark] = useState(false);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const spotsRef = useRef(spots);
   const onSpotSelectRef = useRef(onSpotSelect);
   spotsRef.current = spots;
   onSpotSelectRef.current = onSpotSelect;
 
+  // Request user location
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserLocation([pos.coords.longitude, pos.coords.latitude]),
+      () => {}, // silently fail
+      { enableHighAccuracy: false, timeout: 5000 }
+    );
+  }, []);
+
   const updateMarkerStyle = useCallback((id: string, active: boolean) => {
     const entry = markers.current.get(id);
     if (!entry) return;
     const { el } = entry;
+    const img = el.querySelector("[data-img]") as HTMLDivElement | null;
+    if (!img) return;
     if (active) {
-      el.style.width = "40px";
-      el.style.height = "40px";
-      el.style.borderColor = THEME.brand;
-      el.style.borderWidth = "2.5px";
+      img.style.width = "32px";
+      img.style.height = "32px";
+      img.style.borderColor = THEME.brand;
+      img.style.borderWidth = "3px";
       el.style.zIndex = "3";
     } else {
-      el.style.width = "32px";
-      el.style.height = "32px";
-      el.style.borderColor = THEME.white;
-      el.style.borderWidth = "2px";
+      img.style.width = "24px";
+      img.style.height = "24px";
+      img.style.borderColor = THEME.white;
+      img.style.borderWidth = "3px";
       el.style.zIndex = "1";
     }
   }, []);
@@ -81,8 +95,8 @@ export default function SpotMap(props: MapProps) {
     const m = new mapboxgl.Map({
       container: mapContainer.current,
       style: getCustomMapStyle(dark),
-      center: MIAMI_CENTER,
-      zoom: MIAMI_ZOOM,
+      center: userLocation ?? MIAMI_CENTER,
+      zoom: userLocation ? 14 : MIAMI_ZOOM,
       attributionControl: false,
     });
 
@@ -106,11 +120,36 @@ export default function SpotMap(props: MapProps) {
       ro.disconnect();
       markers.current.forEach(({ marker }) => marker.remove());
       markers.current.clear();
+      userMarker.current?.remove();
+      userMarker.current = null;
       map.current?.remove();
       map.current = null;
       setMapReady(false);
     };
-  }, [dark]);
+  }, [dark, userLocation]);
+
+  // Add/update user location marker
+  useEffect(() => {
+    if (!map.current || !mapReady || !userLocation) return;
+
+    // Remove existing user marker
+    if (userMarker.current) {
+      userMarker.current.remove();
+      userMarker.current = null;
+    }
+
+    const el = document.createElement("div");
+    el.style.width = "16px";
+    el.style.height = "16px";
+    el.style.borderRadius = "50%";
+    el.style.backgroundColor = "#2563EB";
+    el.style.border = "3px solid white";
+    el.style.boxShadow = "0 0 0 4px rgba(37, 99, 235, 0.25), 0 2px 6px rgba(0,0,0,0.2)";
+
+    userMarker.current = new mapboxgl.Marker({ element: el, anchor: "center" })
+      .setLngLat(userLocation)
+      .addTo(map.current);
+  }, [userLocation, mapReady, dark]);
 
   // Sync markers with spots
   useEffect(() => {
@@ -136,23 +175,43 @@ export default function SpotMap(props: MapProps) {
         return;
       }
 
-      // Create new marker element
+      // Create new marker element: wrapper with image + label
       const el = document.createElement("div");
-      el.style.width = "32px";
-      el.style.height = "32px";
-      el.style.borderRadius = "6px";
-      el.style.overflow = "hidden";
-      el.style.border = `2px solid ${THEME.white}`;
-      el.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
+      el.style.display = "flex";
+      el.style.flexDirection = "column";
+      el.style.alignItems = "center";
       el.style.cursor = "pointer";
-      el.style.transition = "width 0.2s, height 0.2s, border-color 0.2s";
-      el.style.backgroundSize = "cover";
-      el.style.backgroundPosition = "center";
-      el.style.backgroundColor = dark ? "#2A2922" : "#e5e5e0";
 
+      const img = document.createElement("div");
+      img.style.width = "24px";
+      img.style.height = "24px";
+      img.style.borderRadius = "5px";
+      img.style.overflow = "hidden";
+      img.style.border = `3px solid ${THEME.white}`;
+      img.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
+      img.style.transition = "width 0.2s, height 0.2s, border-color 0.2s";
+      img.style.backgroundSize = "cover";
+      img.style.backgroundPosition = "center";
+      img.style.backgroundColor = dark ? "#2A2922" : "#e5e5e0";
       if (s.images?.[0]) {
-        el.style.backgroundImage = `url(${s.images[0]})`;
+        img.style.backgroundImage = `url(${s.images[0]})`;
       }
+      img.dataset.img = "1";
+      el.appendChild(img);
+
+      const label = document.createElement("div");
+      label.textContent = s.name;
+      label.style.fontSize = "9px";
+      label.style.fontWeight = "500";
+      label.style.color = dark ? "#ededed" : "#1a1a1a";
+      label.style.marginTop = "2px";
+      label.style.whiteSpace = "nowrap";
+      label.style.maxWidth = "60px";
+      label.style.overflow = "hidden";
+      label.style.textOverflow = "ellipsis";
+      label.style.textAlign = "center";
+      label.style.fontFamily = "var(--font-calibre), system-ui, sans-serif";
+      el.appendChild(label);
 
       el.addEventListener("click", (e) => {
         e.stopPropagation();
