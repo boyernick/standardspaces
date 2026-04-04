@@ -177,7 +177,7 @@ function Lightbox({
             src={images[index]}
             alt={`${name} ${index + 1}`}
             onLoad={() => setLoaded(true)}
-            className={`w-full h-full object-contain select-none transition-opacity duration-300 ${
+            className={`w-full h-full object-cover select-none transition-opacity duration-300 ${
               loaded ? "opacity-100" : "opacity-0"
             }`}
             draggable={false}
