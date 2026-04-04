@@ -6,13 +6,9 @@ const publicPaths = ["/", "/apply", "/login", "/auth/callback"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const isPublic = publicPaths.some((p) => pathname === p);
 
-  // Allow public paths
-  if (publicPaths.some((p) => pathname === p)) {
-    return NextResponse.next();
-  }
-
-  // Refresh Supabase session on every request
+  // Refresh Supabase session on every request (including public paths)
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -38,7 +34,8 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
+  // Redirect unauthenticated users on protected paths
+  if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
