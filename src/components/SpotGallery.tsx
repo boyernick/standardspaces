@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect, memo } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X, Grid2x2 } from "lucide-react";
 
 interface SpotGalleryProps {
@@ -112,7 +113,7 @@ function Lightbox({
   const thumbEnd = Math.min(images.length, thumbStart + 9);
   const thumbs = images.slice(thumbStart, thumbEnd);
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] bg-black"
       style={{ animation: "lightbox-fade-in 0.2s ease-out" }}
@@ -239,7 +240,8 @@ function Lightbox({
           to { transform: translateX(0); opacity: 1; }
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 }
 
