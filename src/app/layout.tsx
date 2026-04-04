@@ -57,16 +57,20 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
             var theme = localStorage.getItem('theme');
+            var isDark = false;
             if (theme === 'dark') {
-              document.documentElement.classList.add('dark');
+              isDark = true;
             } else if (theme === 'light') {
-              // User explicitly chose light — respect it
+              isDark = false;
             } else {
-              // Auto: dark between 7pm and 7am
               var hour = new Date().getHours();
-              if (hour >= 19 || hour < 7) {
-                document.documentElement.classList.add('dark');
-              }
+              isDark = (hour >= 19 || hour < 7);
+            }
+            if (isDark) {
+              document.documentElement.classList.add('dark');
+              document.documentElement.style.backgroundColor = '#13120A';
+              var meta = document.querySelector('meta[name="theme-color"]');
+              if (meta) meta.setAttribute('content', '#13120A');
             }
           })();
         `}} />
