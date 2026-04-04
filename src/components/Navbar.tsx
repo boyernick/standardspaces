@@ -107,17 +107,20 @@ export default function Navbar() {
 
                   setThemeMode(nextMode);
 
+                  let dark: boolean;
                   if (nextMode === "auto") {
                     localStorage.removeItem("theme");
                     const hour = new Date().getHours();
-                    const shouldBeDark = hour >= 19 || hour < 7;
-                    document.documentElement.classList.toggle("dark", shouldBeDark);
-                    setIsDark(shouldBeDark);
+                    dark = hour >= 19 || hour < 7;
                   } else {
                     localStorage.setItem("theme", nextMode);
-                    document.documentElement.classList.toggle("dark", nextMode === "dark");
-                    setIsDark(nextMode === "dark");
+                    dark = nextMode === "dark";
                   }
+                  document.documentElement.classList.toggle("dark", dark);
+                  document.documentElement.style.backgroundColor = dark ? "#13120A" : "";
+                  const meta = document.querySelector('meta[name="theme-color"]');
+                  if (meta) meta.setAttribute("content", dark ? "#13120A" : "#F7F7F3");
+                  setIsDark(dark);
                 }}
                 className="flex w-full items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
               >
