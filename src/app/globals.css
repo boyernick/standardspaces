@@ -37,7 +37,7 @@ html, body {
 
 /* Ensure safe area background matches on iOS */
 html {
-  background-color: #F7F7F3;
+  background-color: var(--color-surface);
 }
 
 .dark {
