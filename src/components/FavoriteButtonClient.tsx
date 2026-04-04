@@ -14,13 +14,13 @@ export default function FavoriteButtonClient({ spotId, size = "md" }: { spotId: 
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoaded(true); return; }
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("user_favorites")
         .select("id")
         .eq("user_id", user.id)
         .eq("spot_id", spotId)
-        .single();
-      setFavorited(!!data);
+        .maybeSingle();
+      setFavorited(!!data && !error);
       setLoaded(true);
     })();
   }, [spotId]);

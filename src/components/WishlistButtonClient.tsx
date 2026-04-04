@@ -14,13 +14,13 @@ export default function WishlistButtonClient({ spotId, size = "md" }: { spotId: 
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoaded(true); return; }
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("user_wishlist")
         .select("id")
         .eq("user_id", user.id)
         .eq("spot_id", spotId)
-        .single();
-      setWishlisted(!!data);
+        .maybeSingle();
+      setWishlisted(!!data && !error);
       setLoaded(true);
     })();
   }, [spotId]);
