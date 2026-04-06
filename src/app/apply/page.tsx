@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { submitApplication } from "@/app/actions/apply";
@@ -10,7 +10,7 @@ import Link from "next/link";
 
 type Step = "phone" | "verify" | "details" | "submitted";
 
-export default function ApplyPage() {
+function ApplyForm() {
   const searchParams = useSearchParams();
   const refId = searchParams.get("ref");
 
@@ -38,11 +38,6 @@ export default function ApplyPage() {
     if (!refId) return;
     const supabase = createClient();
     (async () => {
-      // Use admin-accessible referral lookup via a simple query
-      // The referral table has RLS but we can read via the application link
-      // Instead, fetch from a lightweight endpoint or just show generic text
-      // For now, we'll look up the referral from the client (won't work with RLS)
-      // So we use a server action approach instead
       try {
         const res = await fetch(`/api/referral-info?id=${refId}`);
         if (res.ok) {
@@ -344,5 +339,13 @@ export default function ApplyPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ApplyPage() {
+  return (
+    <Suspense>
+      <ApplyForm />
+    </Suspense>
   );
 }
