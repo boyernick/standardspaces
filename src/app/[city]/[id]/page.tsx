@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getSpotById, getSpotsByCity, getAllSpotIds } from "@/lib/data";
+import { getEventsBySpotId } from "@/lib/events";
 import { CATEGORY_LABELS } from "@/lib/types";
+import UpcomingEventsStrip from "@/components/UpcomingEventsStrip";
 import Navbar from "@/components/Navbar";
 import SpotGallery from "@/components/SpotGallery";
 import SpotLocationMap from "@/components/SpotLocationMap";
@@ -303,10 +305,14 @@ export default async function SpotPage({
     notFound();
   }
 
-  const allCitySpots = await getSpotsByCity(spot.city);
+  const [allCitySpots, spotEvents] = await Promise.all([
+    getSpotsByCity(spot.city),
+    getEventsBySpotId(spot.id),
+  ]);
   const nearby = allCitySpots
     .filter((s) => s.neighborhood === spot.neighborhood && s.id !== spot.id)
     .slice(0, 3);
+  const spotNamesMap = { [spot.id]: spot.name };
 
   const hasPlanVisit = spot.hours || spot.dressCode || spot.parking || spot.reservations || spot.menuUrl || spot.instagram || spot.website || spot.phone;
 
@@ -350,29 +356,14 @@ export default async function SpotPage({
 
 
           {/* Events */}
-          {spot.events && spot.events.length > 0 && (
+          {spotEvents.length > 0 && (
             <SectionReveal>
               <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
-              <div>
-                <h2 className="text-lg font-semibold mb-5">Upcoming events</h2>
-                <div className="space-y-3">
-                  {spot.events.map((event, i) => {
-                    const d = new Date(event.date);
-                    return (
-                      <div key={i} className="flex gap-4 p-4 border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors">
-                        <div className="w-12 h-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex flex-col items-center justify-center shrink-0">
-                          <span className="text-[10px] font-medium uppercase text-neutral-400 dark:text-neutral-500 leading-none">{d.toLocaleDateString("en-US", { month: "short" })}</span>
-                          <span className="text-lg font-semibold leading-tight">{d.getDate()}</span>
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-medium">{event.name}</h3>
-                          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-2">{event.description}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <UpcomingEventsStrip
+                events={spotEvents}
+                spotNames={spotNamesMap}
+                hostHref={`/events/new?spot=${spot.id}`}
+              />
             </SectionReveal>
           )}
 

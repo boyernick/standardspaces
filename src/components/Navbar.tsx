@@ -101,6 +101,9 @@ export default function Navbar() {
                 Profile
               </Link>
               <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
+              <Link href="/events" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
+                Events
+              </Link>
               <Link href="/recommend" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
                 Recommendations
               </Link>

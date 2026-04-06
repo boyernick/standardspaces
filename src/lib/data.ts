@@ -81,6 +81,23 @@ export async function getSpotsByIds(ids: string[]): Promise<Spot[]> {
   return ids.map((id) => mapped.get(id)).filter((s): s is Spot => s !== null);
 }
 
+export async function searchSpots(query: string, limit = 10): Promise<Spot[]> {
+  const supabase = createAdminClient();
+  const q = query.trim();
+  if (!q) return [];
+  const { data, error } = await supabase
+    .from("spots")
+    .select("*")
+    .ilike("name", `%${q}%`)
+    .order("name")
+    .limit(limit);
+  if (error) {
+    console.error("Error searching spots:", error);
+    return [];
+  }
+  return (data ?? []).map(mapRow);
+}
+
 export async function getAllSpotIds(): Promise<string[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase

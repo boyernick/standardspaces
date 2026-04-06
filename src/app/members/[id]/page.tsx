@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSpotsByIds } from "@/lib/data";
 import { getProfileStats } from "@/app/actions/profile";
 import { getFollowStatus } from "@/app/actions/follows";
+import { getPastAttendedEvents } from "@/lib/events";
 import Navbar from "@/components/Navbar";
 import ProfileClient from "@/app/profile/ProfileClient";
 
@@ -17,7 +18,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
 
   const supabase = await createClient();
 
-  const [{ data: profile }, stats, isFollowing, { data: favRows }, { data: checkinRows }] = await Promise.all([
+  const [{ data: profile }, stats, isFollowing, { data: favRows }, { data: checkinRows }, attendedEvents] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", id).single(),
     getProfileStats(id),
     getFollowStatus(id),
@@ -31,6 +32,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
       .select("spot_id")
       .eq("user_id", id)
       .order("created_at", { ascending: false }),
+    getPastAttendedEvents(id),
   ]);
 
   if (!profile) {
@@ -58,6 +60,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
         isFollowing={isFollowing}
         favoriteSpots={favoriteSpots as typeof allSpots}
         checkinSpots={checkinSpots as typeof allSpots}
+        attendedEvents={attendedEvents}
       />
     </div>
   );

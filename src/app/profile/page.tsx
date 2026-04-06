@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getSpotsByIds } from "@/lib/data";
 import { getProfileStats } from "@/app/actions/profile";
+import { getPastAttendedEvents } from "@/lib/events";
 import Navbar from "@/components/Navbar";
 import ProfileClient from "./ProfileClient";
 
@@ -9,7 +10,7 @@ export default async function ProfilePage() {
   const user = await requireAuth();
   const supabase = await createClient();
 
-  const [{ data: profile }, stats, { data: favRows }, { data: wishRows }, { data: checkinRows }] =
+  const [{ data: profile }, stats, { data: favRows }, { data: wishRows }, { data: checkinRows }, attendedEvents] =
     await Promise.all([
       supabase.from("profiles").select("*").eq("id", user.id).single(),
       getProfileStats(user.id),
@@ -28,6 +29,7 @@ export default async function ProfilePage() {
         .select("spot_id")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
+      getPastAttendedEvents(user.id),
     ]);
 
   const favIds = (favRows ?? []).map((r) => r.spot_id);
@@ -54,6 +56,7 @@ export default async function ProfilePage() {
         favoriteSpots={favoriteSpots as typeof allSpots}
         wishlistSpots={wishlistSpots as typeof allSpots}
         checkinSpots={checkinSpots as typeof allSpots}
+        attendedEvents={attendedEvents}
       />
     </div>
   );

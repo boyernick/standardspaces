@@ -9,6 +9,7 @@ import { MapPin } from "lucide-react";
 import { THEME } from "@/lib/theme";
 import { CATEGORY_LABELS, Category } from "@/lib/types";
 import { getCustomMapStyle } from "./mapStyle";
+import ImageCarousel from "./ImageCarousel";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
@@ -185,25 +186,36 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
       {nearby.length > 0 && (
         <div className="mt-10">
           <h3 className="text-sm font-medium text-neutral-900 dark:text-white mb-4">More Nearby</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {nearby.slice(0, 3).map((s) => (
-              <Link
+              <div
                 key={s.id}
-                href={`/${citySlug}/${s.id}`}
-                className="group relative aspect-[4/5] overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800"
+                className="group block rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors"
                 onMouseEnter={() => setHoveredId(s.id)}
                 onMouseLeave={() => setHoveredId(null)}
               >
-                {s.images.length > 0 && (
-                  <img src={s.images[0]} alt={s.name} loading="lazy" className="w-full h-full object-cover spot-img group-hover:scale-[1.03] transition-transform duration-300" />
-                )}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-16">
-                  <h4 className="text-sm font-medium text-white truncate">{s.name}</h4>
-                  <p className="text-xs text-white/70 mt-0.5 truncate">
-                    {s.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
-                  </p>
-                </div>
-              </Link>
+                <Link href={`/${citySlug}/${s.id}`} className="block">
+                  <ImageCarousel
+                    images={s.images}
+                    alt={s.name}
+                    aspectClassName="aspect-[16/10]"
+                    roundedClassName="rounded-2xl"
+                  />
+                  <div className="p-3 rounded-b-2xl bg-surface">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-semibold line-clamp-1">{s.name}</h3>
+                        <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">{s.neighborhood}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-xs text-neutral-500 mt-0.5 line-clamp-1">
+                          {s.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </div>
             ))}
           </div>
         </div>

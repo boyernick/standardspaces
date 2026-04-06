@@ -2,11 +2,15 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
-import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, Category, Spot } from "@/lib/types";
+import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, Category, Spot, EventRecord } from "@/lib/types";
+import UpcomingEventsStrip from "@/components/UpcomingEventsStrip";
 import dynamic from "next/dynamic";
 const SpotMap = dynamic(() => import("@/components/Map"), { ssr: false });
 import ImageCarousel from "@/components/ImageCarousel";
 import Navbar from "@/components/Navbar";
+import CheckInButton from "@/components/CheckInButton";
+import FavoriteButtonClient from "@/components/FavoriteButtonClient";
+import WishlistButtonClient from "@/components/WishlistButtonClient";
 import { ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, X, MapPin, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -16,13 +20,17 @@ interface CityClientProps {
   cityName: string;
   citySlug: string;
   userCitySlug: string;
+  upcomingEvents?: EventRecord[];
+  invitedEvents?: EventRecord[];
+  eventSpotNames?: Record<string, string>;
 }
 
-export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cityName, citySlug, userCitySlug }: CityClientProps) {
+export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cityName, citySlug, userCitySlug, upcomingEvents = [], invitedEvents = [], eventSpotNames = {} }: CityClientProps) {
   const activeCategories = useMemo(() => new Set(allSpots.flatMap((s) => s.category)), [allSpots]);
   const categories = useMemo(() => CATEGORY_ORDER.filter((c) => activeCategories.has(c)), [activeCategories]);
   const neighborhoods = useMemo(() => [...new Set(allSpots.map((s) => s.neighborhood))].sort(), [allSpots]);
 
+  const [eventsOnly, setEventsOnly] = useState(false);
   const [activeCategory, setActiveCategory] = useState<Category | null>(null);
   const [activeSubcategories, setActiveSubcategories] = useState<Set<string>>(new Set());
   const [categoryDropdown, setCategoryDropdown] = useState<Category | null>(null);
@@ -171,6 +179,31 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
 
               {/* Category pills — scrollable, dropdowns rendered outside */}
               <div ref={categoryRef} className="flex gap-1.5 md:overflow-x-auto scrollbar-hide shrink-0">
+                <button
+                  onClick={() => {
+                    setEventsOnly((v) => {
+                      const next = !v;
+                      if (next) {
+                        setActiveCategory(null);
+                        setActiveSubcategories(new Set());
+                        setCategoryDropdown(null);
+                        setActiveNeighborhood(null);
+                      }
+                      return next;
+                    });
+                    setPage(1);
+                  }}
+                  className={`flex items-center gap-1 px-3.5 py-1.5 text-sm rounded-full border whitespace-nowrap shrink-0 transition-colors ${
+                    eventsOnly
+                      ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
+                      : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
+                  }`}
+                >
+                  Events
+                  {eventsOnly && (
+                    <X size={12} strokeWidth={2} className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setEventsOnly(false); }} />
+                  )}
+                </button>
                 {categories.map((cat) => {
                   const isActive = activeCategory === cat;
                   const isDropdownOpen = categoryDropdown === cat;
@@ -185,6 +218,9 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
                           isDropdownOpen ? setCategoryDropdown(null) : setCategoryDropdown(cat);
                           return;
                         }
+
+                        // Disable events-only view when switching to a category
+                        if (eventsOnly) setEventsOnly(false);
 
                         const btn = e.currentTarget;
                         const container = filterScrollRef.current;
@@ -262,7 +298,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
                     {neighborhoods.map((n) => {
                       const count = allSpots.filter((s) => s.neighborhood === n).length;
                       return (
-                        <button key={n} onClick={() => { setActiveNeighborhood(activeNeighborhood === n ? null : n); setNeighborhoodOpen(false); setPage(1); }} className={`flex w-full items-center justify-between px-4 py-2.5 text-xs transition-colors ${activeNeighborhood === n ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
+                        <button key={n} onClick={() => { setActiveNeighborhood(activeNeighborhood === n ? null : n); setNeighborhoodOpen(false); setPage(1); setEventsOnly(false); }} className={`flex w-full items-center justify-between px-4 py-2.5 text-xs transition-colors ${activeNeighborhood === n ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
                           {n}
                           <span className="text-neutral-300 dark:text-neutral-600">{count}</span>
                         </button>
@@ -321,8 +357,69 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
 
           {/* Scrollable content — hidden on mobile map view */}
           <div ref={panelRef} className={`flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-36 md:pb-0 ${mobileView === "map" ? "hidden md:block" : ""}`}>
-          {/* Cards */}
-          {allSpots.length === 0 ? (
+          {eventsOnly ? (
+            <div className="p-4 pt-2 space-y-6">
+              {invitedEvents.length > 0 && (
+                <UpcomingEventsStrip
+                  events={invitedEvents}
+                  spotNames={eventSpotNames}
+                  title="You're invited"
+                />
+              )}
+              {upcomingEvents.length > 0 ? (
+                <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {upcomingEvents.map((event) => {
+                      const d = new Date(event.starts_at);
+                      const month = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+                      const day = d.getDate();
+                      const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+                      const priceLabel = event.price_cents === 0 ? "Free" : `$${(event.price_cents / 100).toFixed(0)}`;
+                      return (
+                        <Link
+                          key={event.id}
+                          href={`/events/${event.id}`}
+                          className="group block rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors"
+                        >
+                          <div className="aspect-[16/10] bg-neutral-100 dark:bg-neutral-900 relative rounded-2xl overflow-hidden">
+                            {event.cover_image_url ? (
+                              <img src={event.cover_image_url} alt={event.title} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-4xl font-semibold text-neutral-300 dark:text-neutral-700">
+                                {day}
+                              </div>
+                            )}
+                            <div className="absolute top-2 left-2 bg-white/95 dark:bg-neutral-900/95 backdrop-blur rounded-lg px-2 py-1 flex flex-col items-center leading-none">
+                              <span className="text-[9px] font-medium text-neutral-500">{month}</span>
+                              <span className="text-sm font-semibold">{day}</span>
+                            </div>
+                          </div>
+                          <div className="p-3 rounded-b-2xl bg-surface">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <h3 className="text-sm font-semibold line-clamp-1">{event.title}</h3>
+                                {eventSpotNames[event.spot_id] && (
+                                  <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">{eventSpotNames[event.spot_id]}</p>
+                                )}
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="text-sm font-semibold">{priceLabel}</div>
+                                <div className="text-xs text-neutral-500 mt-0.5">{time}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-neutral-400 dark:text-neutral-500 text-center py-12">
+                  No upcoming events in {cityName} yet.
+                </p>
+              )}
+            </div>
+          ) : allSpots.length === 0 ? (
             <div className="px-6 py-20 text-center">
               <div className="w-12 h-12 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mx-auto mb-4">
                 <MapPin size={20} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500" />
@@ -342,7 +439,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
             </div>
           ) : (
             <div className="p-4 pt-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6 md:gap-x-3 md:gap-y-4">
                 <AnimatePresence mode="popLayout">
                 {paginated.map((spot, i) => (
                   <motion.div
@@ -351,19 +448,24 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.3, delay: i * 0.05, ease: [0.25, 0.1, 0.25, 1] }}
-                    className="cursor-pointer"
+                    className="cursor-pointer group block rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors"
                     onMouseEnter={() => setActiveSpot(spot)}
                     onMouseLeave={() => setActiveSpot(null)}
                   >
-                    <Link href={`/${citySlug}/${spot.id}`}>
-                      <ImageCarousel images={spot.images} alt={spot.name} />
+                    <Link href={`/${citySlug}/${spot.id}`} className="block">
+                      <ImageCarousel
+                        images={spot.images}
+                        alt={spot.name}
+                        aspectClassName="aspect-[16/10]"
+                        roundedClassName="rounded-2xl"
+                      />
+                      <div className="p-3 rounded-b-2xl bg-surface">
+                        <h3 className="text-sm font-semibold line-clamp-1">{spot.name}</h3>
+                        <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">
+                          {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
+                        </p>
+                      </div>
                     </Link>
-                    <div className="mt-3">
-                      <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
-                      <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">
-                        {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
-                      </p>
-                    </div>
                   </motion.div>
                 ))}
                 </AnimatePresence>
@@ -399,26 +501,37 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
             {activeSpot && (
               <div className="absolute bottom-3 left-3 right-3 md:left-auto md:right-3 md:w-72 z-10">
                 <div
-                  className="bg-surface rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
+                  className="bg-surface rounded-2xl shadow-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
                   style={{ animation: "map-card-in 0.2s ease-out" }}
                 >
-                  <Link
-                    href={`/${citySlug}/${activeSpot.id}`}
-                    className="flex gap-3 p-3"
-                    onClick={() => setActiveSpot(null)}
-                  >
+                  <div className="flex gap-3 p-3">
                     {activeSpot.images[0] && (
-                      <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                      <Link
+                        href={`/${citySlug}/${activeSpot.id}`}
+                        onClick={() => setActiveSpot(null)}
+                        className="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800"
+                      >
                         <img src={activeSpot.images[0]} alt={activeSpot.name} loading="lazy" className="w-full h-full object-cover" />
-                      </div>
+                      </Link>
                     )}
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
-                      <h3 className="text-sm font-medium truncate">{activeSpot.name}</h3>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                        {activeSpot.neighborhood} · {activeSpot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
-                      </p>
+                      <Link
+                        href={`/${citySlug}/${activeSpot.id}`}
+                        onClick={() => setActiveSpot(null)}
+                        className="min-w-0"
+                      >
+                        <h3 className="text-sm font-medium truncate">{activeSpot.name}</h3>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
+                          {activeSpot.neighborhood} · {activeSpot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
+                        </p>
+                      </Link>
+                      <div className="flex items-center gap-1 mt-1 -ml-2">
+                        <CheckInButton spotId={activeSpot.id} variant="icon" />
+                        <WishlistButtonClient spotId={activeSpot.id} size="icon" />
+                        <FavoriteButtonClient spotId={activeSpot.id} size="icon" />
+                      </div>
                     </div>
-                  </Link>
+                  </div>
                   <button
                     onClick={() => setActiveSpot(null)}
                     className="absolute top-2 right-2 p-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"

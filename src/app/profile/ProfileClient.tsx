@@ -3,12 +3,12 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Camera, X, Check, CircleUserRound, Heart, Bookmark, CircleCheck } from "lucide-react";
+import { Camera, X, Check, CircleUserRound, Heart, Bookmark, CircleCheck, Calendar } from "lucide-react";
 import { updateProfile } from "@/app/actions/profile";
 import { toggleFollow } from "@/app/actions/follows";
 import { citySlugFromName, CITIES } from "@/lib/cities";
 import { CATEGORY_LABELS } from "@/lib/types";
-import { Spot } from "@/lib/types";
+import { Spot, EventRecord } from "@/lib/types";
 
 type Profile = {
   id: string;
@@ -29,7 +29,7 @@ type Stats = {
   following: number;
 };
 
-type Tab = "favorites" | "checkins" | "wishlist";
+type Tab = "favorites" | "checkins" | "wishlist" | "attended";
 
 export default function ProfileClient({
   profile,
@@ -39,6 +39,7 @@ export default function ProfileClient({
   favoriteSpots = [],
   wishlistSpots,
   checkinSpots = [],
+  attendedEvents = [],
 }: {
   profile: Profile;
   stats: Stats;
@@ -48,6 +49,7 @@ export default function ProfileClient({
   wishlistSpots?: Spot[];
   checkinSpots?: Spot[];
   checkinCounts?: Record<string, number>;
+  attendedEvents?: EventRecord[];
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -160,13 +162,18 @@ export default function ProfileClient({
       ? favoriteSpots
       : activeTab === "checkins"
         ? checkinSpots
-        : wishlistSpots ?? [];
+        : activeTab === "wishlist"
+          ? wishlistSpots ?? []
+          : [];
 
   const tabs: { key: Tab; icon: typeof Heart; label: string }[] = [
     { key: "favorites", icon: Heart, label: "Favorites" },
     { key: "checkins", icon: CircleCheck, label: "Check-ins" },
     ...(isOwn && wishlistSpots
       ? [{ key: "wishlist" as Tab, icon: Bookmark, label: "Wishlist" }]
+      : []),
+    ...(attendedEvents.length > 0
+      ? [{ key: "attended" as Tab, icon: Calendar, label: "Attended" }]
       : []),
   ];
 
@@ -374,6 +381,8 @@ export default function ProfileClient({
                   </svg>
                 ) : key === "wishlist" && isActive ? (
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                ) : key === "attended" && isActive ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 ) : (
                   <Icon size={20} strokeWidth={1.5} />
                 )}
@@ -386,8 +395,47 @@ export default function ProfileClient({
         </div>
       </div>
 
-      {/* Spot grid */}
-      {currentSpots.length === 0 ? (
+      {/* Grid */}
+      {activeTab === "attended" ? (
+        attendedEvents.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-sm text-neutral-400 dark:text-neutral-500" style={fontCalibre}>
+              No attended events yet
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-1 mt-0.5">
+            {attendedEvents.map((event) => {
+              const d = new Date(event.starts_at);
+              return (
+                <Link
+                  key={event.id}
+                  href={`/events/${event.id}`}
+                  className="relative aspect-square overflow-hidden rounded-md group bg-neutral-100 dark:bg-neutral-900"
+                >
+                  {event.cover_image_url ? (
+                    <img
+                      src={event.cover_image_url}
+                      alt={event.title}
+                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-neutral-700 text-2xl font-semibold" style={fontMartina}>
+                      {d.getDate()}
+                    </div>
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-2 pt-10">
+                    <h4 className="text-xs font-medium text-white truncate" style={fontCalibre}>{event.title}</h4>
+                    <p className="text-[10px] text-white/70 truncate" style={fontCalibre}>
+                      {d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )
+      ) : currentSpots.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-sm text-neutral-400 dark:text-neutral-500" style={fontCalibre}>
             {activeTab === "favorites" && "No favorites yet"}

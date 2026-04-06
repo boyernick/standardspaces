@@ -6,9 +6,16 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 interface ImageCarouselProps {
   images: string[];
   alt: string;
+  aspectClassName?: string;
+  roundedClassName?: string;
 }
 
-export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
+export default function ImageCarousel({
+  images,
+  alt,
+  aspectClassName = "aspect-[4/3]",
+  roundedClassName = "rounded-xl",
+}: ImageCarouselProps) {
   const [current, setCurrent] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -80,7 +87,7 @@ export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
 
   return (
     <div
-      className="group/carousel relative aspect-[4/3] rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800"
+      className={`group/carousel relative ${aspectClassName} ${roundedClassName} overflow-hidden bg-neutral-100 dark:bg-neutral-800`}
       onClickCapture={onClickCapture}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}

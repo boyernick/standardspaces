@@ -150,5 +150,44 @@ export interface Spot {
   bookingUrl?: string;
   bookingPlatform?: string;
   menuUrl?: string;
+  /** @deprecated Use the `events` table instead. Retained for legacy data only. */
   events?: { name: string; date: string; description: string }[];
+}
+
+export interface EventRecord {
+  id: string;
+  spot_id: string;
+  host_id: string;
+  title: string;
+  description: string | null;
+  cover_image_url: string | null;
+  starts_at: string;
+  ends_at: string;
+  city: string;
+  capacity: number | null;
+  price_cents: number;
+  currency: string;
+  visibility: "public" | "private";
+  status: "published" | "cancelled" | "hidden";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EventRsvp {
+  id: string;
+  event_id: string;
+  user_id: string;
+  status: "going" | "waitlist" | "cancelled";
+  stripe_payment_intent_id: string | null;
+  paid_amount_cents: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EventInvite {
+  id: string;
+  event_id: string;
+  user_id: string;
+  invited_by: string;
+  created_at: string;
 }
