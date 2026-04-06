@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { CATEGORY_LABELS, CATEGORY_ORDER, TOP_VIBES, Category, Spot } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
-import { Search, MapPin, X } from "lucide-react";
+import { Search, MapPin, X, CircleUserRound } from "lucide-react";
 
 function Highlight({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
@@ -22,11 +22,21 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
+type Member = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  instagram: string | null;
+  avatar_url: string | null;
+  city: string | null;
+};
+
 export default function CommandMenu() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [spots, setSpots] = useState<Spot[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -60,6 +70,22 @@ export default function CommandMenu() {
     return () => { cancelled = true; };
   }, [open, spots.length]);
 
+  // Fetch members once on first open
+  useEffect(() => {
+    if (!open || members.length > 0) return;
+    let cancelled = false;
+    createClient()
+      .from("profiles")
+      .select("id, first_name, last_name, instagram, avatar_url, city")
+      .not("first_name", "is", null)
+      .order("first_name")
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        setMembers(data as Member[]);
+      });
+    return () => { cancelled = true; };
+  }, [open, members.length]);
+
   const neighborhoods = useMemo(() => [...new Set(spots.map((s) => s.neighborhood))].sort(), [spots]);
 
   const results = useMemo(() => {
@@ -88,13 +114,24 @@ export default function CommandMenu() {
     );
   }, [query]);
 
+  const matchingMembers = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase();
+    return members.filter((m) => {
+      const name = [m.first_name, m.last_name].filter(Boolean).join(" ").toLowerCase();
+      const handle = (m.instagram || "").toLowerCase();
+      return name.includes(q) || handle.includes(q);
+    });
+  }, [query, members]);
+
   const flatItems = useMemo(() => {
     const all: Array<{ type: string; value: string }> = [];
+    for (const m of matchingMembers) all.push({ type: "member", value: m.id });
     for (const n of matchingNeighborhoods) all.push({ type: "neighborhood", value: n });
     for (const c of matchingCategories) all.push({ type: "category", value: c });
     for (const s of results) all.push({ type: "spot", value: s.id });
     return all;
-  }, [matchingNeighborhoods, matchingCategories, results]);
+  }, [matchingMembers, matchingNeighborhoods, matchingCategories, results]);
 
   const hasQuery = query.trim().length > 0;
   const hasResults = flatItems.length > 0;
@@ -147,6 +184,9 @@ export default function CommandMenu() {
         setOpen(false);
         router.push(`/${citySlugFromName(spot.city)}/${spot.id}`);
       }
+    } else if (item.type === "member") {
+      setOpen(false);
+      router.push(`/members/${item.value}`);
     } else {
       setQuery(item.type === "category" ? CATEGORY_LABELS[item.value as Category] : item.value);
       inputRef.current?.focus();
@@ -175,7 +215,7 @@ export default function CommandMenu() {
         style={{ animation: "command-in 0.2s cubic-bezier(0.25,0.1,0.25,1)" }}
       >
         {/* Search input — large and prominent */}
-        <div className="relative px-5 pt-5 pb-4">
+        <div className="relative px-5 pt-3 pb-3">
           <Search size={18} strokeWidth={2} className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-300 dark:text-neutral-600" />
           <input
             ref={inputRef}
@@ -183,7 +223,7 @@ export default function CommandMenu() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search spaces..."
+            placeholder="Search spaces and members..."
             className="w-full pl-7 pr-8 py-3 text-base bg-transparent outline-none placeholder-neutral-400 dark:placeholder-neutral-500 border-b border-neutral-100 dark:border-neutral-800"
           />
           <button
@@ -222,7 +262,7 @@ export default function CommandMenu() {
                   <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mb-2">
                     Trending
                   </p>
-                  <div className="space-y-1 -mx-2">
+                  <div className="-mx-5">
                     {spots.slice(0, 5).map((spot) => (
                       <button
                         key={spot.id}
@@ -230,7 +270,7 @@ export default function CommandMenu() {
                           setOpen(false);
                           router.push(`/${citySlugFromName(spot.city)}/${spot.id}`);
                         }}
-                        className="w-full text-left px-2 py-2 rounded-xl flex items-center gap-3 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
+                        className="w-full text-left px-5 py-2.5 flex items-center gap-3 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
                       >
                         {spot.images?.[0] && (
                           <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
@@ -253,15 +293,56 @@ export default function CommandMenu() {
             <div className="px-5 py-12 text-center">
               <p className="text-sm text-neutral-500 dark:text-neutral-400">No results for &ldquo;{query}&rdquo;</p>
               <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                Try a name, neighborhood, or vibe
+                Try a name, neighborhood, vibe, or member
               </p>
             </div>
           ) : (
-            <div className="pb-2" style={{ animation: "fadeIn 0.15s ease-out" }}>
+            <div className="pb-3" style={{ animation: "fadeIn 0.15s ease-out" }}>
+              {/* Member matches */}
+              {matchingMembers.length > 0 && (
+                <div>
+                  <div className="px-5 pt-2 pb-1.5">
+                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Members</p>
+                  </div>
+                  {matchingMembers.map((member) => {
+                    const idx = flatIdx++;
+                    const isSelected = idx === selectedIndex;
+                    const name = [member.first_name, member.last_name].filter(Boolean).join(" ");
+                    return (
+                      <button
+                        key={member.id}
+                        data-selected={isSelected}
+                        onClick={() => selectItem({ type: "member", value: member.id })}
+                        onMouseEnter={() => setSelectedIndex(idx)}
+                        className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
+                          isSelected ? "bg-neutral-50 dark:bg-neutral-900" : ""
+                        }`}
+                      >
+                        {member.avatar_url ? (
+                          <img src={member.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-neutral-900 dark:bg-white flex items-center justify-center shrink-0">
+                            <CircleUserRound size={14} strokeWidth={1.5} className="text-white dark:text-neutral-900" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate"><Highlight text={name} query={query} /></p>
+                          <p className="text-xs text-neutral-400 dark:text-neutral-500 truncate">
+                            {member.instagram && <><Highlight text={`@${member.instagram.replace("@", "")}`} query={query} /></>}
+                            {member.instagram && member.city && " · "}
+                            {member.city}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Neighborhood matches */}
               {matchingNeighborhoods.length > 0 && (
                 <div>
-                  <div className="px-5 pt-1 pb-1">
+                  <div className="px-5 pt-2 pb-1.5">
                     <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Neighborhoods</p>
                   </div>
                   {matchingNeighborhoods.map((n) => {
@@ -292,7 +373,7 @@ export default function CommandMenu() {
               {/* Category matches */}
               {matchingCategories.length > 0 && (
                 <div>
-                  <div className="px-5 pt-2 pb-1">
+                  <div className="px-5 pt-2 pb-1.5">
                     <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Categories</p>
                   </div>
                   {matchingCategories.map((c) => {
@@ -323,7 +404,7 @@ export default function CommandMenu() {
               {/* Spot results — with thumbnails */}
               {results.length > 0 && (
                 <div>
-                  <div className="px-5 pt-2 pb-1">
+                  <div className="px-5 pt-2 pb-1.5">
                     <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Spaces</p>
                   </div>
                   {results.map((spot) => {

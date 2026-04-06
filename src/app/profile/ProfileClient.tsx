@@ -270,13 +270,10 @@ export default function ProfileClient({
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-medium leading-tight" style={fontMartina}>{displayName}</h1>
-              {profile.instagram && (
+              {(profile.instagram || profile.city) && (
                 <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-1" style={fontCalibre}>
-                  @{profile.instagram.replace("@", "")}
-                </p>
-              )}
-              {profile.city && (
-                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1" style={fontCalibre}>
+                  {profile.instagram && <>@{profile.instagram.replace("@", "")}</>}
+                  {profile.instagram && profile.city && " · "}
                   {profile.city}
                 </p>
               )}
