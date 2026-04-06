@@ -171,6 +171,21 @@ export default function SpotMap(props: MapProps) {
       }
     });
 
+    // Compute offsets for overlapping spots
+    const OFFSET = 0.0003; // ~30 meters
+    const placed: Array<{ lng: number; lat: number }> = [];
+    function getOffset(lng: number, lat: number): [number, number] {
+      for (const p of placed) {
+        if (Math.abs(p.lng - lng) < OFFSET && Math.abs(p.lat - lat) < OFFSET) {
+          // Spiral outward
+          const angle = placed.length * 2.4; // golden angle
+          const r = OFFSET * (1 + Math.floor(placed.length / 6));
+          return [lng + r * Math.cos(angle), lat + r * Math.sin(angle)];
+        }
+      }
+      return [lng, lat];
+    }
+
     // Add/update markers
     spots.forEach((s) => {
       const existing = markers.current.get(s.id);
@@ -223,8 +238,11 @@ export default function SpotMap(props: MapProps) {
         onSpotSelectRef.current(s);
       });
 
+      const [offsetLng, offsetLat] = getOffset(s.lng, s.lat);
+      placed.push({ lng: offsetLng, lat: offsetLat });
+
       const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
-        .setLngLat([s.lng, s.lat])
+        .setLngLat([offsetLng, offsetLat])
         .addTo(m);
 
       markers.current.set(s.id, { marker, el });
