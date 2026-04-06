@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Camera, X, Check, CircleUserRound, Heart, Bookmark, CircleCheck } from "lucide-react";
 import { updateProfile } from "@/app/actions/profile";
+import { toggleFollow } from "@/app/actions/follows";
 import { citySlugFromName, CITIES } from "@/lib/cities";
 import { CATEGORY_LABELS } from "@/lib/types";
 import { Spot } from "@/lib/types";
@@ -24,6 +25,8 @@ type Stats = {
   favorites: number;
   checkins: number;
   referrals: number;
+  followers: number;
+  following: number;
 };
 
 type Tab = "favorites" | "checkins" | "wishlist";
@@ -32,6 +35,7 @@ export default function ProfileClient({
   profile,
   stats,
   isOwn,
+  isFollowing: initialFollowing = false,
   favoriteSpots = [],
   wishlistSpots,
   checkinSpots = [],
@@ -39,6 +43,7 @@ export default function ProfileClient({
   profile: Profile;
   stats: Stats;
   isOwn: boolean;
+  isFollowing?: boolean;
   favoriteSpots?: Spot[];
   wishlistSpots?: Spot[];
   checkinSpots?: Spot[];
@@ -58,6 +63,9 @@ export default function ProfileClient({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("favorites");
+  const [following, setFollowing] = useState(initialFollowing);
+  const [followerCount, setFollowerCount] = useState(stats.followers);
+  const [followLoading, setFollowLoading] = useState(false);
 
   const displayName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "Member";
 
@@ -124,6 +132,22 @@ export default function ProfileClient({
     setAvatarPreview(profile.avatar_url || "");
     setEditing(false);
     setError("");
+  }
+
+  async function handleFollow() {
+    setFollowLoading(true);
+    setFollowing((prev) => !prev);
+    setFollowerCount((prev) => prev + (following ? -1 : 1));
+    const result = await toggleFollow(profile.id);
+    setFollowing(result.following);
+    setFollowerCount((prev) => {
+      // Correct if optimistic update was wrong
+      if (result.following !== !following) {
+        return prev + (result.following ? 1 : -1);
+      }
+      return prev;
+    });
+    setFollowLoading(false);
   }
 
   const memberSince = new Date(profile.created_at).toLocaleDateString("en-US", {
@@ -277,6 +301,16 @@ export default function ProfileClient({
                   {profile.city}
                 </p>
               )}
+              <div className="flex gap-3 mt-1.5" style={fontCalibre}>
+                <p className="text-sm">
+                  <span className="font-medium text-neutral-900 dark:text-white">{followerCount}</span>
+                  <span className="text-neutral-400 dark:text-neutral-500 ml-1">{followerCount === 1 ? "follower" : "followers"}</span>
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium text-neutral-900 dark:text-white">{stats.following}</span>
+                  <span className="text-neutral-400 dark:text-neutral-500 ml-1">following</span>
+                </p>
+              </div>
             </div>
           </div>
 
@@ -287,8 +321,8 @@ export default function ProfileClient({
             </p>
           )}
 
-          {/* Edit profile button */}
-          {isOwn && (
+          {/* Edit profile / Follow button */}
+          {isOwn ? (
             <button
               onClick={() => setEditing(true)}
               className="w-full py-1.5 text-xs font-medium border border-neutral-200 dark:border-neutral-700 rounded-lg hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors"
@@ -296,11 +330,26 @@ export default function ProfileClient({
             >
               Edit profile
             </button>
+          ) : (
+            <button
+              onClick={handleFollow}
+              disabled={followLoading}
+              className={`w-full py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 ${
+                following
+                  ? "border border-neutral-200 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500"
+                  : "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100"
+              }`}
+              style={fontCalibre}
+            >
+              {following ? "Following" : "Follow"}
+            </button>
           )}
         </div>
       )}
 
       {/* Tab bar */}
+      {!editing && (
+      <div>
       <div className="border-t border-neutral-100 dark:border-neutral-800">
         <div className="flex">
           {tabs.map(({ key, icon: Icon, label }) => {
@@ -368,6 +417,8 @@ export default function ProfileClient({
             </Link>
           ))}
         </div>
+      )}
+      </div>
       )}
     </div>
   );

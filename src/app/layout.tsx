@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import Script from "next/script";
 import CommandMenu from "@/components/CommandMenu";
 import "./globals.css";
 
@@ -51,7 +52,7 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <script dangerouslySetInnerHTML={{ __html: `
+        <Script id="theme-init" strategy="beforeInteractive">{`
           (function() {
             var theme = localStorage.getItem('theme');
             var isDark = false;
@@ -70,7 +71,7 @@ export default function RootLayout({
               if (meta) meta.setAttribute('content', '#13120A');
             }
           })();
-        `}} />
+        `}</Script>
       </head>
       <body className="h-full flex flex-col overflow-hidden">
         <CommandMenu />

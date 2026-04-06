@@ -6,16 +6,20 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export async function getProfileStats(userId: string) {
   const supabase = await createClient();
 
-  const [favorites, checkins, referrals] = await Promise.all([
+  const [favorites, checkins, referrals, followers, following] = await Promise.all([
     supabase.from("user_favorites").select("id", { count: "exact", head: true }).eq("user_id", userId),
     supabase.from("user_checkins").select("id", { count: "exact", head: true }).eq("user_id", userId),
     supabase.from("referrals").select("id", { count: "exact", head: true }).eq("referrer_user_id", userId).eq("status", "approved"),
+    supabase.from("user_follows").select("id", { count: "exact", head: true }).eq("following_id", userId),
+    supabase.from("user_follows").select("id", { count: "exact", head: true }).eq("follower_id", userId),
   ]);
 
   return {
     favorites: favorites.count ?? 0,
     checkins: checkins.count ?? 0,
     referrals: referrals.count ?? 0,
+    followers: followers.count ?? 0,
+    following: following.count ?? 0,
   };
 }
 
