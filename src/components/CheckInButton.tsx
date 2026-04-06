@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { checkIn, uncheckIn, moveWishlistToFavorite } from "@/app/actions/saves";
 
 export default function CheckInButton({ spotId, variant }: { spotId: string; variant?: "icon" }) {
-  const [count, setCount] = useState(0);
+  const [isChecked, setIsChecked] = useState(false);
   const [justCheckedIn, setJustCheckedIn] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -17,26 +17,24 @@ export default function CheckInButton({ spotId, variant }: { spotId: string; var
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const [{ count: c }, { data: wishlistData }] = await Promise.all([
-        supabase.from("user_checkins").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("spot_id", spotId),
+      const [{ data: checkinData }, { data: wishlistData }] = await Promise.all([
+        supabase.from("user_checkins").select("id").eq("user_id", user.id).eq("spot_id", spotId).single(),
         supabase.from("user_wishlist").select("id").eq("user_id", user.id).eq("spot_id", spotId).single(),
       ]);
-      setCount(c ?? 0);
+      setIsChecked(!!checkinData);
       setIsWishlisted(!!wishlistData);
     })();
   }, [spotId]);
-
-  const isChecked = count > 0 || justCheckedIn;
 
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
 
     if (isChecked && !justCheckedIn) {
-      setCount(0);
+      setIsChecked(false);
       startTransition(async () => { await uncheckIn(spotId); });
     } else {
-      setCount((c) => c + 1);
+      setIsChecked(true);
       setJustCheckedIn(true);
       startTransition(async () => { await checkIn(spotId); });
       // Show wishlist→favorite prompt if wishlisted
@@ -67,8 +65,8 @@ export default function CheckInButton({ spotId, variant }: { spotId: string; var
           onClick={handleClick}
           disabled={isPending}
           className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-          aria-label={isChecked ? `Visited ${count} times` : "Mark as visited"}
-          data-tooltip={isChecked ? `Visited (${count})` : "Check in"}
+          aria-label={isChecked ? "Visited" : "Mark as visited"}
+          data-tooltip={isChecked ? "Visited" : "Check in"}
         >
           {isChecked ? (
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -111,7 +109,7 @@ export default function CheckInButton({ spotId, variant }: { spotId: string; var
       className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors underline underline-offset-2 decoration-neutral-300 dark:decoration-neutral-600"
     >
       <CircleCheck size={14} strokeWidth={2} className={isChecked ? "text-green-600" : ""} />
-      {justCheckedIn ? "Marked visited!" : isChecked ? `Visited (${count})` : "Visited"}
+      {justCheckedIn ? "Marked visited!" : isChecked ? "Visited" : "Visited"}
     </button>
   );
 }

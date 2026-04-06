@@ -1,0 +1,61 @@
+import { redirect, notFound } from "next/navigation";
+import { requireAuth } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { getSpotsByIds } from "@/lib/data";
+import { getProfileStats } from "@/app/actions/profile";
+import Navbar from "@/components/Navbar";
+import ProfileClient from "@/app/profile/ProfileClient";
+
+export default async function MemberProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const user = await requireAuth();
+  const { id } = await params;
+
+  if (id === user.id) {
+    redirect("/profile");
+  }
+
+  const supabase = await createClient();
+
+  const [{ data: profile }, stats, { data: favRows }, { data: checkinRows }] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", id).single(),
+    getProfileStats(id),
+    supabase
+      .from("user_favorites")
+      .select("spot_id")
+      .eq("user_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("user_checkins")
+      .select("spot_id")
+      .eq("user_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  if (!profile) {
+    notFound();
+  }
+
+  const favIds = (favRows ?? []).map((r) => r.spot_id);
+
+  const checkinIds = (checkinRows ?? []).map((r) => r.spot_id);
+
+  const allIds = [...new Set([...favIds, ...checkinIds])];
+  const allSpots = await getSpotsByIds(allIds);
+  const spotMap = new Map(allSpots.map((s) => [s.id, s]));
+
+  const favoriteSpots = favIds.map((id) => spotMap.get(id)).filter(Boolean);
+  const checkinSpots = checkinIds.map((id) => spotMap.get(id)).filter(Boolean);
+
+  return (
+    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--color-surface)" }}>
+      <Navbar />
+      <ProfileClient
+        profile={profile}
+        stats={stats}
+        isOwn={false}
+        favoriteSpots={favoriteSpots as typeof allSpots}
+        checkinSpots={checkinSpots as typeof allSpots}
+      />
+    </div>
+  );
+}

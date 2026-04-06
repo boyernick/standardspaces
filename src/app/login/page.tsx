@@ -106,10 +106,10 @@ export default function LoginPage() {
       if (existing) {
         userCity = existing.city || "Miami";
       } else {
-        // Look up city from application
+        // Look up application data to pre-populate profile
         const { data: appData } = await supabase
           .from("applications")
-          .select("city")
+          .select("city, first_name, last_name, instagram")
           .eq("phone", fullPhone)
           .single();
         userCity = appData?.city || "Miami";
@@ -118,6 +118,10 @@ export default function LoginPage() {
           id: data.user.id,
           phone: fullPhone,
           city: userCity,
+          first_name: appData?.first_name || null,
+          last_name: appData?.last_name || null,
+          instagram: appData?.instagram || null,
+          onboarded: true,
         });
       }
     }

@@ -96,22 +96,14 @@ export async function checkIn(spotId: string): Promise<{ success: boolean }> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false };
 
-  await supabase.from("user_checkins").insert({ user_id: user.id, spot_id: spotId });
+  await Promise.all([
+    supabase.from("user_checkins").upsert(
+      { user_id: user.id, spot_id: spotId },
+      { onConflict: "user_id,spot_id" }
+    ),
+    supabase.from("user_wishlist").delete().eq("user_id", user.id).eq("spot_id", spotId),
+  ]);
   return { success: true };
-}
-
-export async function getCheckinCount(spotId: string): Promise<number> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return 0;
-
-  const { count } = await supabase
-    .from("user_checkins")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("spot_id", spotId);
-
-  return count ?? 0;
 }
 
 export async function uncheckIn(spotId: string): Promise<{ success: boolean }> {

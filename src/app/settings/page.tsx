@@ -1,0 +1,26 @@
+import { requireAuth } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import Navbar from "@/components/Navbar";
+import SettingsClient from "./SettingsClient";
+
+export default async function SettingsPage() {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("phone, city, sms_notifications")
+    .eq("id", user.id)
+    .single();
+
+  return (
+    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--color-surface)" }}>
+      <Navbar />
+      <SettingsClient
+        phone={profile?.phone || ""}
+        city={profile?.city || "Miami"}
+        smsNotifications={profile?.sms_notifications ?? true}
+      />
+    </div>
+  );
+}

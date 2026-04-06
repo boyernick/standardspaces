@@ -3,37 +3,40 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Menu, X, Search, Moon, Sun } from "lucide-react";
+import { Menu, Search, CircleUserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getPendingReferralCount } from "@/app/actions/referrals";
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const citySlug = pathname.split("/")[1] || "miami";
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
-  const [themeMode, setThemeMode] = useState<"auto" | "light" | "dark">("auto");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [pendingReferrals, setPendingReferrals] = useState(0);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-    const stored = localStorage.getItem("theme");
-    if (stored === "dark" || stored === "light") {
-      setThemeMode(stored);
-    } else {
-      setThemeMode("auto");
-    }
-
-    // Check admin status — single chained call
     let cancelled = false;
     const supabase = createClient();
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (cancelled || !user) return;
-      const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-      if (!cancelled && data?.role === "admin") setIsAdmin(true);
+      const { data } = await supabase
+        .from("profiles")
+        .select("role, avatar_url")
+        .eq("id", user.id)
+        .single();
+      if (cancelled || !data) return;
+      if (data.role === "admin") setIsAdmin(true);
+      if (data.avatar_url) setAvatarUrl(data.avatar_url);
     })();
+
+    getPendingReferralCount().then((count) => {
+      if (!cancelled) setPendingReferrals(count);
+    });
+
     return () => { cancelled = true; };
   }, []);
 
@@ -44,6 +47,8 @@ export default function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const menuLinkClass = "block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors";
 
   return (
     <header className="bg-surface shrink-0" style={{ position: "relative", zIndex: 40 }}>
@@ -81,60 +86,41 @@ export default function Navbar() {
             className="flex items-center gap-2 pl-3 pr-1.5 py-1 border border-neutral-200 dark:border-neutral-800 rounded-full hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
           >
             <Menu size={14} strokeWidth={2} className="text-neutral-600 dark:text-neutral-400" />
-            <div className="w-7 h-7 rounded-full bg-brand-900" />
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-neutral-900 dark:bg-white flex items-center justify-center">
+                <CircleUserRound size={16} strokeWidth={1.5} className="text-white dark:text-neutral-900" />
+              </div>
+            )}
           </button>
 
           {menuOpen && (
             <div className="absolute top-full right-0 mt-2 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-lg py-1.5 z-50">
-              <Link href={`/${citySlug}/wishlist`} onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
-                Wishlist
+              <Link href="/profile" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
+                Profile
               </Link>
-              <Link href={`/${citySlug}/favorites`} onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
-                Favorites
-              </Link>
-              <Link href={`/${citySlug}/checkins`} onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
-                Check-ins
-              </Link>
-              <Link href="/recommend" onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
+              <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
+              <Link href="/recommend" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
                 Recommendations
               </Link>
-              <button
-                onClick={() => {
-                  let nextMode: "auto" | "light" | "dark";
-                  if (themeMode === "auto") nextMode = "light";
-                  else if (themeMode === "light") nextMode = "dark";
-                  else nextMode = "auto";
-
-                  setThemeMode(nextMode);
-
-                  let dark: boolean;
-                  if (nextMode === "auto") {
-                    localStorage.removeItem("theme");
-                    const hour = new Date().getHours();
-                    dark = hour >= 19 || hour < 7;
-                  } else {
-                    localStorage.setItem("theme", nextMode);
-                    dark = nextMode === "dark";
-                  }
-                  document.documentElement.classList.toggle("dark", dark);
-                  document.documentElement.style.backgroundColor = dark ? "#13120A" : "";
-                  const meta = document.querySelector('meta[name="theme-color"]');
-                  if (meta) meta.setAttribute("content", dark ? "#13120A" : "#F7F7F3");
-                  setIsDark(dark);
-                }}
-                className="flex w-full items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
-              >
-                {themeMode === "auto" ? "Auto mode" : themeMode === "light" ? "Light mode" : "Dark mode"}
-                <span className="text-xs text-neutral-400 dark:text-neutral-500">
-                  {themeMode === "auto" ? "auto" : ""}
-                </span>
-              </button>
+              <Link href="/referrals" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
+                Referrals
+                {pendingReferrals > 0 && (
+                  <span className="ml-2 px-1.5 py-0.5 text-[10px] font-medium bg-brand-900 text-white rounded-full min-w-[18px] text-center">
+                    {pendingReferrals}
+                  </span>
+                )}
+              </Link>
               {isAdmin && (
-                <Link href="/admin" onClick={() => setMenuOpen(false)} className="block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
+                <Link href="/admin" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
                   Admin
                 </Link>
               )}
-              <div className="border-t border-neutral-100 dark:border-neutral-800 my-0.5" />
+              <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
+              <Link href="/settings" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
+                Settings
+              </Link>
               <button
                 onClick={async () => {
                   setMenuOpen(false);

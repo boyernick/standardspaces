@@ -10,7 +10,7 @@ import { CircleCheck, Search, X, ChevronLeft, ChevronRight } from "lucide-react"
 const PER_PAGE_SM = 8;
 const PER_PAGE_LG = 9;
 
-export default function CheckinsClient({ spots, citySlug, checkinCounts }: { spots: Spot[]; citySlug: string; checkinCounts: Record<string, number> }) {
+export default function CheckinsClient({ spots, citySlug }: { spots: Spot[]; citySlug: string }) {
   const [activeCategory, setActiveCategory] = useState<Category | null>(null);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -106,9 +106,6 @@ export default function CheckinsClient({ spots, citySlug, checkinCounts }: { spo
                     <div className="mt-3">
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
-                        <span className="shrink-0 text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                          {checkinCounts[spot.id] ?? 1}x
-                        </span>
                       </div>
                       <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">
                         {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}

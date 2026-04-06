@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { submitApplication } from "@/app/actions/apply";
 import { getPopulatedCities } from "@/app/actions/cities";
@@ -10,6 +11,9 @@ import Link from "next/link";
 type Step = "phone" | "verify" | "details" | "submitted";
 
 export default function ApplyPage() {
+  const searchParams = useSearchParams();
+  const refId = searchParams.get("ref");
+
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -17,6 +21,9 @@ export default function ApplyPage() {
   const [lastName, setLastName] = useState("");
   const [instagram, setInstagram] = useState("");
   const [city, setCity] = useState("Miami");
+  const [referredByName, setReferredByName] = useState("");
+  const [referredByPhone, setReferredByPhone] = useState("");
+  const [referrerDisplayName, setReferrerDisplayName] = useState("");
   const [populatedCities, setPopulatedCities] = useState<string[]>([]);
   const [cityWarning, setCityWarning] = useState("");
   const [error, setError] = useState("");
@@ -25,6 +32,30 @@ export default function ApplyPage() {
   useEffect(() => {
     getPopulatedCities().then(setPopulatedCities);
   }, []);
+
+  // If ?ref= param present, look up the referrer's name
+  useEffect(() => {
+    if (!refId) return;
+    const supabase = createClient();
+    (async () => {
+      // Use admin-accessible referral lookup via a simple query
+      // The referral table has RLS but we can read via the application link
+      // Instead, fetch from a lightweight endpoint or just show generic text
+      // For now, we'll look up the referral from the client (won't work with RLS)
+      // So we use a server action approach instead
+      try {
+        const res = await fetch(`/api/referral-info?id=${refId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.referrerName) {
+            setReferrerDisplayName(data.referrerName);
+          }
+        }
+      } catch {
+        // Ignore — will just not show referrer name
+      }
+    })();
+  }, [refId]);
 
   function formatPhone(digits: string): string {
     if (digits.length === 0) return "";
@@ -76,6 +107,9 @@ export default function ApplyPage() {
     setLoading(false);
   }
 
+  const refRawDigits = referredByPhone.replace(/\D/g, "");
+  const refFullPhone = referredByPhone.startsWith("+") ? referredByPhone : `+1${refRawDigits}`;
+
   async function handleSubmitApplication(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -87,6 +121,9 @@ export default function ApplyPage() {
       instagram,
       phone: fullPhone,
       city,
+      referredByName: referredByName.trim() || undefined,
+      referredByPhone: refRawDigits.length === 10 ? refFullPhone : undefined,
+      referralId: refId || undefined,
     });
 
     if (result.error) {
@@ -251,6 +288,37 @@ export default function ApplyPage() {
               ))}
             </select>
             {cityWarning && <p className="text-xs text-amber-600" style={fontCalibre}>{cityWarning}</p>}
+
+            {/* Referral fields */}
+            {refId && referrerDisplayName ? (
+              <div className="px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-neutral-50 dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400" style={fontCalibre}>
+                Referred by {referrerDisplayName}
+              </div>
+            ) : (
+              <>
+                <div className="pt-2">
+                  <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-2" style={fontCalibre}>
+                    Know a member? (optional)
+                  </p>
+                </div>
+                <input
+                  type="text"
+                  value={referredByName}
+                  onChange={(e) => setReferredByName(e.target.value)}
+                  placeholder="Referrer's name"
+                  className={inputStyle}
+                  style={fontCalibre}
+                />
+                <input
+                  type="tel"
+                  value={formatPhone(refRawDigits)}
+                  onChange={(e) => setReferredByPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  placeholder="Referrer's phone number"
+                  className={inputStyle}
+                  style={fontCalibre}
+                />
+              </>
+            )}
             {error && <p className="text-xs text-red-600" style={fontCalibre}>{error}</p>}
             <button
               type="submit"

@@ -10,6 +10,9 @@ type Application = {
   instagram: string | null;
   status: string;
   created_at: string;
+  referred_by_name: string | null;
+  referred_by_phone: string | null;
+  referral_status: string | null;
 };
 
 export default function ApplicationList({ applications: initial }: { applications: Application[] }) {
@@ -86,6 +89,24 @@ export default function ApplicationList({ applications: initial }: { application
                   {app.status}
                 </span>
               </div>
+              {app.referred_by_name && (
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="text-xs text-black/40" style={fontCalibre}>
+                    Referred by: {app.referred_by_name}{app.referred_by_phone ? ` (${app.referred_by_phone})` : ""}
+                  </span>
+                  {app.referral_status && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                      app.referral_status === "approved"
+                        ? "bg-green-100 text-green-700"
+                        : app.referral_status === "denied"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-yellow-100 text-yellow-700"
+                    }`} style={fontCalibre}>
+                      {app.referral_status}
+                    </span>
+                  )}
+                </div>
+              )}
               <p className="text-xs text-black/30 mt-2" style={fontCalibre}>
                 {new Date(app.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </p>
