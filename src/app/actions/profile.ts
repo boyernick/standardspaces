@@ -93,6 +93,46 @@ export async function updateNotificationPreferences(data: {
   return { success: true };
 }
 
+export type NotificationPrefs = {
+  social: boolean;
+  events: boolean;
+  recommendations: boolean;
+  curation: boolean;
+};
+
+export async function getNotificationPrefs(): Promise<NotificationPrefs> {
+  const fallback: NotificationPrefs = {
+    social: true,
+    events: true,
+    recommendations: true,
+    curation: true,
+  };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return fallback;
+  const { data } = await supabase
+    .from("profiles")
+    .select("notification_prefs")
+    .eq("id", user.id)
+    .single();
+  const prefs = (data?.notification_prefs ?? {}) as Partial<NotificationPrefs>;
+  return { ...fallback, ...prefs };
+}
+
+export async function updateNotificationPrefs(prefs: NotificationPrefs) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ notification_prefs: prefs })
+    .eq("id", user.id);
+
+  if (error) return { error: "Failed to update notification preferences" };
+  return { success: true };
+}
+
 export async function deleteAccount() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createNotification } from "@/lib/notifications";
 
 export async function toggleFollow(targetUserId: string): Promise<{ following: boolean }> {
   const supabase = await createClient();
@@ -20,6 +21,13 @@ export async function toggleFollow(targetUserId: string): Promise<{ following: b
   }
 
   await supabase.from("user_follows").insert({ follower_id: user.id, following_id: targetUserId });
+  // Notify the followed user. Dedupe on follower_id so re-follows don't spam.
+  await createNotification({
+    userId: targetUserId,
+    type: "followed_you",
+    actorId: user.id,
+    dedupeKey: `follow:${user.id}`,
+  });
   return { following: true };
 }
 

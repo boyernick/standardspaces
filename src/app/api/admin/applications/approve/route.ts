@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createNotification } from "@/lib/notifications";
 import twilio from "twilio";
 
 export async function POST(req: NextRequest) {
@@ -27,6 +28,29 @@ export async function POST(req: NextRequest) {
       .from("applications")
       .update({ status: "approved" })
       .eq("id", applicationId);
+
+    // If this application came in through a referral, let the referrer know
+    // their friend just joined. Swallow errors — approval must not be
+    // blocked by a notification insert failure.
+    try {
+      if (app.referral_id) {
+        const { data: ref } = await supabase
+          .from("referrals")
+          .select("referrer_user_id")
+          .eq("id", app.referral_id)
+          .single();
+        if (ref?.referrer_user_id) {
+          await createNotification({
+            userId: ref.referrer_user_id,
+            type: "referred_friend_joined",
+            metadata: { name: app.first_name },
+            dedupeKey: `referred_friend_joined:${applicationId}`,
+          });
+        }
+      }
+    } catch (notifyErr) {
+      console.error("approve referral notification failed:", notifyErr);
+    }
 
     // Send approval SMS via Twilio
     try {

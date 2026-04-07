@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { updateProfile, updateNotificationPreferences, deleteAccount } from "@/app/actions/profile";
+import {
+  updateProfile,
+  updateNotificationPreferences,
+  updateNotificationPrefs,
+  deleteAccount,
+  type NotificationPrefs,
+} from "@/app/actions/profile";
 import { CITIES } from "@/lib/cities";
 import { citySlugFromName } from "@/lib/cities";
 
@@ -10,12 +16,14 @@ type Props = {
   phone: string;
   city: string;
   smsNotifications: boolean;
+  notificationPrefs: NotificationPrefs;
 };
 
-export default function SettingsClient({ phone, city, smsNotifications }: Props) {
+export default function SettingsClient({ phone, city, smsNotifications, notificationPrefs }: Props) {
   const router = useRouter();
   const [currentCity, setCurrentCity] = useState(city);
   const [sms, setSms] = useState(smsNotifications);
+  const [prefs, setPrefs] = useState<NotificationPrefs>(notificationPrefs);
   const [themeMode, setThemeMode] = useState<"auto" | "light" | "dark">(() => {
     if (typeof window === "undefined") return "auto";
     const stored = localStorage.getItem("theme");
@@ -43,6 +51,12 @@ export default function SettingsClient({ phone, city, smsNotifications }: Props)
     const newVal = !sms;
     setSms(newVal);
     await updateNotificationPreferences({ sms_notifications: newVal });
+  }
+
+  async function togglePref(key: keyof NotificationPrefs) {
+    const next = { ...prefs, [key]: !prefs[key] };
+    setPrefs(next);
+    await updateNotificationPrefs(next);
   }
 
   function handleThemeChange() {
@@ -91,25 +105,33 @@ export default function SettingsClient({ phone, city, smsNotifications }: Props)
         <h2 className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tracking-wider mb-3" style={fontCalibre}>
           Notifications
         </h2>
-        <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-neutral-900 dark:text-white" style={fontCalibre}>SMS notifications</p>
-              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5" style={fontCalibre}>
-                Referral requests and updates
-              </p>
+        <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl divide-y divide-neutral-200 dark:divide-neutral-800">
+          {[
+            { label: "SMS notifications", sub: "Referral requests and updates", value: sms, onToggle: handleSmsToggle },
+            { label: "Social", sub: "Follows, check-ins, and shared RSVPs", value: prefs.social, onToggle: () => togglePref("social") },
+            { label: "Events", sub: "Invites, reminders, and host updates", value: prefs.events, onToggle: () => togglePref("events") },
+            { label: "Recommendations", sub: "Updates on spots you submitted", value: prefs.recommendations, onToggle: () => togglePref("recommendations") },
+            { label: "Discovery", sub: "New spaces and events in your city", value: prefs.curation, onToggle: () => togglePref("curation") },
+          ].map((row) => (
+            <div key={row.label} className="flex items-center justify-between p-4">
+              <div>
+                <p className="text-sm text-neutral-900 dark:text-white" style={fontCalibre}>{row.label}</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5" style={fontCalibre}>
+                  {row.sub}
+                </p>
+              </div>
+              <button
+                onClick={row.onToggle}
+                className={`relative w-10 h-6 rounded-full transition-colors ${
+                  row.value ? "bg-brand-500" : "bg-neutral-200 dark:bg-neutral-700"
+                }`}
+              >
+                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                  row.value ? "left-[18px]" : "left-0.5"
+                }`} />
+              </button>
             </div>
-            <button
-              onClick={handleSmsToggle}
-              className={`relative w-10 h-6 rounded-full transition-colors ${
-                sms ? "bg-brand-500" : "bg-neutral-200 dark:bg-neutral-700"
-              }`}
-            >
-              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                sms ? "left-[18px]" : "left-0.5"
-              }`} />
-            </button>
-          </div>
+          ))}
         </div>
       </section>
 

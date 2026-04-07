@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { geocodeAddress } from "@/lib/geocode";
+import { createNotification, fanOutNewSpotToCity } from "@/lib/notifications";
 
 /**
  * Copy a batch of image URLs into a stable `spots/{spotId}/` subfolder of
@@ -197,6 +198,32 @@ export async function POST(req: NextRequest) {
       .from("recommendations")
       .update({ status: "published" })
       .eq("id", recommendationId);
+
+    // Notifications: submitter first (direct), then city-wide curation fan-out.
+    try {
+      const { data: recRow } = await supabase
+        .from("recommendations")
+        .select("user_id")
+        .eq("id", recommendationId)
+        .single();
+      const submitterId =
+        recRow && typeof recRow.user_id === "string" ? recRow.user_id : null;
+      if (submitterId) {
+        await createNotification({
+          userId: submitterId,
+          type: "recommendation_published",
+          spotId: spot.id,
+          recommendationId,
+          metadata: { name: spot.name },
+          dedupeKey: `recommendation_published:${recommendationId}`,
+        });
+      }
+      if (spot.city) {
+        await fanOutNewSpotToCity(spot.id, spot.city);
+      }
+    } catch (notifyErr) {
+      console.error("publish notification fan-out failed:", notifyErr);
+    }
 
     return NextResponse.json({ success: true, spotId: spot.id });
   } catch (err) {

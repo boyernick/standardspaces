@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { notifyFollowersOfCheckIn } from "@/lib/notifications";
 
 // --- Favorites (heart) ---
 
@@ -103,6 +104,9 @@ export async function checkIn(spotId: string): Promise<{ success: boolean }> {
     ),
     supabase.from("user_wishlist").delete().eq("user_id", user.id).eq("spot_id", spotId),
   ]);
+  // Fan-out to followers. Dedupe key is spot-scoped so a user re-checking
+  // in at the same spot won't re-notify their followers.
+  await notifyFollowersOfCheckIn(user.id, spotId);
   return { success: true };
 }
 

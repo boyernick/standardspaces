@@ -6,6 +6,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth, requireAdmin } from "@/lib/auth";
 import { getSpotById, searchSpots } from "@/lib/data";
 import { EventRecord, Spot } from "@/lib/types";
+import {
+  createNotification,
+  fanOutNewEventToCity,
+  notifyFollowersOfRsvp,
+  notifyRsvpsOfEventChange,
+} from "@/lib/notifications";
 
 export async function searchSpotsForPicker(query: string): Promise<Spot[]> {
   await requireAuth();
@@ -61,6 +67,11 @@ export async function createEvent(
     .single();
 
   if (error || !data) return { ok: false, error: error?.message || "Failed to create event" };
+
+  // Curation fan-out: only for public, published events.
+  if ((input.visibility ?? "public") === "public") {
+    await fanOutNewEventToCity(data.id, spot.city, user.id);
+  }
 
   revalidatePath(`/${spot.city}`);
   revalidatePath(`/${spot.city}/${spot.id}`);
@@ -124,6 +135,20 @@ export async function updateEvent(
   const { error } = await supabase.from("events").update(patch).eq("id", id);
   if (error) return { ok: false, error: error.message };
 
+  // Only notify RSVPs when a material field changed. Title/description edits
+  // are often cosmetic, but start/end time and spot are the ones attendees
+  // care about — keep it simple for v1 and notify on any such change.
+  const materialChanged =
+    patch.starts_at !== undefined ||
+    patch.ends_at !== undefined ||
+    patch.spot_id !== undefined ||
+    patch.title !== undefined;
+  if (materialChanged) {
+    await notifyRsvpsOfEventChange(id, "event_updated", {
+      title: existing.title,
+    });
+  }
+
   revalidatePath(`/events/${id}`);
   revalidatePath(`/${existing.city}`);
   return { ok: true };
@@ -148,6 +173,8 @@ export async function cancelEvent(
     .update({ status: "cancelled", updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  await notifyRsvpsOfEventChange(id, "event_cancelled");
 
   revalidatePath(`/events/${id}`);
   revalidatePath(`/${existing.city}`);
@@ -208,6 +235,39 @@ export async function rsvpEvent(
     );
   if (error) return { ok: false, error: error.message };
 
+  // Notifications. Only fire for "going" RSVPs; waitlisting is silent.
+  if (nextStatus === "going") {
+    // Host: new RSVP.
+    await createNotification({
+      userId: ev.host_id,
+      type: "your_event_new_rsvp",
+      actorId: user.id,
+      eventId,
+      dedupeKey: `your_event_new_rsvp:${eventId}:${user.id}`,
+    });
+
+    // Host: event just hit capacity.
+    if (ev.capacity != null) {
+      const admin = createAdminClient();
+      const { count: goingCount } = await admin
+        .from("event_rsvps")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId)
+        .eq("status", "going");
+      if ((goingCount ?? 0) >= ev.capacity) {
+        await createNotification({
+          userId: ev.host_id,
+          type: "your_event_at_capacity",
+          eventId,
+          dedupeKey: `your_event_at_capacity:${eventId}`,
+        });
+      }
+    }
+
+    // Followers already attending: social heads-up.
+    await notifyFollowersOfRsvp(user.id, eventId);
+  }
+
   revalidatePath(`/events/${eventId}`);
   return { ok: true, status: nextStatus };
 }
@@ -234,11 +294,26 @@ export async function cancelRsvp(
     .eq("id", existing.id);
   if (error) return { ok: false, error: error.message };
 
+  // Notify the host of the cancellation.
+  const { data: hostRow } = await supabase
+    .from("events")
+    .select("host_id")
+    .eq("id", eventId)
+    .single();
+  if (hostRow?.host_id) {
+    await createNotification({
+      userId: hostRow.host_id,
+      type: "your_event_rsvp_cancelled",
+      actorId: user.id,
+      eventId,
+    });
+  }
+
   // Promote oldest waitlist row if a 'going' seat opened up
   if (wasGoing) {
     const { data: nextUp } = await supabase
       .from("event_rsvps")
-      .select("id")
+      .select("id, user_id")
       .eq("event_id", eventId)
       .eq("status", "waitlist")
       .order("created_at", { ascending: true })
@@ -251,6 +326,13 @@ export async function cancelRsvp(
         .from("event_rsvps")
         .update({ status: "going", updated_at: new Date().toISOString() })
         .eq("id", nextUp.id);
+      // Notify the promoted attendee.
+      await createNotification({
+        userId: nextUp.user_id as string,
+        type: "event_waitlist_promoted",
+        eventId,
+        dedupeKey: `waitlist_promoted:${eventId}:${nextUp.user_id}`,
+      });
     }
   }
 
@@ -263,11 +345,26 @@ export async function adminTakedown(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   await requireAdmin();
   const supabase = await createClient();
+  const { data: ev } = await supabase
+    .from("events")
+    .select("host_id, title")
+    .eq("id", id)
+    .single();
   const { error } = await supabase
     .from("events")
     .update({ status: "hidden", updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  if (ev?.host_id) {
+    await createNotification({
+      userId: ev.host_id,
+      type: "your_event_taken_down",
+      eventId: id,
+      metadata: { title: ev.title ?? null },
+    });
+  }
+
   revalidatePath("/admin/events");
   revalidatePath(`/events/${id}`);
   return { ok: true };
@@ -341,6 +438,20 @@ export async function inviteMembers(
     .from("event_invites")
     .upsert(rows, { onConflict: "event_id,user_id", ignoreDuplicates: true });
   if (error) return { ok: false, error: error.message };
+
+  // Notify each invited user. Dedupe so re-inviting is a no-op.
+  await Promise.all(
+    cleanIds.map((id) =>
+      createNotification({
+        userId: id,
+        type: "event_invited",
+        actorId: user.id,
+        eventId,
+        metadata: { title: event.title },
+        dedupeKey: `event_invited:${eventId}:${id}`,
+      }),
+    ),
+  );
 
   revalidatePath(`/events/${eventId}`);
   return { ok: true, added: cleanIds.length };

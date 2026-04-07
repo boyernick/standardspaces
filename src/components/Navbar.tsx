@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Menu, Search, CircleUserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getPendingReferralCount } from "@/app/actions/referrals";
+import { getUnreadNotificationCount } from "@/app/actions/notifications";
 
 export default function Navbar() {
   const router = useRouter();
@@ -14,6 +15,10 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [pendingReferrals, setPendingReferrals] = useState(0);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+  // Forced on by `/notifications?mock=1` so the preview can show the jewel
+  // state on the profile button without writing to the real db.
+  const [mockJewel, setMockJewel] = useState(false);
   // Tri-state: undefined = unknown (don't render anything yet), null = signed
   // out / no avatar (render default icon), string = avatar URL.
   const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(undefined);
@@ -28,16 +33,25 @@ export default function Navbar() {
     try {
       const cached = localStorage.getItem("navAvatarUrl");
       if (cached) setAvatarUrl(cached);
+      const cachedUnread = localStorage.getItem("navUnreadCount");
+      if (cachedUnread) setUnreadNotifs(parseInt(cachedUnread, 10) || 0);
+      if (localStorage.getItem("navMockJewel") === "1") setMockJewel(true);
     } catch {}
 
     (async () => {
-      // Run user fetch and pending-referrals fetch in parallel — neither depends
-      // on the other.
-      const [userRes, pendingCount] = await Promise.all([
+      // Run user fetch + badge count fetches in parallel — none depend on each other.
+      const [userRes, pendingCount, unreadCount] = await Promise.all([
         supabase.auth.getUser(),
         getPendingReferralCount(),
+        getUnreadNotificationCount(),
       ]);
-      if (!cancelled) setPendingReferrals(pendingCount);
+      if (!cancelled) {
+        setPendingReferrals(pendingCount);
+        setUnreadNotifs(unreadCount);
+        try {
+          localStorage.setItem("navUnreadCount", String(unreadCount));
+        } catch {}
+      }
       const user = userRes.data.user;
       if (cancelled) return;
       if (!user) {
@@ -106,8 +120,23 @@ export default function Navbar() {
         <div ref={menuRef} className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="flex items-center gap-2 pl-3 pr-1.5 py-1 border border-neutral-200 dark:border-neutral-800 rounded-full hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
+            className="relative flex items-center gap-2 pl-3 pr-1.5 py-1 border border-neutral-200 dark:border-neutral-800 rounded-full hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
           >
+            {(unreadNotifs > 0 || mockJewel) && (
+              <span
+                className="absolute w-1.5 h-1.5 rounded-full bg-red-500"
+                style={{
+                  // Pill button: right cap is a semicircle of r = height/2.
+                  // These offsets place the 6px dot's center on that arc at
+                  // ~45°, so the surface-color ring reads as a clean cutout
+                  // right on the border line.
+                  top: "1.5px",
+                  right: "1.5px",
+                  boxShadow: "0 0 0 2px var(--color-surface)",
+                }}
+                aria-label={`${unreadNotifs} unread notifications`}
+              />
+            )}
             <Menu size={14} strokeWidth={2} className="text-neutral-600 dark:text-neutral-400" />
             {avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
@@ -133,6 +162,12 @@ export default function Navbar() {
               </Link>
               <Link href="/recommend" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
                 Recommendations
+              </Link>
+              <Link href="/notifications" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
+                Notifications
+                {(unreadNotifs > 0 || mockJewel) && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" aria-label={`${unreadNotifs} unread`} />
+                )}
               </Link>
               <Link href="/referrals" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
                 Referrals
