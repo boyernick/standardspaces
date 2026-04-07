@@ -595,12 +595,12 @@ export default function SpotMap(props: MapProps) {
         type="button"
         onClick={handleRecenter}
         aria-label="Center on my location"
-        className="absolute bottom-3 right-3 z-10 w-8 h-8 rounded-[10px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 shadow-md flex items-center justify-center hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+        className="absolute bottom-3 right-3 z-10 w-8 h-8 rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-md flex items-center justify-center hover:bg-white/70 dark:hover:bg-neutral-900/70 transition-colors"
       >
         <LocateFixed
           size={14}
           strokeWidth={1.75}
-          className={userLocation ? "text-[#FD5304]" : "text-neutral-900 dark:text-neutral-100"}
+          className="text-neutral-900 dark:text-neutral-100"
         />
       </button>
     </div>
