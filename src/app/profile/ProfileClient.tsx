@@ -302,10 +302,24 @@ export default function ProfileClient({
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-medium leading-tight" style={fontMartina}>{displayName}</h1>
               {(profile.instagram || profile.city) && (
-                <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-1" style={fontCalibre}>
-                  {profile.instagram && <>@{profile.instagram.replace("@", "")}</>}
-                  {profile.instagram && profile.city && " · "}
-                  {profile.city}
+                <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-1 flex items-center gap-1" style={fontCalibre}>
+                  {profile.instagram && (
+                    <a
+                      href={`https://instagram.com/${profile.instagram.replace("@", "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 hover:text-neutral-900 dark:hover:text-white transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                      </svg>
+                      @{profile.instagram.replace("@", "")}
+                    </a>
+                  )}
+                  {profile.instagram && profile.city && <span>·</span>}
+                  {profile.city && <span>{profile.city}</span>}
                 </p>
               )}
               <div className="flex gap-3 mt-1.5" style={fontCalibre}>

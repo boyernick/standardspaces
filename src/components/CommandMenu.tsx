@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { CATEGORY_LABELS, CATEGORY_ORDER, TOP_VIBES, Category, Spot } from "@/lib/types";
+import { CATEGORY_LABELS, CATEGORY_ORDER, TOP_VIBES, Category, Spot, EventRecord } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
-import { Search, MapPin, X, CircleUserRound } from "lucide-react";
+import { Search, MapPin, X, CircleUserRound, Calendar } from "lucide-react";
 
 function Highlight({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
@@ -37,6 +37,7 @@ export default function CommandMenu() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [spots, setSpots] = useState<Spot[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
+  const [events, setEvents] = useState<EventRecord[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -86,6 +87,24 @@ export default function CommandMenu() {
     return () => { cancelled = true; };
   }, [open, members.length]);
 
+  // Fetch upcoming public events once on first open
+  useEffect(() => {
+    if (!open || events.length > 0) return;
+    let cancelled = false;
+    createClient()
+      .from("events")
+      .select("*")
+      .eq("status", "published")
+      .eq("visibility", "public")
+      .gte("starts_at", new Date().toISOString())
+      .order("starts_at", { ascending: true })
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        setEvents(data as EventRecord[]);
+      });
+    return () => { cancelled = true; };
+  }, [open, events.length]);
+
   const neighborhoods = useMemo(() => [...new Set(spots.map((s) => s.neighborhood))].sort(), [spots]);
 
   const results = useMemo(() => {
@@ -124,14 +143,27 @@ export default function CommandMenu() {
     });
   }, [query, members]);
 
+  const matchingEvents = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase();
+    return events.filter((e) => {
+      return (
+        e.title.toLowerCase().includes(q) ||
+        (e.city && e.city.toLowerCase().includes(q)) ||
+        (e.description && e.description.toLowerCase().includes(q))
+      );
+    });
+  }, [query, events]);
+
   const flatItems = useMemo(() => {
     const all: Array<{ type: string; value: string }> = [];
     for (const m of matchingMembers) all.push({ type: "member", value: m.id });
+    for (const e of matchingEvents) all.push({ type: "event", value: e.id });
     for (const n of matchingNeighborhoods) all.push({ type: "neighborhood", value: n });
     for (const c of matchingCategories) all.push({ type: "category", value: c });
     for (const s of results) all.push({ type: "spot", value: s.id });
     return all;
-  }, [matchingMembers, matchingNeighborhoods, matchingCategories, results]);
+  }, [matchingMembers, matchingEvents, matchingNeighborhoods, matchingCategories, results]);
 
   const hasQuery = query.trim().length > 0;
   const hasResults = flatItems.length > 0;
@@ -187,6 +219,9 @@ export default function CommandMenu() {
     } else if (item.type === "member") {
       setOpen(false);
       router.push(`/members/${item.value}`);
+    } else if (item.type === "event") {
+      setOpen(false);
+      router.push(`/events/${item.value}`);
     } else {
       setQuery(item.type === "category" ? CATEGORY_LABELS[item.value as Category] : item.value);
       inputRef.current?.focus();
@@ -331,6 +366,51 @@ export default function CommandMenu() {
                             {member.instagram && <><Highlight text={`@${member.instagram.replace("@", "")}`} query={query} /></>}
                             {member.instagram && member.city && " · "}
                             {member.city}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Event matches */}
+              {matchingEvents.length > 0 && (
+                <div>
+                  <div className="px-5 pt-2 pb-1.5">
+                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Events</p>
+                  </div>
+                  {matchingEvents.map((event) => {
+                    const idx = flatIdx++;
+                    const isSelected = idx === selectedIndex;
+                    const thumb = event.cover_image_url || event.images?.[0];
+                    const date = new Date(event.starts_at).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    });
+                    return (
+                      <button
+                        key={event.id}
+                        data-selected={isSelected}
+                        onClick={() => selectItem({ type: "event", value: event.id })}
+                        onMouseEnter={() => setSelectedIndex(idx)}
+                        className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
+                          isSelected ? "bg-neutral-50 dark:bg-neutral-900" : ""
+                        }`}
+                      >
+                        {thumb ? (
+                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                            <img src={thumb} alt="" className="w-full h-full object-cover spot-img" />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-neutral-900 dark:bg-white flex items-center justify-center shrink-0">
+                            <Calendar size={16} strokeWidth={1.5} className="text-white dark:text-neutral-900" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate"><Highlight text={event.title} query={query} /></p>
+                          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5 truncate">
+                            {date}{event.city && <> · <Highlight text={event.city} query={query} /></>}
                           </p>
                         </div>
                       </button>

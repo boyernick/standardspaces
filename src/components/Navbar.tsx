@@ -71,7 +71,7 @@ export default function Navbar() {
         >
           <span className="flex items-center gap-1.5">
             <Search size={13} strokeWidth={2} />
-            Search for spaces
+            Search
           </span>
           <kbd className="text-[10px] text-neutral-300 dark:text-neutral-600 border border-neutral-200 dark:border-neutral-800 rounded px-1 py-0.5">
             ⌘K
