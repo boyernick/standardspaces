@@ -10,14 +10,16 @@ const SpotMap = dynamic(() => import("@/components/Map"), { ssr: false });
 import ImageCarousel from "@/components/ImageCarousel";
 import Navbar from "@/components/Navbar";
 import CheckInButton from "@/components/CheckInButton";
-import FavoriteButtonClient from "@/components/FavoriteButtonClient";
-import WishlistButtonClient from "@/components/WishlistButtonClient";
+import FavoriteButton from "@/components/FavoriteButton";
+import WishlistButton from "@/components/WishlistButton";
 import { ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, X, MapPin, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface CityClientProps {
   spots: Spot[];
   favoritedSpotIds?: string[];
+  wishlistedSpotIds?: string[];
+  checkedInSpotIds?: string[];
   cityName: string;
   citySlug: string;
   userCitySlug: string;
@@ -26,7 +28,10 @@ interface CityClientProps {
   eventSpotNames?: Record<string, string>;
 }
 
-export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cityName, citySlug, userCitySlug, upcomingEvents = [], invitedEvents = [], eventSpotNames = {} }: CityClientProps) {
+export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wishlistedSpotIds = [], checkedInSpotIds = [], cityName, citySlug, userCitySlug, upcomingEvents = [], invitedEvents = [], eventSpotNames = {} }: CityClientProps) {
+  const favoritedSet = useMemo(() => new Set(favoritedSpotIds), [favoritedSpotIds]);
+  const wishlistedSet = useMemo(() => new Set(wishlistedSpotIds), [wishlistedSpotIds]);
+  const checkedInSet = useMemo(() => new Set(checkedInSpotIds), [checkedInSpotIds]);
   const activeCategories = useMemo(() => new Set(allSpots.flatMap((s) => s.category)), [allSpots]);
   const categories = useMemo(() => CATEGORY_ORDER.filter((c) => activeCategories.has(c)), [activeCategories]);
   const neighborhoods = useMemo(() => [...new Set(allSpots.map((s) => s.neighborhood))].sort(), [allSpots]);
@@ -555,9 +560,22 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
                         </p>
                       </Link>
                       <div className="flex items-center -space-x-1 mt-1 -ml-2">
-                        <CheckInButton spotId={activeSpot.id} variant="icon" />
-                        <WishlistButtonClient spotId={activeSpot.id} size="icon" />
-                        <FavoriteButtonClient spotId={activeSpot.id} size="icon" />
+                        <CheckInButton
+                          spotId={activeSpot.id}
+                          variant="icon"
+                          initialChecked={checkedInSet.has(activeSpot.id)}
+                          initialWishlisted={wishlistedSet.has(activeSpot.id)}
+                        />
+                        <WishlistButton
+                          spotId={activeSpot.id}
+                          initialWishlisted={wishlistedSet.has(activeSpot.id)}
+                          size="icon"
+                        />
+                        <FavoriteButton
+                          spotId={activeSpot.id}
+                          initialFavorited={favoritedSet.has(activeSpot.id)}
+                          size="icon"
+                        />
                       </div>
                     </div>
                   </div>

@@ -23,15 +23,19 @@ export default async function CityPage({
 
   // Parallel fetch: spots + favorites (reuse auth from requireAuth)
   const supabase = await createClient();
-  const [spots, { data: favData }, publicEvents, invites, hosting] = await Promise.all([
+  const [spots, { data: favData }, { data: wishData }, { data: checkinData }, publicEvents, invites, hosting] = await Promise.all([
     getSpotsByCity(cityName),
     supabase.from("user_favorites").select("spot_id").eq("user_id", user.id),
+    supabase.from("user_wishlist").select("spot_id").eq("user_id", user.id),
+    supabase.from("user_checkins").select("spot_id").eq("user_id", user.id),
     getUpcomingEventsByCity(cityName, 12),
     getInvitesForUser(user.id),
     getEventsByHost(user.id),
   ]);
 
   const favoritedSpotIds = (favData ?? []).map((r) => r.spot_id);
+  const wishlistedSpotIds = (wishData ?? []).map((r) => r.spot_id);
+  const checkedInSpotIds = (checkinData ?? []).map((r) => r.spot_id);
 
   // Merge in events the user hosts in this city (including private/own events not in public list)
   const now = Date.now();
@@ -57,6 +61,8 @@ export default async function CityPage({
       <CityClient
         spots={spots}
         favoritedSpotIds={favoritedSpotIds}
+        wishlistedSpotIds={wishlistedSpotIds}
+        checkedInSpotIds={checkedInSpotIds}
         cityName={cityName}
         citySlug={citySlug}
         userCitySlug={userCitySlug}

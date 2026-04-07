@@ -5,14 +5,30 @@ import { CircleCheck, Heart } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { checkIn, uncheckIn, moveWishlistToFavorite } from "@/app/actions/saves";
 
-export default function CheckInButton({ spotId, variant }: { spotId: string; variant?: "icon" }) {
-  const [isChecked, setIsChecked] = useState(false);
+export default function CheckInButton({
+  spotId,
+  variant,
+  initialChecked,
+  initialWishlisted,
+}: {
+  spotId: string;
+  variant?: "icon";
+  initialChecked?: boolean;
+  initialWishlisted?: boolean;
+}) {
+  const hasInitial = initialChecked !== undefined || initialWishlisted !== undefined;
+  const [isChecked, setIsChecked] = useState(initialChecked ?? false);
   const [justCheckedIn, setJustCheckedIn] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(initialWishlisted ?? false);
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
+    if (hasInitial) {
+      setIsChecked(initialChecked ?? false);
+      setIsWishlisted(initialWishlisted ?? false);
+      return;
+    }
     const supabase = createClient();
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -24,7 +40,7 @@ export default function CheckInButton({ spotId, variant }: { spotId: string; var
       setIsChecked(!!checkinData);
       setIsWishlisted(!!wishlistData);
     })();
-  }, [spotId]);
+  }, [spotId, hasInitial, initialChecked, initialWishlisted]);
 
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
