@@ -72,16 +72,39 @@ export default function SpotMap(props: MapProps) {
   onSpotSelectRef.current = onSpotSelect;
   activeIdRef.current = activeSpot?.id ?? null;
 
-  // Request user location
+  // Request user location. Cache in sessionStorage so a sign-out/sign-in
+  // remount doesn't re-prompt or re-fetch.
   useEffect(() => {
     if (!navigator.geolocation) { setGeoResolved(true); return; }
+
+    // Use cached location if it's fresh (< 10 minutes old)
+    try {
+      const raw = sessionStorage.getItem("userLocation");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { lng: number; lat: number; ts: number };
+        if (Date.now() - parsed.ts < 10 * 60 * 1000) {
+          setUserLocation([parsed.lng, parsed.lat]);
+          setGeoResolved(true);
+          return;
+        }
+      }
+    } catch {}
+
     navigator.geolocation.getCurrentPosition(
-      (pos) => { setUserLocation([pos.coords.longitude, pos.coords.latitude]); setGeoResolved(true); },
+      (pos) => {
+        const lng = pos.coords.longitude;
+        const lat = pos.coords.latitude;
+        setUserLocation([lng, lat]);
+        setGeoResolved(true);
+        try {
+          sessionStorage.setItem("userLocation", JSON.stringify({ lng, lat, ts: Date.now() }));
+        } catch {}
+      },
       () => { setGeoResolved(true); },
-      { enableHighAccuracy: false, timeout: 5000 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 }
     );
     // Fallback timeout in case geolocation hangs
-    const t = setTimeout(() => setGeoResolved(true), 3000);
+    const t = setTimeout(() => setGeoResolved(true), 6000);
     return () => clearTimeout(t);
   }, []);
 

@@ -64,7 +64,7 @@ export default async function EventPage({
   const goingCount = rsvps.filter((r) => r.status === "going").length;
 
   return (
-    <div className="h-screen flex flex-col bg-surface">
+    <div className="h-[100dvh] flex flex-col bg-surface">
       <Navbar />
       <EventClient
         event={event}

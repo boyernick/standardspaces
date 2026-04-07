@@ -157,7 +157,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
   const hasFilters = activeCategory || activeNeighborhood;
 
   return (
-    <div className="h-screen flex flex-col bg-surface">
+    <div className="h-[100dvh] flex flex-col bg-surface">
       <Navbar />
 
       <motion.div
