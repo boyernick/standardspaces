@@ -110,7 +110,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   border-radius: 50%;
   background: radial-gradient(circle, rgba(253, 83, 4, 0.6) 0%, rgba(253, 83, 4, 0.35) 45%, rgba(253, 83, 4, 0) 75%);
   will-change: transform, opacity;
-  animation: userLocationPulse 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: userLocationPulse 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   pointer-events: none;
   z-index: 1;
 }
@@ -120,11 +120,11 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     opacity: 0.9;
   }
   80% {
-    transform: scale(3.2);
+    transform: scale(2.1);
     opacity: 0;
   }
   100% {
-    transform: scale(3.2);
+    transform: scale(2.1);
     opacity: 0;
   }
 }

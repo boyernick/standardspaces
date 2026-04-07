@@ -140,11 +140,11 @@ export default function ImageCarousel({
 
       {/* Dot indicators */}
       {count > 1 && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-[3px]">
           {images.map((_, i) => (
             <div
               key={i}
-              className={`w-1.5 h-1.5 rounded-full transition-colors ${
+              className={`w-[5px] h-[5px] rounded-full transition-colors ${
                 i === current ? "bg-white" : "bg-white/50"
               }`}
             />

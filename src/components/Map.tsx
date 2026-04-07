@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { LocateFixed } from "lucide-react";
 import { Spot } from "@/lib/types";
 import { THEME } from "@/lib/theme";
 import { getCustomMapStyle } from "./mapStyle";
@@ -552,5 +553,56 @@ export default function SpotMap(props: MapProps) {
     }
   }, [activeSpot, mapReady]);
 
-  return <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />;
+  const handleRecenter = useCallback(() => {
+    const m = map.current;
+    if (!m) return;
+
+    const flyTo = (lng: number, lat: number) => {
+      m.easeTo({
+        center: [lng, lat],
+        zoom: Math.max(m.getZoom(), 15),
+        duration: 900,
+        easing: (t: number) => 1 - Math.pow(1 - t, 3),
+        essential: true,
+      });
+    };
+
+    if (userLocation) {
+      flyTo(userLocation[0], userLocation[1]);
+      return;
+    }
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lng = pos.coords.longitude;
+        const lat = pos.coords.latitude;
+        setUserLocation([lng, lat]);
+        setGeoResolved(true);
+        try {
+          sessionStorage.setItem("userLocation", JSON.stringify({ lng, lat, ts: Date.now() }));
+        } catch {}
+        flyTo(lng, lat);
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
+    );
+  }, [userLocation]);
+
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
+      <button
+        type="button"
+        onClick={handleRecenter}
+        aria-label="Center on my location"
+        className="absolute bottom-3 right-3 z-10 w-8 h-8 rounded-[10px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 shadow-md flex items-center justify-center hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+      >
+        <LocateFixed
+          size={14}
+          strokeWidth={1.75}
+          className={userLocation ? "text-[#FD5304]" : "text-neutral-900 dark:text-neutral-100"}
+        />
+      </button>
+    </div>
+  );
 }
