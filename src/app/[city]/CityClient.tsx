@@ -44,6 +44,16 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
   const [activeSpot, setActiveSpot] = useState<Spot | null>(null);
   const [neighborhoodOpen, setNeighborhoodOpen] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
+  const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
+  const handleCenterChange = useCallback((c: [number, number]) => {
+    setMapCenter((prev) => {
+      // Skip state update if the center barely moved (avoids re-sorts on tiny pans).
+      if (prev && Math.abs(prev[0] - c[0]) < 0.0005 && Math.abs(prev[1] - c[1]) < 0.0005) {
+        return prev;
+      }
+      return c;
+    });
+  }, []);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -122,11 +132,12 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     return () => window.removeEventListener("resize", compute);
   }, [mobileView]);
 
-  const filtered = useMemo(() => {
+  // Filtered spots (no sort). Passed to the map as-is so the sort order can't
+  // retrigger fitBounds.
+  const filteredRaw = useMemo(() => {
     if (eventsOnly) {
       const eventSpotIds = new Set(upcomingEvents.map((e) => e.spot_id));
-      const eventSpots = allSpots.filter((s) => eventSpotIds.has(s.id));
-      return [...eventSpots].sort((a, b) => a.name.localeCompare(b.name));
+      return allSpots.filter((s) => eventSpotIds.has(s.id));
     }
     let result = allSpots;
     if (activeCategory) {
@@ -138,8 +149,23 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     if (activeNeighborhood) {
       result = result.filter((s) => s.neighborhood === activeNeighborhood);
     }
-    return [...result].sort((a, b) => a.name.localeCompare(b.name));
+    return result;
   }, [eventsOnly, upcomingEvents, activeCategory, activeSubcategories, activeNeighborhood, allSpots]);
+
+  // Sorted copy for the list panel. When the map center is known, rank by
+  // squared distance so the list mirrors what the user sees on the map.
+  // Falls back to alphabetical on first paint (before the map emits a center).
+  const filtered = useMemo(() => {
+    if (!mapCenter) {
+      return [...filteredRaw].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    const [cLng, cLat] = mapCenter;
+    return [...filteredRaw].sort((a, b) => {
+      const da = (a.lng - cLng) ** 2 + (a.lat - cLat) ** 2;
+      const db = (b.lng - cLng) ** 2 + (b.lat - cLat) ** 2;
+      return da - db;
+    });
+  }, [filteredRaw, mapCenter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   useEffect(() => {
@@ -475,14 +501,18 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
             <div className="p-4 pt-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6 md:gap-x-3 md:gap-y-4">
                 <AnimatePresence mode="popLayout">
-                {paginated.map((spot, i) => (
+                {paginated.map((spot, i) => {
+                  // Temporary: highlight Mary Lou's with a "New" badge.
+                  // Case-insensitive match handles the curly apostrophe.
+                  const isMaryLous = spot.name.toLowerCase().includes("mary lou");
+                  return (
                   <motion.div
                     key={spot.id}
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.3, delay: i * 0.05, ease: [0.25, 0.1, 0.25, 1] }}
-                    className="cursor-pointer group block rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors"
+                    className="cursor-pointer group block rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors relative"
                     onMouseEnter={() => setActiveSpot(spot)}
                     onMouseLeave={() => setActiveSpot(null)}
                   >
@@ -494,14 +524,22 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                         roundedClassName="rounded-2xl"
                       />
                       <div className="p-3 rounded-b-2xl bg-surface">
-                        <h3 className="text-sm font-semibold line-clamp-1">{spot.name}</h3>
+                        <div className="flex items-center justify-between gap-2">
+                          <h3 className="text-sm font-semibold line-clamp-1">{spot.name}</h3>
+                          {isMaryLous && (
+                            <span className="shrink-0 px-2 py-0.5 text-[10px] font-semibold rounded-full border border-brand-500 text-brand-500">
+                              New
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">
                           {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
                         </p>
                       </div>
                     </Link>
                   </motion.div>
-                ))}
+                  );
+                })}
                 </AnimatePresence>
               </div>
 
@@ -529,7 +567,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
             className="w-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative md:h-full"
             style={mapHeight && mobileView === "map" ? { height: mapHeight } : undefined}
           >
-            <SpotMap spots={filtered} activeSpot={activeSpot} onSpotSelect={handleSpotSelect} />
+            <SpotMap spots={filteredRaw} activeSpot={activeSpot} onSpotSelect={handleSpotSelect} onCenterChange={handleCenterChange} />
 
             {/* Map card */}
             {activeSpot && (

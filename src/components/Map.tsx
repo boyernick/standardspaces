@@ -53,10 +53,13 @@ interface MapProps {
   spots: Spot[];
   activeSpot: Spot | null;
   onSpotSelect: (spot: Spot | null) => void;
+  onCenterChange?: (center: [number, number]) => void;
 }
 
 export default function SpotMap(props: MapProps) {
-  const { spots = [], activeSpot = null, onSpotSelect = () => {} } = props ?? {};
+  const { spots = [], activeSpot = null, onSpotSelect = () => {}, onCenterChange } = props ?? {};
+  const onCenterChangeRef = useRef(onCenterChange);
+  onCenterChangeRef.current = onCenterChange;
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<globalThis.Map<string, { marker: mapboxgl.Marker; el: HTMLDivElement; mode: MarkerMode }>>(new globalThis.Map());
@@ -234,7 +237,13 @@ export default function SpotMap(props: MapProps) {
         // Recompute card/dot mix on every pan or zoom
         m.on("moveend", () => {
           recomputeModes();
+          const c = m!.getCenter();
+          onCenterChangeRef.current?.([c.lng, c.lat]);
         });
+
+        // Emit initial center so consumers can sort by distance on first paint.
+        const initC = m.getCenter();
+        onCenterChangeRef.current?.([initC.lng, initC.lat]);
 
         setMapReady(true);
       });
