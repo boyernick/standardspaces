@@ -274,10 +274,11 @@ export default function SpotMap(props: MapProps) {
     el.style.width = "16px";
     el.style.height = "16px";
     el.style.borderRadius = "50%";
-    el.style.backgroundColor = "#2563EB";
+    el.style.backgroundColor = "#FD5304";
     el.style.border = "3px solid white";
-    el.style.boxShadow = "0 0 0 4px rgba(37, 99, 235, 0.25), 0 2px 6px rgba(0,0,0,0.2)";
+    el.style.boxShadow = "0 0 0 4px rgba(253, 83, 4, 0.25), 0 2px 6px rgba(0,0,0,0.2)";
     el.style.zIndex = "10";
+    el.style.animation = "userLocationPulse 2s ease-in-out infinite";
 
     userMarker.current = new mapboxgl.Marker({ element: el, anchor: "center" })
       .setLngLat(userLocation)
