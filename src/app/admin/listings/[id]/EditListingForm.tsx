@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, VIBES, Category } from "@/lib/types";
-import { ChevronDown, Loader2, CheckCircle, X, Plus, GripVertical, Upload, Trash2, ArrowLeft } from "lucide-react";
+import { ChevronDown, Loader2, CheckCircle, X, Plus, GripVertical, Upload, Trash2, ArrowLeft, Eye } from "lucide-react";
 import Link from "next/link";
+import Lightbox from "@/components/Lightbox";
 
 interface SpotData {
   id: string;
@@ -53,8 +54,10 @@ export default function EditListingForm({ spot }: { spot: SpotData }) {
   const [bookingUrl, setBookingUrl] = useState(spot.booking_url || "");
   const [bookingPlatform, setBookingPlatform] = useState(spot.booking_platform || "");
   const [menuUrl, setMenuUrl] = useState(spot.menu_url || "");
-  const [lng, setLng] = useState(spot.lng?.toString() || "");
-  const [lat, setLat] = useState(spot.lat?.toString() || "");
+  // lng/lat are managed via geocoding (address field) and not edited directly.
+  // Preserve the existing values so they round-trip through save.
+  const lng = spot.lng?.toString() || "";
+  const lat = spot.lat?.toString() || "";
   const [images, setImages] = useState<string[]>(spot.images || []);
 
   const [saving, setSaving] = useState(false);
@@ -212,16 +215,6 @@ export default function EditListingForm({ spot }: { spot: SpotData }) {
       <Field label="Address">
         <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} />
       </Field>
-
-      {/* Coordinates */}
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Longitude">
-          <input type="text" value={lng} onChange={(e) => setLng(e.target.value)} className={inputClass} />
-        </Field>
-        <Field label="Latitude">
-          <input type="text" value={lat} onChange={(e) => setLat(e.target.value)} className={inputClass} />
-        </Field>
-      </div>
 
       {/* Hours + Phone */}
       <div className="grid grid-cols-2 gap-4">
@@ -403,6 +396,7 @@ function PhotoManager({
   const [uploading, setUploading] = useState<number | "add" | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceIndexRef = useRef<number | null>(null);
 
@@ -489,12 +483,14 @@ function PhotoManager({
                         onDragOver={(e) => { e.preventDefault(); setDragOverIndex(0); }}
                         onDrop={() => { if (dragIndex !== null) handleDrop(dragIndex, 0); setDragIndex(null); setDragOverIndex(null); }}
                         onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
-                        className={`absolute inset-0 flex items-center justify-center transition-all ${dragOverIndex === 0 ? "bg-brand-500/20 ring-2 ring-inset ring-brand-500" : uploading === 0 ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
+                        onClick={(e) => { if (e.target === e.currentTarget) setLightboxIndex(0); }}
+                        className={`absolute inset-0 flex items-center justify-center transition-all cursor-zoom-in ${dragOverIndex === 0 ? "bg-brand-500/20 ring-2 ring-inset ring-brand-500" : uploading === 0 ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
                       >
                         {uploading === 0 ? (
                           <Loader2 size={20} className="text-white animate-spin" />
                         ) : (
                           <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity">
+                            <button type="button" onClick={() => setLightboxIndex(0)} className="p-2 rounded-lg bg-white/90 text-neutral-700 hover:bg-white" title="View photo"><Eye size={14} /></button>
                             <button type="button" onClick={() => triggerFileInput(0)} className="p-2 rounded-lg bg-white/90 text-neutral-700 hover:bg-white"><Upload size={14} /></button>
                             <button type="button" onClick={() => removeImage(0)} className="p-2 rounded-lg bg-white/90 text-red-500 hover:bg-white"><Trash2 size={14} /></button>
                             <div className="p-2 rounded-lg bg-white/90 text-neutral-700 cursor-grab"><GripVertical size={14} /></div>
@@ -521,12 +517,14 @@ function PhotoManager({
                             onDragOver={(e) => { e.preventDefault(); setDragOverIndex(idx); }}
                             onDrop={() => { if (dragIndex !== null) handleDrop(dragIndex, idx); setDragIndex(null); setDragOverIndex(null); }}
                             onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
-                            className={`absolute inset-0 flex items-center justify-center transition-all ${dragOverIndex === idx ? "bg-brand-500/20 ring-2 ring-inset ring-brand-500" : uploading === idx ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
+                            onClick={(e) => { if (e.target === e.currentTarget) setLightboxIndex(idx); }}
+                            className={`absolute inset-0 flex items-center justify-center transition-all cursor-zoom-in ${dragOverIndex === idx ? "bg-brand-500/20 ring-2 ring-inset ring-brand-500" : uploading === idx ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
                           >
                             {uploading === idx ? (
                               <Loader2 size={20} className="text-white animate-spin" />
                             ) : (
                               <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity">
+                                <button type="button" onClick={() => setLightboxIndex(idx)} className="p-2 rounded-lg bg-white/90 text-neutral-700 hover:bg-white" title="View photo"><Eye size={14} /></button>
                                 <button type="button" onClick={() => triggerFileInput(idx)} className="p-2 rounded-lg bg-white/90 text-neutral-700 hover:bg-white"><Upload size={14} /></button>
                                 <button type="button" onClick={() => removeImage(idx)} className="p-2 rounded-lg bg-white/90 text-red-500 hover:bg-white"><Trash2 size={14} /></button>
                                 <div className="p-2 rounded-lg bg-white/90 text-neutral-700 cursor-grab"><GripVertical size={14} /></div>
@@ -555,8 +553,12 @@ function PhotoManager({
             return (
               <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                 <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/0 hover:bg-black/40 flex items-center justify-center transition-all">
+                <div
+                  onClick={(e) => { if (e.target === e.currentTarget) setLightboxIndex(idx); }}
+                  className="absolute inset-0 bg-black/0 hover:bg-black/40 flex items-center justify-center transition-all cursor-zoom-in"
+                >
                   <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity">
+                    <button type="button" onClick={() => setLightboxIndex(idx)} className="p-2 rounded-lg bg-white/90 text-neutral-700 hover:bg-white" title="View photo"><Eye size={14} /></button>
                     <button type="button" onClick={() => triggerFileInput(idx)} className="p-2 rounded-lg bg-white/90 text-neutral-700 hover:bg-white"><Upload size={14} /></button>
                     <button type="button" onClick={() => removeImage(idx)} className="p-2 rounded-lg bg-white/90 text-red-500 hover:bg-white"><Trash2 size={14} /></button>
                   </div>
@@ -575,6 +577,18 @@ function PhotoManager({
       >
         {uploading === "add" ? <><Loader2 size={14} className="animate-spin" /> Uploading...</> : <><Plus size={14} /> Add photos</>}
       </button>
+
+      {lightboxIndex !== null && images.length > 0 && (
+        <Lightbox
+          images={images}
+          name="Photo"
+          index={Math.min(lightboxIndex, images.length - 1)}
+          onClose={() => setLightboxIndex(null)}
+          onPrev={() => setLightboxIndex((i) => Math.max(0, (i ?? 0) - 1))}
+          onNext={() => setLightboxIndex((i) => Math.min(images.length - 1, (i ?? 0) + 1))}
+          onGoTo={(i) => setLightboxIndex(i)}
+        />
+      )}
     </div>
   );
 }

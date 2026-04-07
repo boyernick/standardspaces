@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, VIBES, Category } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
-import { ChevronDown, Loader2, CheckCircle, X, Plus, GripVertical, Upload, Trash2 } from "lucide-react";
+import { ChevronDown, Loader2, CheckCircle, X, Plus, GripVertical, Upload, Trash2, Eye } from "lucide-react";
+import Lightbox from "@/components/Lightbox";
 
 // --- Constants ---
 
@@ -723,6 +724,7 @@ function PhotoManager({
   const [uploading, setUploading] = useState<number | "add" | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceIndexRef = useRef<number | null>(null);
 
@@ -810,7 +812,7 @@ function PhotoManager({
                   {slots[0] ? (
                     <>
                       <img src={slots[0]} alt="Photo 1" className="w-full h-full object-cover" />
-                      <PhotoOverlay index={0} onReplace={() => triggerFileInput(0)} onRemove={() => removeImage(0)} uploading={uploading === 0} draggable onDragStart={() => handleDragStart(0)} onDragOver={(e) => handleDragOver(e, 0)} onDrop={() => handleDrop(0)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === 0} />
+                      <PhotoOverlay index={0} onView={() => setLightboxIndex(0)} onReplace={() => triggerFileInput(0)} onRemove={() => removeImage(0)} uploading={uploading === 0} draggable onDragStart={() => handleDragStart(0)} onDragOver={(e) => handleDragOver(e, 0)} onDrop={() => handleDrop(0)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === 0} />
                     </>
                   ) : (
                     <EmptySlot onClick={() => triggerFileInput(null)} />
@@ -823,7 +825,7 @@ function PhotoManager({
                       {url ? (
                         <>
                           <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                          <PhotoOverlay index={idx} onReplace={() => triggerFileInput(idx)} onRemove={() => removeImage(idx)} uploading={uploading === idx} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDrop={() => handleDrop(idx)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === idx} />
+                          <PhotoOverlay index={idx} onView={() => setLightboxIndex(idx)} onReplace={() => triggerFileInput(idx)} onRemove={() => removeImage(idx)} uploading={uploading === idx} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDrop={() => handleDrop(idx)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === idx} />
                         </>
                       ) : (
                         <EmptySlot onClick={() => triggerFileInput(null)} />
@@ -844,7 +846,7 @@ function PhotoManager({
             return (
               <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                 <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                <PhotoOverlay index={idx} onReplace={() => triggerFileInput(idx)} onRemove={() => removeImage(idx)} uploading={uploading === idx} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDrop={() => handleDrop(idx)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === idx} />
+                <PhotoOverlay index={idx} onView={() => setLightboxIndex(idx)} onReplace={() => triggerFileInput(idx)} onRemove={() => removeImage(idx)} uploading={uploading === idx} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDrop={() => handleDrop(idx)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === idx} />
               </div>
             );
           })}
@@ -859,12 +861,25 @@ function PhotoManager({
       >
         {uploading === "add" ? <><Loader2 size={14} className="animate-spin" /> Uploading...</> : <><Plus size={14} /> Add photos</>}
       </button>
+
+      {lightboxIndex !== null && images.length > 0 && (
+        <Lightbox
+          images={images}
+          name="Photo"
+          index={Math.min(lightboxIndex, images.length - 1)}
+          onClose={() => setLightboxIndex(null)}
+          onPrev={() => setLightboxIndex((i) => Math.max(0, (i ?? 0) - 1))}
+          onNext={() => setLightboxIndex((i) => Math.min(images.length - 1, (i ?? 0) + 1))}
+          onGoTo={(i) => setLightboxIndex(i)}
+        />
+      )}
     </div>
   );
 }
 
 function PhotoOverlay({
   index,
+  onView,
   onReplace,
   onRemove,
   uploading,
@@ -876,6 +891,7 @@ function PhotoOverlay({
   isDragOver,
 }: {
   index: number;
+  onView: () => void;
   onReplace: () => void;
   onRemove: () => void;
   uploading: boolean;
@@ -886,6 +902,7 @@ function PhotoOverlay({
   onDragEnd?: () => void;
   isDragOver?: boolean;
 }) {
+  void index;
   return (
     <div
       draggable={draggable && !uploading}
@@ -893,12 +910,17 @@ function PhotoOverlay({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
-      className={`absolute inset-0 flex items-center justify-center transition-all ${isDragOver ? "bg-brand-500/20 ring-2 ring-inset ring-brand-500" : uploading ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
+      onClick={(e) => {
+        // Clicking empty overlay area (not a button) opens the lightbox.
+        if (e.target === e.currentTarget) onView();
+      }}
+      className={`absolute inset-0 flex items-center justify-center transition-all cursor-zoom-in ${isDragOver ? "bg-brand-500/20 ring-2 ring-inset ring-brand-500" : uploading ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
     >
       {uploading ? (
         <Loader2 size={20} className="text-white animate-spin" />
       ) : (
         <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity">
+          <button type="button" onClick={onView} className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-neutral-700 dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-800 transition-colors" title="View photo"><Eye size={14} /></button>
           <button type="button" onClick={onReplace} className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-neutral-700 dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-800 transition-colors" title="Replace photo"><Upload size={14} /></button>
           <button type="button" onClick={onRemove} className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-red-500 hover:bg-white dark:hover:bg-neutral-800 transition-colors" title="Remove photo"><Trash2 size={14} /></button>
           {draggable && <div className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-neutral-700 dark:text-neutral-300 cursor-grab active:cursor-grabbing" title="Drag to reorder"><GripVertical size={14} /></div>}
