@@ -484,6 +484,7 @@ export default function EventClient({
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <div className="flex items-center gap-1">
             <ShareButton
+              title="Share event"
               spotName={event.title}
               spotImage={event.cover_image_url || event.images?.[0]}
               spotSubtitle={event.city}

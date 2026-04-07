@@ -459,6 +459,7 @@ export default async function SpotPage({
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <div className="flex items-center gap-1">
             <ShareButton
+              title="Share space"
               spotName={spot.name}
               spotImage={spot.images[0]}
               spotSubtitle={[spot.neighborhood, spot.city].filter(Boolean).join(" · ")}
