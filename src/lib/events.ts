@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { EventRecord, EventRsvp } from "@/lib/types";
 
 export async function getUpcomingEventsByCity(city: string, limit = 12): Promise<EventRecord[]> {
@@ -16,7 +17,23 @@ export async function getUpcomingEventsByCity(city: string, limit = 12): Promise
 }
 
 export async function getEventsBySpotId(spotId: string): Promise<EventRecord[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("events")
+    .select("*")
+    .eq("spot_id", spotId)
+    .eq("status", "published")
+    .eq("visibility", "public")
+    .gte("starts_at", new Date().toISOString())
+    .order("starts_at", { ascending: true });
+  return (data ?? []) as EventRecord[];
+}
+
+export async function getVisibleEventsForSpot(spotId: string): Promise<EventRecord[]> {
+  // Uses the admin client (no cookies) so this can run inside statically-prerendered
+  // pages. Only public events are returned; surfacing private events the viewer is
+  // invited to should be done from a separate dynamic component.
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("events")
     .select("*")
