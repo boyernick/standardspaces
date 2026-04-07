@@ -15,9 +15,9 @@ const MIAMI_ZOOM = 12;
 type MarkerMode = "card" | "dot";
 
 function computeBudget(zoom: number): number {
-  if (zoom <= 13) return 0;
-  if (zoom < 15) return 4;
-  if (zoom < 16) return 8;
+  if (zoom <= 15) return 0;
+  if (zoom < 17) return 4;
+  if (zoom < 18) return 8;
   return Infinity;
 }
 
