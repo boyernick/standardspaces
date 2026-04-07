@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getEventById, getRsvpsForEvent, getInvitedUserIds } from "@/lib/events";
+import { getEventById, getRsvpsForEvent } from "@/lib/events";
 import { getSpotById } from "@/lib/data";
 import Navbar from "@/components/Navbar";
 import EventClient from "./EventClient";
@@ -37,10 +37,9 @@ export default async function EventPage({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [spot, rsvps, invitedUserIds, hostProfile] = await Promise.all([
+  const [spot, rsvps, hostProfile] = await Promise.all([
     getSpotById(event.spot_id),
     getRsvpsForEvent(event.id),
-    event.host_id === user?.id ? getInvitedUserIds(event.id) : Promise.resolve([] as string[]),
     supabase.from("profiles").select("id, first_name, last_name, avatar_url, instagram").eq("id", event.host_id).single().then((r) => r.data),
   ]);
 
@@ -50,22 +49,22 @@ export default async function EventPage({
     .select("id, first_name, last_name, avatar_url")
     .in("id", attendeeIds.length ? attendeeIds : ["00000000-0000-0000-0000-000000000000"]);
 
-  const myRsvp = user ? rsvps.find((r) => r.user_id === user.id) ?? null : null;
-  const goingCount = rsvps.filter((r) => r.status === "going").length;
-  const isHost = !!user && user.id === event.host_id;
-
-  // For private-event hosts, also load invitee profiles for the manage-invites UI
-  let inviteeProfiles: Array<{ id: string; first_name: string | null; last_name: string | null; avatar_url: string | null; instagram: string | null }> = [];
-  if (isHost && event.visibility === "private" && invitedUserIds.length > 0) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, first_name, last_name, avatar_url, instagram")
-      .in("id", invitedUserIds);
-    inviteeProfiles = data ?? [];
+  // Connected members: who the viewer follows among the attendees
+  let connectedIds = new Set<string>();
+  if (user && attendeeIds.length > 0) {
+    const { data: follows } = await supabase
+      .from("user_follows")
+      .select("following_id")
+      .eq("follower_id", user.id)
+      .in("following_id", attendeeIds);
+    connectedIds = new Set((follows ?? []).map((f) => f.following_id as string));
   }
 
+  const myRsvp = user ? rsvps.find((r) => r.user_id === user.id) ?? null : null;
+  const goingCount = rsvps.filter((r) => r.status === "going").length;
+
   return (
-    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--color-surface)" }}>
+    <div className="h-screen flex flex-col bg-surface">
       <Navbar />
       <EventClient
         event={event}
@@ -73,13 +72,10 @@ export default async function EventPage({
         host={hostProfile}
         attendees={(attendeeProfiles ?? []).map((p) => {
           const r = rsvps.find((x) => x.user_id === p.id);
-          return { ...p, status: r?.status ?? "going" };
+          return { ...p, status: r?.status ?? "going", isConnected: connectedIds.has(p.id) };
         })}
         goingCount={goingCount}
         myRsvp={myRsvp}
-        isHost={isHost}
-        invitedUserIds={invitedUserIds}
-        invitees={inviteeProfiles}
         viewerId={user?.id ?? null}
       />
     </div>

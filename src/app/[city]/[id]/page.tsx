@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getSpotById, getSpotsByCity, getAllSpotIds } from "@/lib/data";
-import { getEventsBySpotId } from "@/lib/events";
+import { getVisibleEventsForSpot } from "@/lib/events";
 import { CATEGORY_LABELS } from "@/lib/types";
-import UpcomingEventsStrip from "@/components/UpcomingEventsStrip";
+import EventCard from "@/components/EventCard";
 import Navbar from "@/components/Navbar";
 import SpotGallery from "@/components/SpotGallery";
 import SpotLocationMap from "@/components/SpotLocationMap";
@@ -307,7 +307,7 @@ export default async function SpotPage({
 
   const [allCitySpots, spotEvents] = await Promise.all([
     getSpotsByCity(spot.city),
-    getEventsBySpotId(spot.id),
+    getVisibleEventsForSpot(spot.id),
   ]);
   const nearby = allCitySpots
     .filter((s) => s.neighborhood === spot.neighborhood && s.id !== spot.id)
@@ -359,11 +359,16 @@ export default async function SpotPage({
           {spotEvents.length > 0 && (
             <SectionReveal>
               <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
-              <UpcomingEventsStrip
-                events={spotEvents}
-                spotNames={spotNamesMap}
-                hostHref={`/events/new?spot=${spot.id}`}
-              />
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Upcoming events</h2>
+                <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x scrollbar-hide">
+                  {spotEvents.map((event) => (
+                    <div key={event.id} className="snap-start">
+                      <EventCard event={event} spotName={spotNamesMap[event.spot_id]} />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </SectionReveal>
           )}
 

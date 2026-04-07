@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, Upload, Lock, Globe } from "lucide-react";
+import { Search, Upload, Lock, Globe, Loader2, Trash2, GripVertical, Plus } from "lucide-react";
 import { Spot, EventRecord } from "@/lib/types";
 import { createEvent, updateEvent, searchSpotsForPicker } from "@/app/actions/events";
 
@@ -38,10 +38,14 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
     existingEvent && existingEvent.price_cents > 0 ? (existingEvent.price_cents / 100).toFixed(2) : ""
   );
   const [visibility, setVisibility] = useState<"public" | "private">(existingEvent?.visibility ?? "public");
-  const [coverUrl, setCoverUrl] = useState<string | null>(existingEvent?.cover_image_url ?? null);
-  const [uploading, setUploading] = useState(false);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [ageRestriction, setAgeRestriction] = useState(existingEvent?.age_restriction ?? "");
+  const initialImages =
+    existingEvent?.images && existingEvent.images.length > 0
+      ? existingEvent.images
+      : existingEvent?.cover_image_url
+      ? [existingEvent.cover_image_url]
+      : [];
+  const [images, setImages] = useState<string[]>(initialImages);
 
   // Debounced spot search
   useEffect(() => {
@@ -57,23 +61,6 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
     }, 200);
     return () => clearTimeout(t);
   }, [spotQuery, spot]);
-
-  async function handleCoverUpload(file: File) {
-    setUploading(true);
-    setError(null);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/events/upload-cover", { method: "POST", body: fd });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Upload failed");
-      setCoverUrl(json.url);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed");
-    } finally {
-      setUploading(false);
-    }
-  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -97,12 +84,14 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
         spot_id: spot.id,
         title,
         description: description || null,
-        cover_image_url: coverUrl,
+        cover_image_url: images[0] ?? null,
+        images,
         starts_at: new Date(startsAt).toISOString(),
         ends_at: new Date(endsAt).toISOString(),
         capacity: capacity ? parseInt(capacity, 10) : null,
         price_cents: priceUsd ? Math.round(parseFloat(priceUsd) * 100) : 0,
         visibility,
+        age_restriction: ageRestriction || null,
       };
       if (isEdit && existingEvent) {
         const res = await updateEvent(existingEvent.id, payload);
@@ -130,42 +119,8 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
       <h1 className="text-2xl font-semibold mb-6">{isEdit ? "Edit event" : "Host an event"}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Cover */}
-        <div>
-          <label className="block text-xs font-medium text-neutral-500 mb-2">Cover image</label>
-          {coverUrl ? (
-            <div className="relative rounded-xl overflow-hidden aspect-[16/9] bg-neutral-100 dark:bg-neutral-900">
-              <img src={coverUrl} alt="" className="w-full h-full object-cover" />
-              <button
-                type="button"
-                onClick={() => setCoverUrl(null)}
-                className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="w-full aspect-[16/9] rounded-xl border-2 border-dashed border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 flex flex-col items-center justify-center gap-2 text-neutral-500"
-            >
-              <Upload size={20} />
-              <span className="text-sm">{uploading ? "Uploading…" : "Upload cover image"}</span>
-            </button>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleCoverUpload(f);
-            }}
-          />
-        </div>
+        {/* Photos */}
+        <PhotoManager images={images} onChange={setImages} onError={setError} />
 
         {/* Spot picker */}
         <div>
@@ -294,6 +249,18 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
           </div>
         </div>
 
+        {/* Age */}
+        <div>
+          <label className="block text-xs font-medium text-neutral-500 mb-2">Age (optional)</label>
+          <input
+            type="text"
+            value={ageRestriction}
+            onChange={(e) => setAgeRestriction(e.target.value)}
+            placeholder="e.g. 18+, 21+, All ages"
+            className={inputClass}
+          />
+        </div>
+
         {/* Visibility */}
         <div>
           <label className="block text-xs font-medium text-neutral-500 mb-2">Visibility</label>
@@ -357,6 +324,199 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function PhotoManager({
+  images,
+  onChange,
+  onError,
+}: {
+  images: string[];
+  onChange: (images: string[]) => void;
+  onError: (msg: string | null) => void;
+}) {
+  const [uploading, setUploading] = useState<number | "add" | null>(null);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const replaceIndexRef = useRef<number | null>(null);
+
+  async function uploadFile(file: File): Promise<string | null> {
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/events/upload-cover", { method: "POST", body: formData });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        onError(json.error || "Upload failed");
+        return null;
+      }
+      const data = await res.json();
+      return data.url;
+    } catch {
+      onError("Upload failed");
+      return null;
+    }
+  }
+
+  function triggerFileInput(replaceIndex: number | null) {
+    replaceIndexRef.current = replaceIndex;
+    fileInputRef.current?.click();
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    onError(null);
+
+    const replaceIndex = replaceIndexRef.current;
+    replaceIndexRef.current = null;
+
+    if (replaceIndex !== null) {
+      setUploading(replaceIndex);
+      const url = await uploadFile(files[0]);
+      if (url) {
+        const next = [...images];
+        next[replaceIndex] = url;
+        onChange(next);
+      }
+      setUploading(null);
+    } else {
+      setUploading("add");
+      const newUrls: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const url = await uploadFile(files[i]);
+        if (url) newUrls.push(url);
+      }
+      if (newUrls.length > 0) onChange([...images, ...newUrls]);
+      setUploading(null);
+    }
+
+    e.target.value = "";
+  }
+
+  function removeImage(index: number) {
+    onChange(images.filter((_, i) => i !== index));
+  }
+
+  function handleDrop(fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex) return;
+    const next = [...images];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    onChange(next);
+  }
+
+  return (
+    <div>
+      <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+      <p className="text-sm font-medium mb-3">Photos</p>
+
+      {images.length > 0 && (
+        <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[320px] rounded-xl overflow-hidden mb-3">
+          {(() => {
+            const slots = [...images.slice(0, 5)];
+            while (slots.length < 5) slots.push("");
+            return (
+              <>
+                <div className="col-span-2 row-span-2 relative group bg-neutral-100 dark:bg-neutral-800">
+                  {slots[0] ? (
+                    <>
+                      <img src={slots[0]} alt="Photo 1" className="w-full h-full object-cover" />
+                      <div
+                        draggable
+                        onDragStart={() => setDragIndex(0)}
+                        onDragOver={(e) => { e.preventDefault(); setDragOverIndex(0); }}
+                        onDrop={() => { if (dragIndex !== null) handleDrop(dragIndex, 0); setDragIndex(null); setDragOverIndex(null); }}
+                        onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
+                        className={`absolute inset-0 flex items-center justify-center transition-all ${dragOverIndex === 0 ? "bg-neutral-900/20 ring-2 ring-inset ring-neutral-900" : uploading === 0 ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
+                      >
+                        {uploading === 0 ? (
+                          <Loader2 size={20} className="text-white animate-spin" />
+                        ) : (
+                          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity">
+                            <button type="button" onClick={() => triggerFileInput(0)} className="p-2 rounded-lg bg-white/90 text-neutral-700 hover:bg-white"><Upload size={14} /></button>
+                            <button type="button" onClick={() => removeImage(0)} className="p-2 rounded-lg bg-white/90 text-red-500 hover:bg-white"><Trash2 size={14} /></button>
+                            <div className="p-2 rounded-lg bg-white/90 text-neutral-700 cursor-grab"><GripVertical size={14} /></div>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <button type="button" onClick={() => triggerFileInput(null)} className="w-full h-full flex flex-col items-center justify-center text-neutral-400 hover:text-neutral-500">
+                      <Plus size={20} /><span className="text-xs mt-1">Add</span>
+                    </button>
+                  )}
+                </div>
+                {slots.slice(1, 5).map((url, i) => {
+                  const idx = i + 1;
+                  return (
+                    <div key={idx} className="relative group bg-neutral-100 dark:bg-neutral-800">
+                      {url ? (
+                        <>
+                          <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                          <div
+                            draggable
+                            onDragStart={() => setDragIndex(idx)}
+                            onDragOver={(e) => { e.preventDefault(); setDragOverIndex(idx); }}
+                            onDrop={() => { if (dragIndex !== null) handleDrop(dragIndex, idx); setDragIndex(null); setDragOverIndex(null); }}
+                            onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
+                            className={`absolute inset-0 flex items-center justify-center transition-all ${dragOverIndex === idx ? "bg-neutral-900/20 ring-2 ring-inset ring-neutral-900" : uploading === idx ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
+                          >
+                            {uploading === idx ? (
+                              <Loader2 size={20} className="text-white animate-spin" />
+                            ) : (
+                              <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity">
+                                <button type="button" onClick={() => triggerFileInput(idx)} className="p-2 rounded-lg bg-white/90 text-neutral-700 hover:bg-white"><Upload size={14} /></button>
+                                <button type="button" onClick={() => removeImage(idx)} className="p-2 rounded-lg bg-white/90 text-red-500 hover:bg-white"><Trash2 size={14} /></button>
+                                <div className="p-2 rounded-lg bg-white/90 text-neutral-700 cursor-grab"><GripVertical size={14} /></div>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <button type="button" onClick={() => triggerFileInput(null)} className="w-full h-full flex flex-col items-center justify-center text-neutral-400 hover:text-neutral-500">
+                          <Plus size={20} /><span className="text-xs mt-1">Add</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {images.length > 5 && (
+        <div className="grid grid-cols-5 gap-2 mb-3">
+          {images.slice(5).map((url, i) => {
+            const idx = i + 5;
+            return (
+              <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/0 hover:bg-black/40 flex items-center justify-center transition-all">
+                  <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity">
+                    <button type="button" onClick={() => triggerFileInput(idx)} className="p-2 rounded-lg bg-white/90 text-neutral-700 hover:bg-white"><Upload size={14} /></button>
+                    <button type="button" onClick={() => removeImage(idx)} className="p-2 rounded-lg bg-white/90 text-red-500 hover:bg-white"><Trash2 size={14} /></button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => triggerFileInput(null)}
+        disabled={uploading !== null}
+        className="flex items-center gap-2 px-4 py-2.5 text-sm border border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl text-neutral-500 hover:border-neutral-400 hover:text-neutral-700 transition-colors disabled:opacity-50"
+      >
+        {uploading === "add" ? <><Loader2 size={14} className="animate-spin" /> Uploading...</> : <><Plus size={14} /> Add photos</>}
+      </button>
     </div>
   );
 }

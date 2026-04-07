@@ -17,11 +17,13 @@ export interface EventInput {
   title: string;
   description?: string | null;
   cover_image_url?: string | null;
+  images?: string[];
   starts_at: string;
   ends_at: string;
   capacity?: number | null;
   price_cents?: number;
   visibility?: "public" | "private";
+  age_restriction?: string | null;
 }
 
 export async function createEvent(
@@ -45,13 +47,15 @@ export async function createEvent(
       host_id: user.id,
       title: input.title.trim(),
       description: input.description?.trim() || null,
-      cover_image_url: input.cover_image_url || null,
+      cover_image_url: input.cover_image_url || (input.images && input.images[0]) || null,
+      images: input.images ?? [],
       starts_at: input.starts_at,
       ends_at: input.ends_at,
       city: spot.city,
       capacity: input.capacity ?? null,
       price_cents: input.price_cents ?? 0,
       visibility: input.visibility ?? "public",
+      age_restriction: input.age_restriction?.trim() || null,
     })
     .select("id")
     .single();
@@ -96,11 +100,19 @@ export async function updateEvent(
   if (input.title !== undefined) patch.title = input.title.trim();
   if (input.description !== undefined) patch.description = input.description?.trim() || null;
   if (input.cover_image_url !== undefined) patch.cover_image_url = input.cover_image_url;
+  if (input.images !== undefined) {
+    patch.images = input.images;
+    // Keep cover_image_url in sync with the first image so legacy surfaces still work
+    if (input.images.length > 0 && input.cover_image_url === undefined) {
+      patch.cover_image_url = input.images[0];
+    }
+  }
   if (input.starts_at !== undefined) patch.starts_at = input.starts_at;
   if (input.ends_at !== undefined) patch.ends_at = input.ends_at;
   if (input.capacity !== undefined) patch.capacity = input.capacity;
   if (input.price_cents !== undefined) patch.price_cents = input.price_cents;
   if (input.visibility !== undefined) patch.visibility = input.visibility;
+  if (input.age_restriction !== undefined) patch.age_restriction = input.age_restriction?.trim() || null;
 
   if (input.spot_id !== undefined && input.spot_id !== existing.spot_id) {
     const spot = await getSpotById(input.spot_id);

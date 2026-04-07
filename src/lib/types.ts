@@ -161,6 +161,7 @@ export interface EventRecord {
   title: string;
   description: string | null;
   cover_image_url: string | null;
+  images: string[];
   starts_at: string;
   ends_at: string;
   city: string;
@@ -169,6 +170,7 @@ export interface EventRecord {
   currency: string;
   visibility: "public" | "private";
   status: "published" | "cancelled" | "hidden";
+  age_restriction: string | null;
   created_at: string;
   updated_at: string;
 }
