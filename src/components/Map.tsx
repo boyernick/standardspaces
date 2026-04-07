@@ -95,12 +95,12 @@ export default function SpotMap(props: MapProps) {
       card.style.transform = "translateX(-50%) scale(1)";
       card.style.pointerEvents = "auto";
       dot.style.opacity = "0";
-      dot.style.transform = "translate(-50%, -50%) scale(0.4)";
+      dot.style.transform = "translate(-50%, -50%) scale(0.7)";
       dot.style.pointerEvents = "none";
       entry.el.style.zIndex = "1";
     } else {
       card.style.opacity = "0";
-      card.style.transform = "translateX(-50%) scale(0.4)";
+      card.style.transform = "translateX(-50%) scale(0.7)";
       card.style.pointerEvents = "none";
       dot.style.opacity = "1";
       dot.style.transform = "translate(-50%, -50%) scale(1)";
@@ -331,7 +331,7 @@ export default function SpotMap(props: MapProps) {
       el.style.width = "0";
       el.style.height = "0";
 
-      const TRANSITION = "opacity 260ms cubic-bezier(0.4, 0, 0.2, 1), transform 260ms cubic-bezier(0.34, 1.4, 0.64, 1)";
+      const TRANSITION = "opacity 420ms cubic-bezier(0.22, 1, 0.36, 1), transform 420ms cubic-bezier(0.22, 1, 0.36, 1)";
 
       // ----- Card branch (image + label) -----
       const card = document.createElement("div");
@@ -348,7 +348,7 @@ export default function SpotMap(props: MapProps) {
       card.style.opacity = initialMode === "card" ? "1" : "0";
       card.style.transform = initialMode === "card"
         ? "translateX(-50%) scale(1)"
-        : "translateX(-50%) scale(0.4)";
+        : "translateX(-50%) scale(0.7)";
       card.style.pointerEvents = initialMode === "card" ? "auto" : "none";
 
       const img = document.createElement("div");
@@ -403,7 +403,7 @@ export default function SpotMap(props: MapProps) {
       dot.style.opacity = initialMode === "dot" ? "1" : "0";
       dot.style.transform = initialMode === "dot"
         ? "translate(-50%, -50%) scale(1)"
-        : "translate(-50%, -50%) scale(0.4)";
+        : "translate(-50%, -50%) scale(0.7)";
       dot.style.pointerEvents = initialMode === "dot" ? "auto" : "none";
       el.appendChild(dot);
 
