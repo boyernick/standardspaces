@@ -12,6 +12,37 @@ mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 const MIAMI_CENTER: [number, number] = [-80.1918, 25.7817];
 const MIAMI_ZOOM = 12;
 
+type MarkerMode = "card" | "dot";
+
+function computeBudget(zoom: number): number {
+  if (zoom <= 12) return 0;
+  if (zoom < 14) return 4;
+  if (zoom < 15) return 8;
+  return Infinity;
+}
+
+function computeCardSet(
+  spots: Spot[],
+  center: [number, number],
+  budget: number,
+  activeId: string | null,
+): Set<string> {
+  if (budget === Infinity) return new Set(spots.map((s) => s.id));
+  if (budget <= 0) return new Set(activeId ? [activeId] : []);
+  const ranked = spots
+    .map((s) => {
+      const dx = s.lng - center[0];
+      const dy = s.lat - center[1];
+      return { id: s.id, d: dx * dx + dy * dy };
+    })
+    .sort((a, b) => a.d - b.d)
+    .slice(0, budget)
+    .map((r) => r.id);
+  const set = new Set(ranked);
+  if (activeId) set.add(activeId);
+  return set;
+}
+
 function isDarkMode() {
   if (typeof document === "undefined") return false;
   return document.documentElement.classList.contains("dark");
@@ -27,7 +58,7 @@ export default function SpotMap(props: MapProps) {
   const { spots = [], activeSpot = null, onSpotSelect = () => {} } = props ?? {};
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const markers = useRef<globalThis.Map<string, { marker: mapboxgl.Marker; el: HTMLDivElement }>>(new globalThis.Map());
+  const markers = useRef<globalThis.Map<string, { marker: mapboxgl.Marker; el: HTMLDivElement; mode: MarkerMode }>>(new globalThis.Map());
   const userMarker = useRef<mapboxgl.Marker | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [dark, setDark] = useState(false);
@@ -35,8 +66,10 @@ export default function SpotMap(props: MapProps) {
   const [geoResolved, setGeoResolved] = useState(false);
   const spotsRef = useRef(spots);
   const onSpotSelectRef = useRef(onSpotSelect);
+  const activeIdRef = useRef<string | null>(activeSpot?.id ?? null);
   spotsRef.current = spots;
   onSpotSelectRef.current = onSpotSelect;
+  activeIdRef.current = activeSpot?.id ?? null;
 
   // Request user location
   useEffect(() => {
@@ -51,10 +84,32 @@ export default function SpotMap(props: MapProps) {
     return () => clearTimeout(t);
   }, []);
 
+  const applyMarkerMode = useCallback((id: string, mode: MarkerMode) => {
+    const entry = markers.current.get(id);
+    if (!entry) return;
+    const card = entry.el.querySelector("[data-card]") as HTMLDivElement | null;
+    const dot = entry.el.querySelector("[data-dot]") as HTMLDivElement | null;
+    if (!card || !dot) return;
+    if (mode === "card") {
+      card.style.display = "flex";
+      dot.style.display = "none";
+      entry.el.style.zIndex = "1";
+    } else {
+      card.style.display = "none";
+      dot.style.display = "block";
+      entry.el.style.zIndex = "0";
+    }
+    entry.mode = mode;
+  }, []);
+
   const updateMarkerStyle = useCallback((id: string, active: boolean) => {
     const entry = markers.current.get(id);
     if (!entry) return;
     const { el } = entry;
+    // Active markers are always shown as cards.
+    if (active && entry.mode !== "card") {
+      applyMarkerMode(id, "card");
+    }
     const img = el.querySelector("[data-img]") as HTMLDivElement | null;
     if (!img) return;
     if (active) {
@@ -68,9 +123,28 @@ export default function SpotMap(props: MapProps) {
       img.style.height = "30px";
       img.style.borderColor = THEME.white;
       img.style.borderWidth = "3px";
-      el.style.zIndex = "1";
+      // Restore zIndex appropriate for current mode.
+      el.style.zIndex = entry.mode === "card" ? "1" : "0";
     }
-  }, []);
+  }, [applyMarkerMode]);
+
+  const recomputeModes = useCallback(() => {
+    const m = map.current;
+    if (!m || markers.current.size === 0) return;
+    const zoom = m.getZoom();
+    const center = m.getCenter();
+    const budget = computeBudget(zoom);
+    const cardSet = computeCardSet(
+      spotsRef.current,
+      [center.lng, center.lat],
+      budget,
+      activeIdRef.current,
+    );
+    markers.current.forEach((entry, id) => {
+      const next: MarkerMode = cardSet.has(id) ? "card" : "dot";
+      if (entry.mode !== next) applyMarkerMode(id, next);
+    });
+  }, [applyMarkerMode]);
 
   // Track dark mode
   useEffect(() => {
@@ -96,32 +170,54 @@ export default function SpotMap(props: MapProps) {
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    const m = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: getCustomMapStyle(dark),
-      center: userLocation ?? MIAMI_CENTER,
-      zoom: userLocation ? 14 : MIAMI_ZOOM,
-      attributionControl: false,
-    });
+    // Defer creation by a microtask so React StrictMode's double-mount cleanup
+    // can abort init before mapbox queues internal style.load callbacks. This
+    // sidesteps a known mapbox-gl 3.x bug where a deferred handler dereferences
+    // `_style` after `remove()` and throws "Cannot read properties of undefined
+    // (reading 'isIndoorEnabled')".
+    let aborted = false;
+    let m: mapboxgl.Map | null = null;
+    let ro: ResizeObserver | null = null;
 
-    m.on("load", () => {
-      // Click on empty map area deselects
-      m.on("click", () => {
-        onSpotSelectRef.current(null);
+    const init = () => {
+      if (aborted || !mapContainer.current) return;
+      m = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: getCustomMapStyle(dark),
+        center: userLocation ?? MIAMI_CENTER,
+        zoom: userLocation ? 15 : MIAMI_ZOOM,
+        attributionControl: false,
       });
 
-      setMapReady(true);
-    });
+      m.on("load", () => {
+        if (aborted || !m) return;
+        // Click on empty map area deselects
+        m.on("click", () => {
+          onSpotSelectRef.current(null);
+        });
 
-    map.current = m;
+        // Recompute card/dot mix on every pan or zoom
+        m.on("moveend", () => {
+          recomputeModes();
+        });
 
-    const ro = new ResizeObserver(() => {
-      map.current?.resize();
-    });
-    if (mapContainer.current) ro.observe(mapContainer.current);
+        setMapReady(true);
+      });
+
+      map.current = m;
+
+      ro = new ResizeObserver(() => {
+        map.current?.resize();
+      });
+      if (mapContainer.current) ro.observe(mapContainer.current);
+    };
+
+    const raf = requestAnimationFrame(init);
 
     return () => {
-      ro.disconnect();
+      aborted = true;
+      cancelAnimationFrame(raf);
+      ro?.disconnect();
       markers.current.forEach(({ marker }) => marker.remove());
       markers.current.clear();
       userMarker.current?.remove();
@@ -171,36 +267,64 @@ export default function SpotMap(props: MapProps) {
       }
     });
 
-    // Compute offsets for overlapping spots
+    // Decide initial card/dot mode for this render based on current view
+    const center = m.getCenter();
+    const budget = computeBudget(m.getZoom());
+    const cardSet = computeCardSet(spots, [center.lng, center.lat], budget, activeId);
+
+    // Compute offsets so no two markers (cards or dots) sit at the same point.
+    // Existing markers seed `placed` so newly-added markers respect their positions.
     const OFFSET = 0.0003; // ~30 meters
     const placed: Array<{ lng: number; lat: number }> = [];
+    markers.current.forEach(({ marker }) => {
+      const ll = marker.getLngLat();
+      placed.push({ lng: ll.lng, lat: ll.lat });
+    });
     function getOffset(lng: number, lat: number): [number, number] {
-      for (const p of placed) {
-        if (Math.abs(p.lng - lng) < OFFSET && Math.abs(p.lat - lat) < OFFSET) {
-          // Spiral outward
-          const angle = placed.length * 2.4; // golden angle
-          const r = OFFSET * (1 + Math.floor(placed.length / 6));
-          return [lng + r * Math.cos(angle), lat + r * Math.sin(angle)];
-        }
+      let candidateLng = lng;
+      let candidateLat = lat;
+      let attempt = 0;
+      // Keep spiraling outward until the candidate doesn't collide with any placed point.
+      while (
+        placed.some(
+          (p) =>
+            Math.abs(p.lng - candidateLng) < OFFSET &&
+            Math.abs(p.lat - candidateLat) < OFFSET,
+        )
+      ) {
+        const angle = attempt * 2.4; // golden angle
+        const r = OFFSET * (1 + Math.floor(attempt / 6));
+        candidateLng = lng + r * Math.cos(angle);
+        candidateLat = lat + r * Math.sin(angle);
+        attempt++;
+        if (attempt > 64) break; // safety
       }
-      return [lng, lat];
+      return [candidateLng, candidateLat];
     }
 
     // Add/update markers
     spots.forEach((s) => {
       const existing = markers.current.get(s.id);
       if (existing) {
-        // Update active state
+        // Update mode for this render, then refresh active state
+        const nextMode: MarkerMode = cardSet.has(s.id) ? "card" : "dot";
+        if (existing.mode !== nextMode) applyMarkerMode(s.id, nextMode);
         updateMarkerStyle(s.id, s.id === activeId);
         return;
       }
 
-      // Create new marker element: wrapper with image + label
+      const initialMode: MarkerMode = cardSet.has(s.id) ? "card" : "dot";
+
+      // Wrapper element holds both card and dot branches
       const el = document.createElement("div");
-      el.style.display = "flex";
-      el.style.flexDirection = "column";
-      el.style.alignItems = "center";
       el.style.cursor = "pointer";
+
+      // ----- Card branch (image + label) -----
+      const card = document.createElement("div");
+      card.dataset.card = "1";
+      card.style.display = initialMode === "card" ? "flex" : "none";
+      card.style.flexDirection = "column";
+      card.style.alignItems = "center";
 
       const img = document.createElement("div");
       img.style.width = "30px";
@@ -217,7 +341,7 @@ export default function SpotMap(props: MapProps) {
         img.style.backgroundImage = `url(${s.images[0]})`;
       }
       img.dataset.img = "1";
-      el.appendChild(img);
+      card.appendChild(img);
 
       const label = document.createElement("div");
       label.textContent = s.name;
@@ -231,13 +355,31 @@ export default function SpotMap(props: MapProps) {
       label.style.textOverflow = "ellipsis";
       label.style.textAlign = "center";
       label.style.fontFamily = "var(--font-calibre), system-ui, sans-serif";
-      el.appendChild(label);
+      card.appendChild(label);
+
+      el.appendChild(card);
+
+      // ----- Dot branch -----
+      const dot = document.createElement("div");
+      dot.dataset.dot = "1";
+      dot.style.display = initialMode === "dot" ? "block" : "none";
+      dot.style.width = "8px";
+      dot.style.height = "8px";
+      dot.style.borderRadius = "50%";
+      // Light mode: light fill, dark border. Dark mode: inverted.
+      dot.style.backgroundColor = dark ? "#1a1a1a" : "#ededed";
+      dot.style.border = "1.5px solid " + (dark ? "#ededed" : "#1a1a1a");
+      dot.style.boxShadow = "0 1px 3px rgba(0,0,0,0.25)";
+      el.appendChild(dot);
+
+      el.style.zIndex = initialMode === "card" ? "1" : "0";
 
       el.addEventListener("click", (e) => {
         e.stopPropagation();
         onSpotSelectRef.current(s);
       });
 
+      // Apply spiral offset to every marker (cards and dots) so no two stack.
       const [offsetLng, offsetLat] = getOffset(s.lng, s.lat);
       placed.push({ lng: offsetLng, lat: offsetLat });
 
@@ -245,10 +387,17 @@ export default function SpotMap(props: MapProps) {
         .setLngLat([offsetLng, offsetLat])
         .addTo(m);
 
-      markers.current.set(s.id, { marker, el });
+      markers.current.set(s.id, { marker, el, mode: initialMode });
       updateMarkerStyle(s.id, s.id === activeId);
     });
-  }, [spots, activeSpot, mapReady, dark, updateMarkerStyle]);
+  }, [spots, activeSpot, mapReady, dark, updateMarkerStyle, applyMarkerMode]);
+
+  // When activeSpot changes (including deselect), re-evaluate card/dot mix so
+  // the previously-active marker can fall back to a dot if appropriate.
+  useEffect(() => {
+    if (!mapReady) return;
+    recomputeModes();
+  }, [activeSpot, mapReady, recomputeModes]);
 
   // Fit bounds — wait for geolocation to resolve before deciding
   useEffect(() => {
@@ -258,7 +407,7 @@ export default function SpotMap(props: MapProps) {
       // User location available: center on their neighborhood
       map.current.easeTo({
         center: userLocation,
-        zoom: 14,
+        zoom: 15,
         duration: 1200,
         easing: (t: number) => 1 - Math.pow(1 - t, 3),
         essential: true,

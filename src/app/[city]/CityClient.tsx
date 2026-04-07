@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, Category, Spot, EventRecord } from "@/lib/types";
 import UpcomingEventsStrip from "@/components/UpcomingEventsStrip";
 import dynamic from "next/dynamic";
@@ -38,8 +39,27 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
   const [activeSpot, setActiveSpot] = useState<Spot | null>(null);
   const [neighborhoodOpen, setNeighborhoodOpen] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
-  const [page, setPage] = useState(1);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [page, setPage] = useState(() => {
+    const p = Number(searchParams.get("page"));
+    return Number.isFinite(p) && p > 0 ? p : 1;
+  });
   const perPage = 6;
+
+  // Sync page to URL whenever it changes (effect runs after render, so this
+  // never triggers a router update during render)
+  useEffect(() => {
+    const current = Number(searchParams.get("page")) || 1;
+    if (current === page) return;
+    const params = new URLSearchParams(searchParams.toString());
+    if (page <= 1) params.delete("page");
+    else params.set("page", String(page));
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [page, searchParams, router, pathname]);
 
   const neighborhoodRef = useRef<HTMLDivElement>(null);
   const neighborhoodDropdownRef = useRef<HTMLDivElement>(null);
@@ -111,8 +131,12 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
     return [...result].sort((a, b) => a.name.localeCompare(b.name));
   }, [activeCategory, activeSubcategories, activeNeighborhood, allSpots]);
 
-  const totalPages = Math.ceil(filtered.length / perPage);
-  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages, setPage]);
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * perPage, safePage * perPage);
 
   const handleSpotSelect = useCallback((spot: Spot | null) => { setActiveSpot(spot); }, []);
 
@@ -499,7 +523,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
 
             {/* Map card */}
             {activeSpot && (
-              <div className="absolute bottom-3 left-3 right-3 md:left-auto md:right-3 md:w-72 z-10">
+              <div className="absolute bottom-3 left-3 right-3 md:left-auto md:right-3 md:w-80 z-10">
                 <div
                   className="bg-surface rounded-2xl shadow-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
                   style={{ animation: "map-card-in 0.2s ease-out" }}
@@ -525,7 +549,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
                           {activeSpot.neighborhood} · {activeSpot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
                         </p>
                       </Link>
-                      <div className="flex items-center gap-1 mt-1 -ml-2">
+                      <div className="flex items-center -space-x-1 mt-1 -ml-2">
                         <CheckInButton spotId={activeSpot.id} variant="icon" />
                         <WishlistButtonClient spotId={activeSpot.id} size="icon" />
                         <FavoriteButtonClient spotId={activeSpot.id} size="icon" />

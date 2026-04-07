@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getSpotsByCity } from "@/lib/data";
 import { getUpcomingEventsByCity, getInvitesForUser, getEventsByHost } from "@/lib/events";
@@ -52,15 +53,17 @@ export default async function CityPage({
   for (const s of spots) eventSpotNames[s.id] = s.name;
 
   return (
-    <CityClient
-      spots={spots}
-      favoritedSpotIds={favoritedSpotIds}
-      cityName={cityName}
-      citySlug={citySlug}
-      userCitySlug={userCitySlug}
-      upcomingEvents={upcomingEvents}
-      invitedEvents={invites}
-      eventSpotNames={eventSpotNames}
-    />
+    <Suspense fallback={null}>
+      <CityClient
+        spots={spots}
+        favoritedSpotIds={favoritedSpotIds}
+        cityName={cityName}
+        citySlug={citySlug}
+        userCitySlug={userCitySlug}
+        upcomingEvents={upcomingEvents}
+        invitedEvents={invites}
+        eventSpotNames={eventSpotNames}
+      />
+    </Suspense>
   );
 }
