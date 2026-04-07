@@ -13,8 +13,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing recommendationId or url" }, { status: 400 });
     }
 
+    // Look up the previous scrape so we can reuse the cached Google place ID
+    // (skips the text-search call on re-scrape) and the user's original city
+    // hint (for locationBias when HTML has no coords yet).
+    const { data: prevRec } = await supabase
+      .from("recommendations")
+      .select("scraped_data, city")
+      .eq("id", recommendationId)
+      .single();
+    const prevScraped = (prevRec?.scraped_data ?? {}) as Record<string, unknown>;
+    const knownPlaceId =
+      typeof prevScraped.googlePlaceId === "string" ? prevScraped.googlePlaceId : undefined;
+    const cityHint =
+      typeof prevRec?.city === "string"
+        ? prevRec.city
+        : typeof prevScraped.city === "string"
+          ? (prevScraped.city as string)
+          : "Miami";
+
     // Scrape the new URL
-    const initialScrape = await scrapeUrl(url);
+    const initialScrape = await scrapeUrl(url, { city: cityHint, knownPlaceId });
     const scraped = await enrichScrapedData(initialScrape);
 
     // Download and upload photos
@@ -40,6 +58,7 @@ export async function POST(req: NextRequest) {
       subcategory: scraped.subcategory || null,
       vibes: scraped.vibes || null,
       neighborhood: scraped.neighborhood || null,
+      googlePlaceId: scraped.googlePlaceId || knownPlaceId || null,
     };
 
     // Update the recommendation with new scraped data

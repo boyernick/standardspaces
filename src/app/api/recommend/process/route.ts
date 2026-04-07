@@ -100,8 +100,12 @@ export async function POST(req: NextRequest) {
       .update({ status: "processing" })
       .eq("id", recommendationId);
 
-    // Scrape the URL
-    const initialScrape = await scrapeUrl(rec.url);
+    // Scrape the URL. Pass the user-selected city (if any) so the Google
+    // Places text search can bias to that city center when the HTML scrape
+    // hasn't yet produced coordinates.
+    const initialScrape = await scrapeUrl(rec.url, {
+      city: rec.city || "Miami",
+    });
 
     // Enrich with Google Places, Yelp, and Instagram data
     const scraped = await enrichScrapedData(initialScrape);
@@ -130,6 +134,7 @@ export async function POST(req: NextRequest) {
       subcategory: scraped.subcategory || null,
       vibes: scraped.vibes || null,
       neighborhood: rec.neighborhood || scraped.neighborhood || null,
+      googlePlaceId: scraped.googlePlaceId || null,
     };
 
     // Update the recommendation with scraped data

@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { geocodeAddress } from "./geocode";
+import { findPlaceForScrape, type GooglePlace } from "./google-places";
 
 export interface ScrapedData {
   name?: string;
@@ -22,6 +23,10 @@ export interface ScrapedData {
   subcategory?: string[];
   vibes?: string[];
   category?: string;
+  /** Google Places API (New) place ID. Stored on the recommendation row
+   * inside scraped_data so re-scrapes can skip the text search step and
+   * go straight to the Place Details endpoint. */
+  googlePlaceId?: string;
 }
 
 // Follow redirects and get final URL + HTML
@@ -105,18 +110,90 @@ function extractMeta($: cheerio.CheerioAPI): Partial<ScrapedData> {
 // `@id`, with the actual data living deeper in the graph. We walk the whole
 // thing recursively so we don't miss the Restaurant / PostalAddress / etc.
 // regardless of how the page chose to nest them.
-function flattenJsonLd(node: unknown, out: Record<string, unknown>[] = []): Record<string, unknown>[] {
+function flattenJsonLd(
+  node: unknown,
+  out: Record<string, unknown>[] = [],
+  seen: WeakSet<object> = new WeakSet(),
+): Record<string, unknown>[] {
   if (!node) return out;
   if (Array.isArray(node)) {
-    for (const child of node) flattenJsonLd(child, out);
+    for (const child of node) flattenJsonLd(child, out, seen);
     return out;
   }
   if (typeof node === "object") {
+    if (seen.has(node as object)) return out;
+    seen.add(node as object);
     const obj = node as Record<string, unknown>;
     out.push(obj);
-    if (Array.isArray(obj["@graph"])) flattenJsonLd(obj["@graph"], out);
+    if (Array.isArray(obj["@graph"])) flattenJsonLd(obj["@graph"], out, seen);
+    // Many multi-location businesses (Mary Lou's, restaurant groups, hotel
+    // brands) wrap their per-city entities inside `subOrganization`, `branchOf`,
+    // `department`, `member`, or `hasPart`. Without this we only see the
+    // top-level Organization and miss every real FoodEstablishment.
+    const nestedKeys = [
+      "subOrganization",
+      "department",
+      "branchOf",
+      "member",
+      "hasPart",
+      "makesOffer",
+      "location",
+      "containsPlace",
+    ];
+    for (const key of nestedKeys) {
+      const v = obj[key];
+      if (!v) continue;
+      if (Array.isArray(v)) {
+        for (const child of v) {
+          // Skip pure @id references (no additional data)
+          if (child && typeof child === "object" && !Array.isArray(child)) {
+            const rec = child as Record<string, unknown>;
+            if (rec["@type"] || Object.keys(rec).length > 1) {
+              flattenJsonLd(child, out, seen);
+            }
+          }
+        }
+      } else if (typeof v === "object") {
+        const rec = v as Record<string, unknown>;
+        if (rec["@type"] || Object.keys(rec).length > 1) {
+          flattenJsonLd(v, out, seen);
+        }
+      }
+    }
   }
   return out;
+}
+
+// Tokenize a URL's pathname into distinctive slug words — used to pick the
+// right per-city entity out of a multi-location JSON-LD graph.
+function urlTokens(u: string): string[] {
+  try {
+    const parsed = new URL(u);
+    const stop = new Set([
+      "www", "com", "org", "net", "location", "locations",
+      "home", "index", "page", "pages", "the", "our",
+    ]);
+    return parsed.pathname
+      .toLowerCase()
+      .split(/[/\-_]+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length >= 3 && !stop.has(t));
+  } catch {
+    return [];
+  }
+}
+
+function entityUrlMatchScore(item: Record<string, unknown>, pageTokens: string[]): number {
+  if (pageTokens.length === 0) return 0;
+  const urls: string[] = [];
+  if (typeof item.url === "string") urls.push(item.url);
+  const id = item["@id"];
+  if (typeof id === "string") urls.push(id);
+  if (urls.length === 0) return 0;
+  const joined = urls.join(" ").toLowerCase();
+  let score = 0;
+  for (const t of pageTokens) if (joined.includes(t)) score += 1;
+  return score;
 }
 
 // Does this entity's @type match one of the business types we care about?
@@ -153,7 +230,7 @@ function isBusinessEntity(item: Record<string, unknown>): boolean {
 }
 
 // Extract structured data (JSON-LD)
-function extractJsonLd($: cheerio.CheerioAPI): Partial<ScrapedData> {
+function extractJsonLd($: cheerio.CheerioAPI, currentUrl?: string): Partial<ScrapedData> {
   const data: Partial<ScrapedData> = {};
 
   // First pass: collect every JSON-LD entity across every script tag, flattening @graph.
@@ -166,6 +243,18 @@ function extractJsonLd($: cheerio.CheerioAPI): Partial<ScrapedData> {
       // Invalid JSON-LD, skip
     }
   });
+
+  // When a single graph contains multiple business entities (restaurant group
+  // with subOrganization per city), prefer the one whose url/@id best matches
+  // the page we're scraping. Otherwise we'll silently pull from West Palm Beach
+  // when the user requested the Miami location.
+  const pageTokens = currentUrl ? urlTokens(currentUrl) : [];
+  const businessEntities = allEntities.filter(isBusinessEntity);
+  if (pageTokens.length > 0 && businessEntities.length > 1) {
+    businessEntities.sort(
+      (a, b) => entityUrlMatchScore(b, pageTokens) - entityUrlMatchScore(a, pageTokens),
+    );
+  }
 
   // Build an @id → entity index so we can resolve references like
   // address: { "@id": "https://komodomiami.com/#local-main-place-address" }
@@ -186,8 +275,8 @@ function extractJsonLd($: cheerio.CheerioAPI): Partial<ScrapedData> {
     return value;
   }
 
-  for (const item of allEntities) {
-    if (isBusinessEntity(item)) {
+  for (const item of businessEntities) {
+    {
       // Skip generic names like just a city name
       const itemName = item.name;
       const genericNames = ["miami", "new york", "los angeles", "chicago", "houston", "dallas", "austin", "denver", "seattle", "boston", "atlanta", "las vegas"];
@@ -690,7 +779,14 @@ function extractPageDetails($: cheerio.CheerioAPI): { dressCode?: string; parkin
 }
 
 // Infer category and subcategories from scraped text and structured data
-function inferSubcategories(data: Partial<ScrapedData>, $: cheerio.CheerioAPI): { category?: string; subcategory: string[] } {
+function inferSubcategories(
+  data: Partial<ScrapedData>,
+  $: cheerio.CheerioAPI,
+  currentUrl?: string,
+  /** Additional type tokens from external sources (Google Places types,
+   * cuisine hints, etc). Already lowercased, underscores replaced with spaces. */
+  extraLdTypes?: string[],
+): { category?: string; subcategory: string[] } {
   const text = [
     data.name,
     data.description,
@@ -709,11 +805,31 @@ function inferSubcategories(data: Partial<ScrapedData>, $: cheerio.CheerioAPI): 
       flattenJsonLd(json, ldEntities);
     } catch { /* skip */ }
   });
-  for (const item of ldEntities) {
+  // When the graph holds multiple business entities (multi-location groups),
+  // consider only the cuisine/type of the entity matching the scraped URL.
+  const pageTokens = currentUrl ? urlTokens(currentUrl) : [];
+  const businessLdEntities = ldEntities.filter(isBusinessEntity);
+  let scopedEntities = ldEntities;
+  if (pageTokens.length > 0 && businessLdEntities.length > 1) {
+    const scored = businessLdEntities
+      .map((e) => ({ e, score: entityUrlMatchScore(e, pageTokens) }))
+      .sort((a, b) => b.score - a.score);
+    if (scored[0].score > 0) {
+      scopedEntities = [scored[0].e];
+    }
+  }
+  for (const item of scopedEntities) {
     for (const t of entityTypes(item)) ldTypes.push(t);
     const cuisine = item.servesCuisine;
     if (Array.isArray(cuisine)) ldTypes.push(...cuisine.map((c) => String(c).toLowerCase()));
     else if (typeof cuisine === "string") ldTypes.push(cuisine.toLowerCase());
+  }
+
+  // Fold in external type signals (Google Places) — these participate in
+  // both keyword matching (via `combined`) and the ldCategoryMap / cuisine
+  // override loops below.
+  if (extraLdTypes && extraLdTypes.length > 0) {
+    ldTypes.push(...extraLdTypes);
   }
 
   const combined = text + " " + ldTypes.join(" ");
@@ -885,8 +1001,11 @@ function inferSubcategories(data: Partial<ScrapedData>, $: cheerio.CheerioAPI): 
     },
   };
 
-  // Also infer category from JSON-LD types
+  // Also infer category from JSON-LD types. Keys cover both Schema.org types
+  // (lowercased, e.g. "foodestablishment") and Google Places types (also
+  // lowercased with underscores collapsed to spaces, e.g. "cocktail bar").
   const ldCategoryMap: Record<string, string> = {
+    // Schema.org / JSON-LD
     restaurant: "dining",
     foodestablishment: "dining",
     barorpub: "drinks",
@@ -902,13 +1021,68 @@ function inferSubcategories(data: Partial<ScrapedData>, $: cheerio.CheerioAPI): 
     beautysalon: "wellness",
     spa: "wellness",
     store: "shopping",
+    // Google Places (New) type vocabulary
+    "cocktail bar": "drinks",
+    "wine bar": "drinks",
+    "sports bar": "drinks",
+    "pub": "drinks",
+    "bar": "drinks",
+    "night club": "drinks",
+    "nightclub": "drinks",
+    "cafe": "coffee",
+    "coffee shop": "coffee",
+    "tea house": "coffee",
+    "fine dining restaurant": "dining",
+    "steak house": "dining",
+    "seafood restaurant": "dining",
+    "sushi restaurant": "dining",
+    "italian restaurant": "dining",
+    "french restaurant": "dining",
+    "japanese restaurant": "dining",
+    "mexican restaurant": "dining",
+    "american restaurant": "dining",
+    "asian restaurant": "dining",
+    "mediterranean restaurant": "dining",
+    "wellness center": "wellness",
+    "yoga studio": "wellness",
+    "fitness center": "wellness",
+    "hair salon": "wellness",
+    "nail salon": "wellness",
+    "massage spa": "wellness",
+    "lodging": "hotels",
+    "resort hotel": "hotels",
+    "boutique hotel": "hotels",
+    "clothing store": "shopping",
+    "jewelry store": "shopping",
+    "shoe store": "shopping",
+    "book store": "shopping",
+    "furniture store": "shopping",
   };
 
   let inferredCategory: string | undefined;
-  for (const ldType of ldTypes) {
-    if (ldCategoryMap[ldType]) {
-      inferredCategory = ldCategoryMap[ldType];
-      break;
+  // `servesCuisine` is the strongest signal for bars masquerading as
+  // FoodEstablishment (Mary Lou's has cuisine "Cocktail Bar" but type
+  // FoodEstablishment → would otherwise be tagged dining). Check cuisine
+  // signals before falling back to the generic @type map.
+  const drinksCuisineSignals = [
+    "cocktail bar",
+    "cocktail lounge",
+    "wine bar",
+    "beer bar",
+    "sports bar",
+    "nightclub",
+    "night club",
+    "speakeasy",
+  ];
+  if (ldTypes.some((t) => drinksCuisineSignals.some((sig) => t.includes(sig)))) {
+    inferredCategory = "drinks";
+  }
+  if (!inferredCategory) {
+    for (const ldType of ldTypes) {
+      if (ldCategoryMap[ldType]) {
+        inferredCategory = ldCategoryMap[ldType];
+        break;
+      }
     }
   }
 
@@ -962,7 +1136,10 @@ function inferVibes(
   data: Partial<ScrapedData>,
   $: cheerio.CheerioAPI,
   category?: string,
-  subcategories?: string[]
+  subcategories?: string[],
+  /** Additional lowercased phrase blob from external sources (Google
+   * amenities → "live music outdoor seating good for groups", etc). */
+  extraSignals?: string,
 ): string[] {
   const text = [
     data.name,
@@ -973,7 +1150,7 @@ function inferVibes(
   ].filter(Boolean).join(" ").toLowerCase();
 
   const bodyText = $("body").text().toLowerCase();
-  const combined = text + " " + bodyText.slice(0, 3000);
+  const combined = text + " " + bodyText.slice(0, 3000) + " " + (extraSignals || "");
 
   const vibeKeywords: Record<string, string[]> = {
     "Date night": ["date night", "romantic dinner", "intimate dining", "candlelit", "couples"],
@@ -1288,12 +1465,90 @@ async function crawlSubpages(
   return merged;
 }
 
-export async function scrapeUrl(url: string): Promise<ScrapedData> {
+// --- Google Places → scraper signal adapters ---
+
+/** Normalize Google Place types ("cocktail_bar") to inferrer tokens ("cocktail bar"). */
+function googleTypeTokens(place: GooglePlace): string[] {
+  const raw = [...(place.types || [])];
+  if (place.primaryType) raw.push(place.primaryType);
+  if (place.primaryTypeDisplayName) raw.push(place.primaryTypeDisplayName);
+  return raw
+    .map((t) => String(t).toLowerCase().replace(/_/g, " ").trim())
+    .filter((t) => t.length > 0);
+}
+
+/** Flatten Google amenity/parking booleans into a space-joined phrase blob
+ *  that `inferVibes` can keyword-match against. */
+function googleSignalText(place: GooglePlace): string {
+  const parts: string[] = [];
+  const a = place.amenities;
+  if (a.reservable) parts.push("reservations reservable");
+  if (a.servesCocktails) parts.push("craft cocktail cocktail");
+  if (a.servesWine) parts.push("wine bar wine list");
+  if (a.servesBeer) parts.push("beer craft beer");
+  if (a.servesBrunch) parts.push("brunch");
+  if (a.servesDinner) parts.push("dinner");
+  if (a.outdoorSeating) parts.push("outdoor seating patio terrace");
+  if (a.liveMusic) parts.push("live music live entertainment");
+  if (a.goodForGroups) parts.push("group friendly large parties");
+  if (a.goodForChildren) parts.push("family friendly kids");
+  const p = place.parking;
+  if (p.valetParking) parts.push("valet parking");
+  if (p.freeParkingLot || p.paidParkingLot) parts.push("parking lot");
+  if (p.freeStreetParking || p.paidStreetParking) parts.push("street parking");
+  if (p.freeGarageParking || p.paidGarageParking) parts.push("garage parking");
+  return parts.join(" ");
+}
+
+/** Human-readable parking string synthesized from Google parking booleans. */
+function googleParkingString(place: GooglePlace): string | undefined {
+  const p = place.parking;
+  const opts: string[] = [];
+  if (p.valetParking) opts.push("Valet");
+  if (p.freeParkingLot) opts.push("Free lot");
+  if (p.paidParkingLot) opts.push("Paid lot");
+  if (p.freeGarageParking) opts.push("Free garage");
+  if (p.paidGarageParking) opts.push("Paid garage");
+  if (p.freeStreetParking) opts.push("Free street");
+  if (p.paidStreetParking) opts.push("Street");
+  return opts.length > 0 ? opts.join(", ") : undefined;
+}
+
+/** Price level enum → "$" string used throughout the app. */
+function googlePriceLevelToDollars(level?: string): string | undefined {
+  switch (level) {
+    case "PRICE_LEVEL_INEXPENSIVE": return "$";
+    case "PRICE_LEVEL_MODERATE": return "$$";
+    case "PRICE_LEVEL_EXPENSIVE": return "$$$";
+    case "PRICE_LEVEL_VERY_EXPENSIVE": return "$$$$";
+    default: return undefined;
+  }
+}
+
+/** Join Google weekday descriptions into a single multi-line hours string. */
+function googleHoursString(place: GooglePlace): string | undefined {
+  if (!place.hoursText || place.hoursText.length === 0) return undefined;
+  return place.hoursText.join("\n");
+}
+
+export interface ScrapeOptions {
+  /** City slug/name used to bias the Google Places text search when the
+   * HTML scrape hasn't yet produced an address/coordinates. */
+  city?: string;
+  /** If a prior scrape persisted a Google place ID, pass it here to skip
+   * the text-search step and go straight to Place Details. */
+  knownPlaceId?: string;
+}
+
+export async function scrapeUrl(
+  url: string,
+  options?: ScrapeOptions,
+): Promise<ScrapedData> {
   const { html, finalUrl } = await fetchPage(url);
   const $ = cheerio.load(html);
 
   const meta = extractMeta($);
-  const jsonLd = extractJsonLd($);
+  const jsonLd = extractJsonLd($, finalUrl);
   const instagram = extractInstagram($);
   const booking = extractBookingLinks($);
   const menuUrl = extractMenuUrl($, finalUrl);
@@ -1354,7 +1609,91 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
     lng: jsonLd.lng,
   };
 
-  // Geocode address when coordinates are missing
+  // --- Google Places enrichment -----------------------------------------
+  // HTML scraping is brittle for venue fundamentals (phone, hours, parking,
+  // exact coordinates, professional photos). Google Business Profiles keep
+  // these fresh for virtually every public venue, so we let Google be the
+  // authority on those fields while HTML stays the authority on branding,
+  // booking/menu URLs, Instagram handles, and category/vibe language.
+  //
+  // This call is fully optional and best-effort: we swallow errors and
+  // fall back to the HTML-only scrape so this integration can never
+  // regress the existing path. Requires `GOOGLE_PLACES_API_KEY` in env.
+  let googlePlace: GooglePlace | null = null;
+  if (
+    process.env.GOOGLE_PLACES_API_KEY &&
+    (options?.knownPlaceId || merged.name)
+  ) {
+    try {
+      // City hint priority:
+      //  1. Explicit `options.city` from the caller (admin form, etc.)
+      //  2. Locality parsed out of the HTML-scraped address
+      //  3. Nothing — rely on text-search fuzzy matching
+      const addressCity = merged.address?.match(/,\s*([^,]+?),\s*[A-Z]{2}\b/)?.[1]?.trim();
+      const cityHint = options?.city || addressCity;
+      googlePlace = await findPlaceForScrape({
+        name: merged.name,
+        city: cityHint,
+        website: finalUrl,
+        knownPlaceId: options?.knownPlaceId,
+        // Explicit bias from scraped coords wins; otherwise the helper will
+        // fall back to the city-center lookup internally.
+        locationBias: merged.lat && merged.lng
+          ? { lat: merged.lat, lng: merged.lng, radiusM: 10000 }
+          : undefined,
+      });
+    } catch (err) {
+      console.warn("Google Places enrichment failed", err);
+    }
+  }
+
+  if (googlePlace) {
+    // Cache the place ID so re-scrapes skip the text search step.
+    merged.googlePlaceId = googlePlace.placeId;
+
+    // Fields where Google is the authority — always override if present.
+    if (googlePlace.lat && googlePlace.lng) {
+      merged.lat = googlePlace.lat;
+      merged.lng = googlePlace.lng;
+    }
+    if (googlePlace.phone) merged.phone = googlePlace.phone;
+    if (googlePlace.address) merged.address = googlePlace.address;
+    const ghours = googleHoursString(googlePlace);
+    if (ghours) merged.hours = ghours;
+
+    // Price range — Google fills this in for ~everyone. HTML only wins
+    // if Google hasn't bothered.
+    const gprice = googlePriceLevelToDollars(googlePlace.priceLevel);
+    if (gprice) merged.priceRange = gprice;
+
+    // Description — editorialSummary is Google's short blurb; use it only
+    // when HTML found nothing.
+    if (!merged.description && googlePlace.editorialSummary) {
+      merged.description = googlePlace.editorialSummary;
+    }
+
+    // Parking — prefer HTML's human-written "Valet available" over Google's
+    // synthesized "Valet, Free lot" only when HTML found something specific.
+    if (!merged.parking) {
+      const gparking = googleParkingString(googlePlace);
+      if (gparking) merged.parking = gparking;
+    }
+
+    // Photos — prepend Google's high-quality curated photos ahead of the
+    // scored HTML candidates. Google photos go through `resolvePhotoUrls`
+    // so they're already public `lh3.googleusercontent.com` URLs.
+    const googlePhotoUrls = googlePlace.photos
+      .map((p) => p.url)
+      .filter((u): u is string => !!u);
+    if (googlePhotoUrls.length > 0) {
+      merged.imageUrls = [
+        ...googlePhotoUrls,
+        ...(merged.imageUrls || []).filter((u) => !googlePhotoUrls.includes(u)),
+      ];
+    }
+  }
+
+  // Geocode address when coordinates are still missing
   if (!merged.lat && !merged.lng && merged.address) {
     const geo = await geocodeAddress(merged.address);
     if (geo) {
@@ -1363,19 +1702,28 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
     }
   }
 
-  // Infer category and subcategories from page content
-  const inferred = inferSubcategories(merged, $);
+  // Build signal inputs for category + vibe inference from Google data.
+  const googleTypes = googlePlace ? googleTypeTokens(googlePlace) : undefined;
+  const googleVibeSignals = googlePlace ? googleSignalText(googlePlace) : undefined;
 
-  // Infer neighborhood from address
-  const neighborhood = inferNeighborhood(merged.address, merged.description);
+  // Infer category and subcategories from page content + Google types
+  const inferred = inferSubcategories(merged, $, finalUrl, googleTypes);
+
+  // Neighborhood — prefer Google's address-component neighborhood, fall back
+  // to pattern/zip inference from the address string.
+  const googleHood = googlePlace?.addressComponents?.neighborhood;
+  const neighborhood =
+    googleHood && googleHood !== "City Center" // Google's generic default for South Beach
+      ? googleHood
+      : inferNeighborhood(merged.address, merged.description);
 
   // Infer price range, dress code, parking from context if not scraped
   const finalPriceRange = merged.priceRange || inferPriceRange(inferred.category, inferred.subcategory);
   const finalDressCode = merged.dressCode || inferDressCode(inferred.category, inferred.subcategory);
   const finalParking = merged.parking || inferParking(merged.address);
 
-  // Infer vibes from page content and category context
-  const vibes = inferVibes(merged, $, inferred.category, inferred.subcategory);
+  // Infer vibes — page content + category context + Google amenity signals
+  const vibes = inferVibes(merged, $, inferred.category, inferred.subcategory, googleVibeSignals);
 
   const result: ScrapedData = {
     ...merged,
