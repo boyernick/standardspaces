@@ -146,14 +146,16 @@ export default function SpotMap(props: MapProps) {
     const img = el.querySelector("[data-img]") as HTMLDivElement | null;
     if (!img) return;
     if (active) {
-      img.style.width = "40px";
-      img.style.height = "40px";
+      img.style.width = "46px";
+      img.style.height = "46px";
+      img.style.borderRadius = "14px";
       img.style.borderColor = THEME.brand;
       img.style.borderWidth = "3px";
       el.style.zIndex = "3";
     } else {
-      img.style.width = "30px";
-      img.style.height = "30px";
+      img.style.width = "36px";
+      img.style.height = "36px";
+      img.style.borderRadius = "12px";
       img.style.borderColor = THEME.white;
       img.style.borderWidth = "3px";
       // Restore zIndex appropriate for current mode.
@@ -382,11 +384,11 @@ export default function SpotMap(props: MapProps) {
       card.dataset.card = "1";
       card.style.position = "absolute";
       card.style.left = "0";
-      card.style.top = "-15px"; // shift up by image half-height so image center sits on the anchor
+      card.style.top = "-18px"; // shift up by image half-height so image center sits on the anchor
       card.style.display = "flex";
       card.style.flexDirection = "column";
       card.style.alignItems = "center";
-      card.style.transformOrigin = "50% 15px"; // scale around the image center
+      card.style.transformOrigin = "50% 18px"; // scale around the image center
       card.style.transition = TRANSITION;
       card.style.willChange = "opacity, transform";
       card.style.opacity = initialMode === "card" ? "1" : "0";
@@ -396,13 +398,13 @@ export default function SpotMap(props: MapProps) {
       card.style.pointerEvents = initialMode === "card" ? "auto" : "none";
 
       const img = document.createElement("div");
-      img.style.width = "30px";
-      img.style.height = "30px";
-      img.style.borderRadius = "6px";
+      img.style.width = "36px";
+      img.style.height = "36px";
+      img.style.borderRadius = "12px";
       img.style.overflow = "hidden";
       img.style.border = `3px solid ${THEME.white}`;
       img.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
-      img.style.transition = "width 0.2s, height 0.2s, border-color 0.2s";
+      img.style.transition = "width 0.2s, height 0.2s, border-radius 0.2s, border-color 0.2s";
       img.style.backgroundSize = "cover";
       img.style.backgroundPosition = "center";
       img.style.backgroundColor = dark ? "#2A2922" : "#e5e5e0";
