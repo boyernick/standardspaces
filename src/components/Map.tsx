@@ -15,9 +15,9 @@ const MIAMI_ZOOM = 12;
 type MarkerMode = "card" | "dot";
 
 function computeBudget(zoom: number): number {
-  if (zoom <= 12) return 0;
-  if (zoom < 14) return 4;
-  if (zoom < 15) return 8;
+  if (zoom <= 13) return 0;
+  if (zoom < 15) return 4;
+  if (zoom < 16) return 8;
   return Infinity;
 }
 
@@ -91,12 +91,20 @@ export default function SpotMap(props: MapProps) {
     const dot = entry.el.querySelector("[data-dot]") as HTMLDivElement | null;
     if (!card || !dot) return;
     if (mode === "card") {
-      card.style.display = "flex";
-      dot.style.display = "none";
+      card.style.opacity = "1";
+      card.style.transform = "translateX(-50%) scale(1)";
+      card.style.pointerEvents = "auto";
+      dot.style.opacity = "0";
+      dot.style.transform = "translate(-50%, -50%) scale(0.4)";
+      dot.style.pointerEvents = "none";
       entry.el.style.zIndex = "1";
     } else {
-      card.style.display = "none";
-      dot.style.display = "block";
+      card.style.opacity = "0";
+      card.style.transform = "translateX(-50%) scale(0.4)";
+      card.style.pointerEvents = "none";
+      dot.style.opacity = "1";
+      dot.style.transform = "translate(-50%, -50%) scale(1)";
+      dot.style.pointerEvents = "auto";
       entry.el.style.zIndex = "0";
     }
     entry.mode = mode;
@@ -315,16 +323,33 @@ export default function SpotMap(props: MapProps) {
 
       const initialMode: MarkerMode = cardSet.has(s.id) ? "card" : "dot";
 
-      // Wrapper element holds both card and dot branches
+      // Wrapper element is a 0×0 anchor; card & dot are absolutely positioned
+      // children that cross-fade between modes.
       const el = document.createElement("div");
       el.style.cursor = "pointer";
+      el.style.position = "relative";
+      el.style.width = "0";
+      el.style.height = "0";
+
+      const TRANSITION = "opacity 260ms cubic-bezier(0.4, 0, 0.2, 1), transform 260ms cubic-bezier(0.34, 1.4, 0.64, 1)";
 
       // ----- Card branch (image + label) -----
       const card = document.createElement("div");
       card.dataset.card = "1";
-      card.style.display = initialMode === "card" ? "flex" : "none";
+      card.style.position = "absolute";
+      card.style.left = "0";
+      card.style.top = "-15px"; // shift up by image half-height so image center sits on the anchor
+      card.style.display = "flex";
       card.style.flexDirection = "column";
       card.style.alignItems = "center";
+      card.style.transformOrigin = "50% 15px"; // scale around the image center
+      card.style.transition = TRANSITION;
+      card.style.willChange = "opacity, transform";
+      card.style.opacity = initialMode === "card" ? "1" : "0";
+      card.style.transform = initialMode === "card"
+        ? "translateX(-50%) scale(1)"
+        : "translateX(-50%) scale(0.4)";
+      card.style.pointerEvents = initialMode === "card" ? "auto" : "none";
 
       const img = document.createElement("div");
       img.style.width = "30px";
@@ -362,7 +387,9 @@ export default function SpotMap(props: MapProps) {
       // ----- Dot branch -----
       const dot = document.createElement("div");
       dot.dataset.dot = "1";
-      dot.style.display = initialMode === "dot" ? "block" : "none";
+      dot.style.position = "absolute";
+      dot.style.left = "0";
+      dot.style.top = "0";
       dot.style.width = "8px";
       dot.style.height = "8px";
       dot.style.borderRadius = "50%";
@@ -370,6 +397,14 @@ export default function SpotMap(props: MapProps) {
       dot.style.backgroundColor = dark ? "#1a1a1a" : "#ededed";
       dot.style.border = "1.5px solid " + (dark ? "#ededed" : "#1a1a1a");
       dot.style.boxShadow = "0 1px 3px rgba(0,0,0,0.25)";
+      dot.style.transformOrigin = "center center";
+      dot.style.transition = TRANSITION;
+      dot.style.willChange = "opacity, transform";
+      dot.style.opacity = initialMode === "dot" ? "1" : "0";
+      dot.style.transform = initialMode === "dot"
+        ? "translate(-50%, -50%) scale(1)"
+        : "translate(-50%, -50%) scale(0.4)";
+      dot.style.pointerEvents = initialMode === "dot" ? "auto" : "none";
       el.appendChild(dot);
 
       el.style.zIndex = initialMode === "card" ? "1" : "0";
