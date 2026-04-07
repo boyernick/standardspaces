@@ -13,6 +13,6 @@ export const THEME = {
     surface: "#13120A",
     text: "#ededed",
   },
-  brand: "#6A001E",
+  brand: "#FD5304",
   white: "#ffffff",
 } as const;

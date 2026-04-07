@@ -162,7 +162,7 @@ export default function EditListingForm({ spot }: { spot: SpotData }) {
                 onClick={() => setCategory(isActive ? category.filter((c) => c !== cat) : [...category, cat])}
                 className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
                   isActive
-                    ? "bg-brand-900 border-brand-900 text-white"
+                    ? "bg-brand-500 border-brand-500 text-white"
                     : "bg-surface border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-500"
                 }`}
               >
@@ -278,7 +278,7 @@ export default function EditListingForm({ spot }: { spot: SpotData }) {
       <button
         onClick={handleSave}
         disabled={saving || deleting}
-        className="w-full py-3 text-sm font-medium rounded-xl bg-brand-900 text-white hover:bg-brand-800 disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
+        className="w-full py-3 text-sm font-medium rounded-xl bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
       >
         {saving ? (
           <><Loader2 size={16} className="animate-spin" /> Saving...</>
@@ -355,7 +355,7 @@ function MultiSelect({
           <span className="text-neutral-400 dark:text-neutral-500">{placeholder}</span>
         )}
         {selected.map((s) => (
-          <span key={s} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-900 text-white text-xs font-medium">
+          <span key={s} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-500 text-white text-xs font-medium">
             {s}
             <X size={12} strokeWidth={2} className="cursor-pointer opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); toggle(s); }} />
           </span>
@@ -373,7 +373,7 @@ function MultiSelect({
                 onClick={() => toggle(opt)}
                 className={`flex w-full items-center gap-2.5 px-4 py-2 text-xs transition-colors ${isActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}
               >
-                <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isActive ? "bg-brand-900 border-brand-900" : "border-neutral-300 dark:border-neutral-600"}`}>
+                <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isActive ? "bg-brand-500 border-brand-500" : "border-neutral-300 dark:border-neutral-600"}`}>
                   {isActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                 </span>
                 {opt}
@@ -489,7 +489,7 @@ function PhotoManager({
                         onDragOver={(e) => { e.preventDefault(); setDragOverIndex(0); }}
                         onDrop={() => { if (dragIndex !== null) handleDrop(dragIndex, 0); setDragIndex(null); setDragOverIndex(null); }}
                         onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
-                        className={`absolute inset-0 flex items-center justify-center transition-all ${dragOverIndex === 0 ? "bg-brand-900/20 ring-2 ring-inset ring-brand-900" : uploading === 0 ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
+                        className={`absolute inset-0 flex items-center justify-center transition-all ${dragOverIndex === 0 ? "bg-brand-500/20 ring-2 ring-inset ring-brand-500" : uploading === 0 ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
                       >
                         {uploading === 0 ? (
                           <Loader2 size={20} className="text-white animate-spin" />
@@ -521,7 +521,7 @@ function PhotoManager({
                             onDragOver={(e) => { e.preventDefault(); setDragOverIndex(idx); }}
                             onDrop={() => { if (dragIndex !== null) handleDrop(dragIndex, idx); setDragIndex(null); setDragOverIndex(null); }}
                             onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
-                            className={`absolute inset-0 flex items-center justify-center transition-all ${dragOverIndex === idx ? "bg-brand-900/20 ring-2 ring-inset ring-brand-900" : uploading === idx ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
+                            className={`absolute inset-0 flex items-center justify-center transition-all ${dragOverIndex === idx ? "bg-brand-500/20 ring-2 ring-inset ring-brand-500" : uploading === idx ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
                           >
                             {uploading === idx ? (
                               <Loader2 size={20} className="text-white animate-spin" />

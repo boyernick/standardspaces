@@ -137,7 +137,7 @@ export async function submitApplication(formData: {
             <p style="color: #666;">City: ${city.trim()}</p>
             ${referralLine}
             <p style="margin-top: 16px;">
-              <a href="${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/admin/applications" style="color: #6A001E; font-weight: 500;">
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/admin/applications" style="color: #FD5304; font-weight: 500;">
                 Review applications &rarr;
               </a>
             </p>

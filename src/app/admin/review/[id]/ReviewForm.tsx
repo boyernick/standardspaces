@@ -307,7 +307,7 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
           {name} is now live on the map.
         </p>
-        <button onClick={() => router.push(`/${citySlugFromName(city)}`)} className="mt-4 text-sm text-brand-900 hover:underline">
+        <button onClick={() => router.push(`/${citySlugFromName(city)}`)} className="mt-4 text-sm text-brand-500 hover:underline">
           View on map
         </button>
       </div>
@@ -478,7 +478,7 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
         <button
           onClick={handlePublish}
           disabled={publishing || deleting}
-          className="px-8 py-2.5 text-sm font-medium rounded-xl bg-brand-900 text-white hover:bg-brand-800 disabled:opacity-60 transition-colors flex items-center gap-2 shrink-0"
+          className="px-8 py-2.5 text-sm font-medium rounded-xl bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-60 transition-colors flex items-center gap-2 shrink-0"
         >
           {publishing ? <><Loader2 size={16} className="animate-spin" /> Publishing...</> : "Publish to site"}
         </button>
@@ -583,7 +583,7 @@ function ChipSelect({
               onClick={() => toggle(opt)}
               className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
                 isActive
-                  ? "bg-brand-900 border-brand-900 text-white"
+                  ? "bg-brand-500 border-brand-500 text-white"
                   : "bg-surface border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-500"
               }`}
             >
@@ -696,7 +696,7 @@ function HoursEditor({
                   type="button"
                   onClick={() => addBlock(day)}
                   title="Add another time block (e.g. lunch + dinner)"
-                  className="text-xs text-neutral-400 hover:text-brand-900 transition-colors"
+                  className="text-xs text-neutral-400 hover:text-brand-500 transition-colors"
                 >
                   Add block
                 </button>
@@ -893,7 +893,7 @@ function PhotoOverlay({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
-      className={`absolute inset-0 flex items-center justify-center transition-all ${isDragOver ? "bg-brand-900/20 ring-2 ring-inset ring-brand-900" : uploading ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
+      className={`absolute inset-0 flex items-center justify-center transition-all ${isDragOver ? "bg-brand-500/20 ring-2 ring-inset ring-brand-500" : uploading ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
     >
       {uploading ? (
         <Loader2 size={20} className="text-white animate-spin" />

@@ -115,7 +115,7 @@ export default function ApplicationList({ applications: initial }: { application
                   <button
                     onClick={() => handleAction(app.id, "approve")}
                     disabled={processing === app.id}
-                    className="px-3 py-1.5 text-xs font-medium text-white bg-brand-900 rounded-full hover:bg-brand-800 transition-colors disabled:opacity-50"
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-brand-500 rounded-full hover:bg-brand-600 transition-colors disabled:opacity-50"
                     style={fontCalibre}
                   >
                     {processing === app.id ? "..." : "Approve & send SMS"}

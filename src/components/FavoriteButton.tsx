@@ -33,7 +33,7 @@ export default function FavoriteButton({ spotId, initialFavorited, size = "sm" }
         aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
         data-tooltip={favorited ? "Favorited" : "Favorite"}
       >
-        <Heart size={16} strokeWidth={2} className={favorited ? "fill-red-500 text-red-500" : "text-neutral-600 dark:text-neutral-300"} />
+        <Heart size={16} strokeWidth={2} className={favorited ? "fill-neutral-900 text-neutral-900 dark:fill-white dark:text-white" : "text-neutral-600 dark:text-neutral-300"} />
       </button>
     );
   }
@@ -46,7 +46,7 @@ export default function FavoriteButton({ spotId, initialFavorited, size = "sm" }
         className="shrink-0 mt-0.5 p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
         aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
       >
-        <Heart size={15} strokeWidth={2} className={favorited ? "fill-red-500 text-red-500" : "text-neutral-600 dark:text-neutral-300"} />
+        <Heart size={15} strokeWidth={2} className={favorited ? "fill-neutral-900 text-neutral-900 dark:fill-white dark:text-white" : "text-neutral-600 dark:text-neutral-300"} />
       </button>
     );
   }
@@ -58,7 +58,7 @@ export default function FavoriteButton({ spotId, initialFavorited, size = "sm" }
       className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors underline underline-offset-2 decoration-neutral-300 dark:decoration-neutral-600"
       aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
     >
-      <Heart size={14} strokeWidth={2} className={favorited ? "fill-red-500 text-red-500" : ""} />
+      <Heart size={14} strokeWidth={2} className={favorited ? "fill-neutral-900 text-neutral-900 dark:fill-white dark:text-white" : ""} />
       {favorited ? "Favorited" : "Favorite"}
     </button>
   );

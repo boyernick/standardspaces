@@ -14,18 +14,19 @@
   --color-text-muted: #666666;
   --color-text-muted-dark: #999999;
 
-  /* Brand color system — change --color-brand-900 to retheme */
-  --color-brand-50: #fdf2f4;
-  --color-brand-100: #fce7eb;
-  --color-brand-200: #f9d0d9;
-  --color-brand-300: #f4a8b8;
-  --color-brand-400: #ec7693;
-  --color-brand-500: #df4770;
-  --color-brand-600: #cc2d5a;
-  --color-brand-700: #ab1d47;
-  --color-brand-800: #8f1a3f;
-  --color-brand-900: #6A001E;
-  --color-brand-950: #40000f;
+  /* Brand color system — anchored at --color-brand-500 (the hero).
+     Generated from #FD5304 with a perceptually uniform warm-orange ramp. */
+  --color-brand-50:  #fff5ee;
+  --color-brand-100: #ffe8d3;
+  --color-brand-200: #fed3a8;
+  --color-brand-300: #fdb472;
+  --color-brand-400: #fb8b3a;
+  --color-brand-500: #FD5304;
+  --color-brand-600: #ea4a08;
+  --color-brand-700: #c1380a;
+  --color-brand-800: #992b0e;
+  --color-brand-900: #7c2510;
+  --color-brand-950: #431006;
 }
 
 html, body {

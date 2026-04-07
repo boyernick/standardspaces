@@ -367,7 +367,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
                         const isSubActive = activeSubcategories.has(sub);
                         return (
                           <button key={sub} onClick={() => { setActiveSubcategories((prev) => { const next = new Set(prev); isSubActive ? next.delete(sub) : next.add(sub); return next; }); setPage(1); }} className={`flex w-full items-center gap-2.5 px-4 py-2 text-xs transition-colors ${isSubActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
-                            <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isSubActive ? "bg-brand-900 border-brand-900" : "border-neutral-300 dark:border-neutral-600"}`}>
+                            <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isSubActive ? "bg-brand-500 border-brand-500" : "border-neutral-300 dark:border-neutral-600"}`}>
                               {isSubActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                             </span>
                             {sub}
@@ -457,7 +457,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
                 We&apos;re curating the best spots in {cityName}.<br />Know a place that belongs here?
               </p>
-              <Link href="/recommend" className="inline-block mt-4 text-sm font-medium text-brand-900 hover:underline">
+              <Link href="/recommend" className="inline-block mt-4 text-sm font-medium text-brand-500 hover:underline">
                 Recommend a space
               </Link>
             </div>

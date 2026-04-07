@@ -102,7 +102,7 @@ export default function SettingsClient({ phone, city, smsNotifications }: Props)
             <button
               onClick={handleSmsToggle}
               className={`relative w-10 h-6 rounded-full transition-colors ${
-                sms ? "bg-brand-900" : "bg-neutral-200 dark:bg-neutral-700"
+                sms ? "bg-brand-500" : "bg-neutral-200 dark:bg-neutral-700"
               }`}
             >
               <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${

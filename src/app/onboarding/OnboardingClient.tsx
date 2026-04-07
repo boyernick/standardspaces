@@ -108,7 +108,7 @@ export default function OnboardingClient({ profile }: Props) {
               {avatarPreview ? (
                 <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-brand-900 flex items-center justify-center">
+                <div className="w-full h-full bg-brand-500 flex items-center justify-center">
                   {initials ? (
                     <span className="text-white text-xl font-medium" style={fontCalibre}>{initials}</span>
                   ) : (

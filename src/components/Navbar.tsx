@@ -14,12 +14,22 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [pendingReferrals, setPendingReferrals] = useState(0);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  // Tri-state: undefined = unknown (don't render anything yet), null = signed
+  // out / no avatar (render default icon), string = avatar URL.
+  const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(undefined);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
+
+    // Hydrate avatar from localStorage immediately so repeat visits skip the
+    // network round trip and don't flash the default icon.
+    try {
+      const cached = localStorage.getItem("navAvatarUrl");
+      if (cached) setAvatarUrl(cached);
+    } catch {}
+
     (async () => {
       // Run user fetch and pending-referrals fetch in parallel — neither depends
       // on the other.
@@ -29,15 +39,25 @@ export default function Navbar() {
       ]);
       if (!cancelled) setPendingReferrals(pendingCount);
       const user = userRes.data.user;
-      if (cancelled || !user) return;
+      if (cancelled) return;
+      if (!user) {
+        setAvatarUrl(null);
+        try { localStorage.removeItem("navAvatarUrl"); } catch {}
+        return;
+      }
       const { data } = await supabase
         .from("profiles")
         .select("role, avatar_url")
         .eq("id", user.id)
         .single();
-      if (cancelled || !data) return;
-      if (data.role === "admin") setIsAdmin(true);
-      if (data.avatar_url) setAvatarUrl(data.avatar_url);
+      if (cancelled) return;
+      if (data?.role === "admin") setIsAdmin(true);
+      const nextAvatar = data?.avatar_url ?? null;
+      setAvatarUrl(nextAvatar);
+      try {
+        if (nextAvatar) localStorage.setItem("navAvatarUrl", nextAvatar);
+        else localStorage.removeItem("navAvatarUrl");
+      } catch {}
     })();
 
     return () => { cancelled = true; };
@@ -91,10 +111,14 @@ export default function Navbar() {
             <Menu size={14} strokeWidth={2} className="text-neutral-600 dark:text-neutral-400" />
             {avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
-            ) : (
+            ) : avatarUrl === null ? (
               <div className="w-7 h-7 rounded-full bg-neutral-900 dark:bg-white flex items-center justify-center">
                 <CircleUserRound size={16} strokeWidth={1.5} className="text-white dark:text-neutral-900" />
               </div>
+            ) : (
+              // Avatar status unknown — render an invisible placeholder of the
+              // same dimensions so the menu button doesn't shift when it loads.
+              <div className="w-7 h-7 rounded-full" />
             )}
           </button>
 
@@ -113,7 +137,7 @@ export default function Navbar() {
               <Link href="/referrals" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
                 Referrals
                 {pendingReferrals > 0 && (
-                  <span className="ml-2 px-1.5 py-0.5 text-[10px] font-medium bg-brand-900 text-white rounded-full min-w-[18px] text-center">
+                  <span className="ml-2 px-1.5 py-0.5 text-[10px] font-medium bg-brand-500 text-white rounded-full min-w-[18px] text-center">
                     {pendingReferrals}
                   </span>
                 )}

@@ -26,7 +26,7 @@ export default async function AdminPage() {
               className="group flex items-start gap-4 p-5 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
             >
               <div className="w-10 h-10 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shrink-0 group-hover:bg-brand-50 dark:group-hover:bg-brand-950 transition-colors">
-                <List size={18} className="text-neutral-500 dark:text-neutral-400 group-hover:text-brand-900 transition-colors" />
+                <List size={18} className="text-neutral-500 dark:text-neutral-400 group-hover:text-brand-500 transition-colors" />
               </div>
               <div>
                 <h2 className="text-sm font-medium">Listings</h2>
@@ -41,7 +41,7 @@ export default async function AdminPage() {
               className="group flex items-start gap-4 p-5 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
             >
               <div className="w-10 h-10 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shrink-0 group-hover:bg-brand-50 dark:group-hover:bg-brand-950 transition-colors">
-                <Users size={18} className="text-neutral-500 dark:text-neutral-400 group-hover:text-brand-900 transition-colors" />
+                <Users size={18} className="text-neutral-500 dark:text-neutral-400 group-hover:text-brand-500 transition-colors" />
               </div>
               <div>
                 <h2 className="text-sm font-medium">Applications</h2>

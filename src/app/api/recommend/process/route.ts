@@ -38,7 +38,7 @@ async function sendNotification(data: {
             ${[data.category, data.neighborhood].filter(Boolean).join(" · ") || "No category/neighborhood provided"}
           </p>
           <p style="margin: 0 0 16px;">
-            <a href="${data.url}" style="color: #6A001E;">${data.url}</a>
+            <a href="${data.url}" style="color: #FD5304;">${data.url}</a>
           </p>
           ${data.notes ? `<p style="color: #444; margin: 0 0 16px;"><em>"${data.notes}"</em></p>` : ""}
           <p style="color: #999; font-size: 13px;">
@@ -46,7 +46,7 @@ async function sendNotification(data: {
           </p>
           <div style="margin: 20px 0;">
             <a href="${data.siteUrl}/admin/review/${data.recommendationId}"
-               style="display: inline-block; padding: 10px 24px; background: #6A001E; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500;">
+               style="display: inline-block; padding: 10px 24px; background: #FD5304; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500;">
               Review and publish
             </a>
           </div>
