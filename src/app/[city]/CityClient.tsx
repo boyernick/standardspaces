@@ -118,6 +118,11 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
   }, [mobileView]);
 
   const filtered = useMemo(() => {
+    if (eventsOnly) {
+      const eventSpotIds = new Set(upcomingEvents.map((e) => e.spot_id));
+      const eventSpots = allSpots.filter((s) => eventSpotIds.has(s.id));
+      return [...eventSpots].sort((a, b) => a.name.localeCompare(b.name));
+    }
     let result = allSpots;
     if (activeCategory) {
       result = result.filter((s) => s.category.includes(activeCategory));
@@ -129,7 +134,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], cit
       result = result.filter((s) => s.neighborhood === activeNeighborhood);
     }
     return [...result].sort((a, b) => a.name.localeCompare(b.name));
-  }, [activeCategory, activeSubcategories, activeNeighborhood, allSpots]);
+  }, [eventsOnly, upcomingEvents, activeCategory, activeSubcategories, activeNeighborhood, allSpots]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   useEffect(() => {

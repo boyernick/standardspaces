@@ -67,6 +67,7 @@ export default function SpotMap(props: MapProps) {
   const spotsRef = useRef(spots);
   const onSpotSelectRef = useRef(onSpotSelect);
   const activeIdRef = useRef<string | null>(activeSpot?.id ?? null);
+  const didInitialFitRef = useRef(false);
   spotsRef.current = spots;
   onSpotSelectRef.current = onSpotSelect;
   activeIdRef.current = activeSpot?.id ?? null;
@@ -438,34 +439,49 @@ export default function SpotMap(props: MapProps) {
   useEffect(() => {
     if (!map.current || !mapReady || !geoResolved) return;
 
-    if (userLocation) {
-      // User location available: center on their neighborhood
-      map.current.easeTo({
-        center: userLocation,
-        zoom: 15,
-        duration: 1200,
-        easing: (t: number) => 1 - Math.pow(1 - t, 3),
-        essential: true,
-      });
-    } else if (spots.length > 0) {
-      // No user location: fit all spots
-      const bounds = new mapboxgl.LngLatBounds();
-      spots.forEach((s) => bounds.extend([s.lng, s.lat]));
-      map.current.fitBounds(bounds, {
-        padding: { top: 80, bottom: 80, left: 80, right: 80 },
-        maxZoom: 15,
-        duration: 1200,
-        essential: true,
-      });
-    } else {
-      map.current.easeTo({
-        center: MIAMI_CENTER,
-        zoom: MIAMI_ZOOM,
-        duration: 1200,
-        easing: (t: number) => 1 - Math.pow(1 - t, 3),
-        essential: true,
-      });
+    if (!didInitialFitRef.current) {
+      didInitialFitRef.current = true;
+      // First-time centering: prefer user location, otherwise fit all spots
+      if (userLocation) {
+        map.current.easeTo({
+          center: userLocation,
+          zoom: 15,
+          duration: 1200,
+          easing: (t: number) => 1 - Math.pow(1 - t, 3),
+          essential: true,
+        });
+      } else if (spots.length > 0) {
+        const bounds = new mapboxgl.LngLatBounds();
+        spots.forEach((s) => bounds.extend([s.lng, s.lat]));
+        map.current.fitBounds(bounds, {
+          padding: { top: 80, bottom: 80, left: 80, right: 80 },
+          maxZoom: 15,
+          duration: 1200,
+          essential: true,
+        });
+      } else {
+        map.current.easeTo({
+          center: MIAMI_CENTER,
+          zoom: MIAMI_ZOOM,
+          duration: 1200,
+          easing: (t: number) => 1 - Math.pow(1 - t, 3),
+          essential: true,
+        });
+      }
+      return;
     }
+
+    // Subsequent updates (filter changes): always refit to the new spots so
+    // the map reflects the filter, even when user location is known.
+    if (spots.length === 0) return;
+    const bounds = new mapboxgl.LngLatBounds();
+    spots.forEach((s) => bounds.extend([s.lng, s.lat]));
+    map.current.fitBounds(bounds, {
+      padding: { top: 80, bottom: 80, left: 80, right: 80 },
+      maxZoom: 15,
+      duration: 800,
+      essential: true,
+    });
   }, [spots, mapReady, geoResolved, userLocation]);
 
   // Pan to active spot if off-screen
