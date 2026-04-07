@@ -88,7 +88,7 @@ function formatWhenLine(start: string): string {
   const time = s
     .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
     .replace(" ", "");
-  return `${weekday}, ${month} ${day} @${time}`;
+  return `${weekday}, ${month} ${day} · ${time}`;
 }
 
 export default function EventClient({
