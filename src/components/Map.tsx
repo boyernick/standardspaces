@@ -270,15 +270,33 @@ export default function SpotMap(props: MapProps) {
       userMarker.current = null;
     }
 
+    // Wrapper holds both the pulse ring and the dot. The ring sits behind
+    // the dot and scales outward so the halo clearly emanates past the dot.
     const el = document.createElement("div");
-    el.style.width = "16px";
-    el.style.height = "16px";
-    el.style.borderRadius = "50%";
-    el.style.backgroundColor = "#FD5304";
-    el.style.border = "3px solid white";
-    el.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
+    el.style.position = "relative";
+    el.style.width = "22px";
+    el.style.height = "22px";
     el.style.zIndex = "10";
-    el.className = "user-location-marker";
+
+    const ring = document.createElement("div");
+    ring.className = "user-location-pulse";
+
+    const dot = document.createElement("div");
+    dot.style.position = "absolute";
+    dot.style.top = "50%";
+    dot.style.left = "50%";
+    dot.style.width = "16px";
+    dot.style.height = "16px";
+    dot.style.marginTop = "-8px";
+    dot.style.marginLeft = "-8px";
+    dot.style.borderRadius = "50%";
+    dot.style.backgroundColor = "#FD5304";
+    dot.style.border = "3px solid white";
+    dot.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
+    dot.style.zIndex = "2";
+
+    el.appendChild(ring);
+    el.appendChild(dot);
 
     userMarker.current = new mapboxgl.Marker({ element: el, anchor: "center" })
       .setLngLat(userLocation)
