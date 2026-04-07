@@ -99,99 +99,189 @@ function extractMeta($: cheerio.CheerioAPI): Partial<ScrapedData> {
   return data;
 }
 
+// Flatten JSON-LD payloads. Many sites (anything using Yoast SEO, Rank Math,
+// Schema Pro, etc.) emit a single root object with `@context` + `@graph: [...]`
+// instead of an array of items. Some entities also reference each other via
+// `@id`, with the actual data living deeper in the graph. We walk the whole
+// thing recursively so we don't miss the Restaurant / PostalAddress / etc.
+// regardless of how the page chose to nest them.
+function flattenJsonLd(node: unknown, out: Record<string, unknown>[] = []): Record<string, unknown>[] {
+  if (!node) return out;
+  if (Array.isArray(node)) {
+    for (const child of node) flattenJsonLd(child, out);
+    return out;
+  }
+  if (typeof node === "object") {
+    const obj = node as Record<string, unknown>;
+    out.push(obj);
+    if (Array.isArray(obj["@graph"])) flattenJsonLd(obj["@graph"], out);
+  }
+  return out;
+}
+
+// Does this entity's @type match one of the business types we care about?
+// Handles both string ("Restaurant") and array (["Organization","Place","Restaurant"]) forms.
+const BUSINESS_TYPES = new Set([
+  "restaurant",
+  "barorpub",
+  "cafeorcoffeeshop",
+  "hotel",
+  "lodgingbusiness",
+  "healthclub",
+  "exercisegym",
+  "sportsactivitylocation",
+  "dayspa",
+  "beautysalon",
+  "spa",
+  "store",
+  "shoppingcenter",
+  "localbusiness",
+  "foodestablishment",
+  "place",
+  "organization",
+]);
+
+function entityTypes(item: Record<string, unknown>): string[] {
+  const t = item["@type"];
+  if (!t) return [];
+  if (Array.isArray(t)) return t.map((x) => String(x).toLowerCase());
+  return [String(t).toLowerCase()];
+}
+
+function isBusinessEntity(item: Record<string, unknown>): boolean {
+  return entityTypes(item).some((t) => BUSINESS_TYPES.has(t));
+}
+
 // Extract structured data (JSON-LD)
 function extractJsonLd($: cheerio.CheerioAPI): Partial<ScrapedData> {
   const data: Partial<ScrapedData> = {};
 
+  // First pass: collect every JSON-LD entity across every script tag, flattening @graph.
+  const allEntities: Record<string, unknown>[] = [];
   $('script[type="application/ld+json"]').each((_, el) => {
     try {
       const json = JSON.parse($(el).html() || "");
-      const items = Array.isArray(json) ? json : [json];
-
-      for (const item of items) {
-        const type = item["@type"];
-        if (!type) continue;
-
-        // Restaurant, Bar, CafeOrCoffeeShop, Hotel, etc.
-        if (typeof type === "string" && ["Restaurant", "BarOrPub", "CafeOrCoffeeShop", "Hotel", "HealthClub", "Store", "LocalBusiness", "FoodEstablishment"].includes(type)) {
-          // Skip generic names like just a city name
-          const itemName = item.name;
-          const genericNames = ["miami", "new york", "los angeles", "chicago", "houston", "dallas", "austin", "denver", "seattle", "boston", "atlanta", "las vegas"];
-          if (itemName && !genericNames.includes(String(itemName).toLowerCase().trim())) {
-            data.name = data.name || itemName;
-          }
-          // Skip descriptions that are just contact info or mention the wrong city
-          const itemDesc = item.description;
-          if (itemDesc && !String(itemDesc).startsWith("Contact") && String(itemDesc).length > 30) {
-            data.description = data.description || itemDesc;
-          }
-          data.phone = data.phone || item.telephone;
-          data.priceRange = data.priceRange || item.priceRange;
-
-          if (item.address) {
-            const addr = item.address;
-            if (typeof addr === "string") {
-              data.address = addr;
-            } else {
-              data.address = [addr.streetAddress, addr.addressLocality, addr.addressRegion, addr.postalCode].filter(Boolean).join(", ");
-            }
-          }
-
-          if (item.geo) {
-            data.lat = parseFloat(item.geo.latitude);
-            data.lng = parseFloat(item.geo.longitude);
-          }
-
-          if (item.openingHoursSpecification) {
-            data.hours = formatHoursSpec(item.openingHoursSpecification);
-          } else if (item.openingHours) {
-            // Some sites use the simpler openingHours string/array
-            const oh = Array.isArray(item.openingHours) ? item.openingHours.join(" · ") : item.openingHours;
-            if (typeof oh === "string") data.hours = data.hours || oh;
-          }
-
-          // Parking
-          if (item.amenityFeature) {
-            const amenities = Array.isArray(item.amenityFeature) ? item.amenityFeature : [item.amenityFeature];
-            for (const a of amenities) {
-              const aName = (a.name || a.value || "").toLowerCase();
-              if (aName.includes("parking") || aName.includes("valet")) {
-                data.parking = data.parking || a.name || a.value;
-              }
-            }
-          }
-          if (item.parking) {
-            data.parking = data.parking || (typeof item.parking === "string" ? item.parking : undefined);
-          }
-
-          // Images from structured data
-          if (item.image) {
-            const images = Array.isArray(item.image) ? item.image : [item.image];
-            for (const img of images) {
-              const url = typeof img === "string" ? img : img?.url;
-              if (url && url.length > 0 && !data.imageUrls?.includes(url)) {
-                data.imageUrls = data.imageUrls || [];
-                data.imageUrls.push(url);
-              }
-            }
-          }
-        }
-
-        // Look for sameAs links (social profiles)
-        if (item.sameAs) {
-          const links = Array.isArray(item.sameAs) ? item.sameAs : [item.sameAs];
-          for (const link of links) {
-            if (typeof link === "string" && link.includes("instagram.com")) {
-              const match = link.match(/instagram\.com\/([^/?]+)/);
-              if (match) data.instagram = `@${match[1]}`;
-            }
-          }
-        }
-      }
+      flattenJsonLd(json, allEntities);
     } catch {
       // Invalid JSON-LD, skip
     }
   });
+
+  // Build an @id → entity index so we can resolve references like
+  // address: { "@id": "https://komodomiami.com/#local-main-place-address" }
+  const byId = new Map<string, Record<string, unknown>>();
+  for (const e of allEntities) {
+    const id = e["@id"];
+    if (typeof id === "string") byId.set(id, e);
+  }
+  function resolveRef(value: unknown): unknown {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const ref = (value as Record<string, unknown>)["@id"];
+      if (typeof ref === "string" && byId.has(ref)) {
+        // Only follow the ref if the referenced object has more keys than just @id
+        const target = byId.get(ref)!;
+        if (Object.keys(target).length > 1) return target;
+      }
+    }
+    return value;
+  }
+
+  for (const item of allEntities) {
+    if (isBusinessEntity(item)) {
+      // Skip generic names like just a city name
+      const itemName = item.name;
+      const genericNames = ["miami", "new york", "los angeles", "chicago", "houston", "dallas", "austin", "denver", "seattle", "boston", "atlanta", "las vegas"];
+      if (typeof itemName === "string" && !genericNames.includes(itemName.toLowerCase().trim())) {
+        data.name = data.name || itemName;
+      }
+      // Skip descriptions that are just contact info or mention the wrong city
+      const itemDesc = item.description;
+      if (typeof itemDesc === "string" && !itemDesc.startsWith("Contact") && itemDesc.length > 30) {
+        data.description = data.description || itemDesc;
+      }
+      if (typeof item.telephone === "string") data.phone = data.phone || item.telephone;
+      if (typeof item.priceRange === "string") data.priceRange = data.priceRange || item.priceRange;
+
+      // Address — may be inline or referenced via @id
+      const addrRaw = resolveRef(item.address);
+      if (addrRaw) {
+        if (typeof addrRaw === "string") {
+          data.address = data.address || addrRaw;
+        } else if (typeof addrRaw === "object") {
+          const addr = addrRaw as Record<string, unknown>;
+          const parts = [addr.streetAddress, addr.addressLocality, addr.addressRegion, addr.postalCode]
+            .filter((p): p is string => typeof p === "string" && p.length > 0);
+          if (parts.length > 0) data.address = data.address || parts.join(", ");
+        }
+      }
+
+      // Coordinates
+      const geo = resolveRef(item.geo) as Record<string, unknown> | undefined;
+      if (geo && typeof geo === "object") {
+        const lat = parseFloat(String(geo.latitude));
+        const lng = parseFloat(String(geo.longitude));
+        if (!Number.isNaN(lat) && !data.lat) data.lat = lat;
+        if (!Number.isNaN(lng) && !data.lng) data.lng = lng;
+      }
+
+      // Hours
+      if (item.openingHoursSpecification) {
+        const hoursStr = formatHoursSpec(item.openingHoursSpecification);
+        if (hoursStr) data.hours = data.hours || hoursStr;
+      } else if (item.openingHours) {
+        const oh = Array.isArray(item.openingHours) ? item.openingHours.join(" · ") : item.openingHours;
+        if (typeof oh === "string") data.hours = data.hours || oh;
+      }
+
+      // Phone via contactPoint (Komodo, many Yoast sites use this)
+      const contact = resolveRef(item.contactPoint) as Record<string, unknown> | undefined;
+      if (contact && typeof contact === "object" && typeof contact.telephone === "string") {
+        data.phone = data.phone || contact.telephone;
+      }
+
+      // Parking
+      if (item.amenityFeature) {
+        const amenities = Array.isArray(item.amenityFeature) ? item.amenityFeature : [item.amenityFeature];
+        for (const a of amenities) {
+          const aRec = a as Record<string, unknown>;
+          const aName = String(aRec?.name || aRec?.value || "").toLowerCase();
+          if (aName.includes("parking") || aName.includes("valet")) {
+            data.parking = data.parking || (typeof aRec.name === "string" ? aRec.name : typeof aRec.value === "string" ? aRec.value : undefined);
+          }
+        }
+      }
+      if (typeof item.parking === "string") data.parking = data.parking || item.parking;
+
+      // Images — inline, referenced, or as ImageObject
+      if (item.image) {
+        const images = Array.isArray(item.image) ? item.image : [item.image];
+        for (const imgRaw of images) {
+          const img = resolveRef(imgRaw);
+          let url: string | undefined;
+          if (typeof img === "string") url = img;
+          else if (img && typeof img === "object") {
+            const imgObj = img as Record<string, unknown>;
+            url = typeof imgObj.url === "string" ? imgObj.url : typeof imgObj.contentUrl === "string" ? imgObj.contentUrl : undefined;
+          }
+          if (url && url.length > 0) {
+            data.imageUrls = data.imageUrls || [];
+            if (!data.imageUrls.includes(url)) data.imageUrls.push(url);
+          }
+        }
+      }
+
+      // Social profiles via sameAs
+      if (item.sameAs) {
+        const links = Array.isArray(item.sameAs) ? item.sameAs : [item.sameAs];
+        for (const link of links) {
+          if (typeof link === "string" && link.includes("instagram.com")) {
+            const match = link.match(/instagram\.com\/([^/?]+)/);
+            if (match && !data.instagram) data.instagram = `@${match[1]}`;
+          }
+        }
+      }
+    }
+  }
 
   return data;
 }
@@ -502,6 +592,36 @@ function extractPageDetails($: cheerio.CheerioAPI): { dressCode?: string; parkin
     }
   }
 
+  // Class-based extraction (e.g. <p class="dress-content">…</p>).
+  // Important: must NOT match "address" — filter the class name explicitly.
+  if (!result.dressCode) {
+    $('[class*="dress" i]').each((_, el) => {
+      if (result.dressCode) return;
+      const cls = ($(el).attr("class") || "").toLowerCase();
+      // Require a real "dress" token, not "address"
+      if (!/(^|[^a-z])dress/.test(cls)) return;
+      const t = $(el).text().trim().replace(/\s+/g, " ");
+      if (!t || t.length < 5 || t.length > 400) return;
+      // Strip leading "Dress Code" label if present
+      const stripped = t.replace(/^dress\s*code\s*[:\-–—]?\s*/i, "").trim();
+      if (stripped.length > 5) result.dressCode = stripped;
+    });
+  }
+
+  // Heading-based extraction: <h2>Dress Code</h2><p>…</p>
+  if (!result.dressCode) {
+    $("h1,h2,h3,h4").each((_, el) => {
+      if (result.dressCode) return;
+      const t = $(el).text().trim().toLowerCase();
+      if (t === "dress code" || t === "attire" || t === "our dress code") {
+        const next = $(el).next().text().trim().replace(/\s+/g, " ");
+        if (next && next.length > 5 && next.length < 400) {
+          result.dressCode = next;
+        }
+      }
+    });
+  }
+
   // Known dress code keywords in any text
   if (!result.dressCode) {
     const lcBody = bodyText.toLowerCase();
@@ -580,23 +700,34 @@ function inferSubcategories(data: Partial<ScrapedData>, $: cheerio.CheerioAPI): 
     $("title").text(),
   ].filter(Boolean).join(" ").toLowerCase();
 
-  // Check JSON-LD @type for category hints
+  // Check JSON-LD @type for category hints — flatten @graph and handle array @type values.
   const ldTypes: string[] = [];
+  const ldEntities: Record<string, unknown>[] = [];
   $('script[type="application/ld+json"]').each((_, el) => {
     try {
       const json = JSON.parse($(el).html() || "");
-      const items = Array.isArray(json) ? json : [json];
-      for (const item of items) {
-        if (item["@type"]) ldTypes.push(String(item["@type"]).toLowerCase());
-        if (item.servesCuisine) {
-          if (Array.isArray(item.servesCuisine)) ldTypes.push(...item.servesCuisine.map((c: string) => c.toLowerCase()));
-          else ldTypes.push(String(item.servesCuisine).toLowerCase());
-        }
-      }
+      flattenJsonLd(json, ldEntities);
     } catch { /* skip */ }
   });
+  for (const item of ldEntities) {
+    for (const t of entityTypes(item)) ldTypes.push(t);
+    const cuisine = item.servesCuisine;
+    if (Array.isArray(cuisine)) ldTypes.push(...cuisine.map((c) => String(c).toLowerCase()));
+    else if (typeof cuisine === "string") ldTypes.push(cuisine.toLowerCase());
+  }
 
   const combined = text + " " + ldTypes.join(" ");
+
+  // Word-boundary keyword test. Plain `.includes("spa")` matches "space",
+  // "spaces", "spaghetti", etc., which is how Komodo Miami got mis-tagged
+  // as wellness. We escape regex specials and require a word boundary on
+  // both sides — but allow accented characters (café, açaí) and punctuation.
+  function matchKeyword(haystack: string, kw: string): boolean {
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // \b doesn't play nicely with non-ASCII; use a manual non-letter lookaround.
+    const re = new RegExp(`(?:^|[^\\p{L}\\p{N}])${escaped}(?:[^\\p{L}\\p{N}]|$)`, "iu");
+    return re.test(haystack);
+  }
 
   // Map keywords to categories and subcategories
   const matches: { category: string; subcategory: string; weight: number }[] = [];
@@ -615,7 +746,7 @@ function inferSubcategories(data: Partial<ScrapedData>, $: cheerio.CheerioAPI): 
       "Latin American": ["latin", "latino", "south american", "colombian", "brazilian", "argentinian"],
       "Mexican": ["mexican", "taqueria", "mezcal", "mole"],
       "Peruvian": ["peruvian", "nikkei", "ceviche", "pisco"],
-      "Asian fusion": ["asian fusion", "pan-asian"],
+      "Asian fusion": ["asian fusion", "pan-asian", "pan asian", "southeast asian", "asian-inspired"],
       "Thai": ["thai", "pad thai"],
       "Indian": ["indian", "curry", "tandoor", "biryani"],
       "Middle Eastern": ["middle eastern", "lebanese", "turkish", "persian", "hummus", "shawarma"],
@@ -784,7 +915,7 @@ function inferSubcategories(data: Partial<ScrapedData>, $: cheerio.CheerioAPI): 
   for (const [cat, subcats] of Object.entries(keywordMap)) {
     for (const [subcat, keywords] of Object.entries(subcats)) {
       for (const kw of keywords) {
-        if (combined.includes(kw)) {
+        if (matchKeyword(combined, kw)) {
           matches.push({ category: cat, subcategory: subcat, weight: kw.length });
           break;
         }
@@ -875,9 +1006,15 @@ function inferVibes(
 
   const matched: string[] = [];
 
+  // Word-boundary match (same Unicode-safe approach as inferSubcategories).
+  const matchVibeKw = (haystack: string, kw: string): boolean => {
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(?:^|[^\\p{L}\\p{N}])${escaped}(?:[^\\p{L}\\p{N}]|$)`, "iu").test(haystack);
+  };
+
   for (const [vibe, keywords] of Object.entries(vibeKeywords)) {
     for (const kw of keywords) {
-      if (combined.includes(kw)) {
+      if (matchVibeKw(combined, kw)) {
         matched.push(vibe);
         break;
       }
@@ -1064,6 +1201,93 @@ function scoreAndRankImages(
 }
 
 // Main scrape function
+// Same-origin subpage crawler. Many restaurant sites bury dress code, parking,
+// and hours on /contact, /about, /faq etc. We follow up to MAX_SUBPAGES of
+// these and merge anything we find into the main scrape.
+const SUBPAGE_KEYWORDS = /(contact|about|info|hours|visit|faq|experience|policies?|dress|reserv|plan-?your|know-?before)/i;
+const MAX_SUBPAGES = 5;
+
+async function crawlSubpages(
+  baseUrl: string,
+  $: cheerio.CheerioAPI
+): Promise<{ dressCode?: string; parking?: string; hours?: string; priceRange?: string; imageUrls: string[] }> {
+  let base: URL;
+  try {
+    base = new URL(baseUrl);
+  } catch {
+    return { imageUrls: [] };
+  }
+
+  const candidates = new Map<string, URL>();
+  $("a[href]").each((_, el) => {
+    const href = $(el).attr("href");
+    if (!href) return;
+    let abs: URL;
+    try {
+      abs = new URL(href, baseUrl);
+    } catch {
+      return;
+    }
+    if (abs.origin !== base.origin) return;
+    if (abs.pathname === base.pathname) return;
+    if (abs.pathname === "/" || abs.pathname === "") return;
+    if (!SUBPAGE_KEYWORDS.test(abs.pathname)) return;
+    abs.hash = "";
+    abs.search = "";
+    candidates.set(abs.toString(), abs);
+  });
+
+  const urls = Array.from(candidates.keys()).slice(0, MAX_SUBPAGES);
+  if (urls.length === 0) return { imageUrls: [] };
+
+  const subResults = await Promise.all(
+    urls.map(async (u) => {
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 8000);
+        const res = await fetch(u, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          },
+          redirect: "follow",
+          signal: ctrl.signal,
+        });
+        clearTimeout(timer);
+        if (!res.ok) return null;
+        const ct = res.headers.get("content-type") || "";
+        if (!ct.includes("html")) return null;
+        const html = await res.text();
+        const sub$ = cheerio.load(html);
+        const details = extractPageDetails(sub$);
+        // Pull og:image from subpage too
+        const ogImg = sub$('meta[property="og:image"]').attr("content");
+        const subImages: string[] = [];
+        if (ogImg) subImages.push(resolveUrl(ogImg, u));
+        return { details, subImages };
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  const merged: { dressCode?: string; parking?: string; hours?: string; priceRange?: string; imageUrls: string[] } = {
+    imageUrls: [],
+  };
+  for (const r of subResults) {
+    if (!r) continue;
+    if (!merged.dressCode && r.details.dressCode) merged.dressCode = r.details.dressCode;
+    if (!merged.parking && r.details.parking) merged.parking = r.details.parking;
+    if (!merged.hours && r.details.hours) merged.hours = r.details.hours;
+    if (!merged.priceRange && r.details.priceRange) merged.priceRange = r.details.priceRange;
+    for (const img of r.subImages) {
+      if (!merged.imageUrls.includes(img)) merged.imageUrls.push(img);
+    }
+  }
+  return merged;
+}
+
 export async function scrapeUrl(url: string): Promise<ScrapedData> {
   const { html, finalUrl } = await fetchPage(url);
   const $ = cheerio.load(html);
@@ -1074,6 +1298,18 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
   const booking = extractBookingLinks($);
   const menuUrl = extractMenuUrl($, finalUrl);
   const pageDetails = extractPageDetails($);
+
+  // Crawl a few same-origin subpages (contact, about, faq…) for fields
+  // commonly buried off the homepage. Best-effort, fully optional.
+  const needsMoreFromSubpages =
+    !jsonLd.parking ||
+    !pageDetails.dressCode ||
+    !pageDetails.parking ||
+    (!jsonLd.hours && !pageDetails.hours);
+  const emptySubpageDetails: Awaited<ReturnType<typeof crawlSubpages>> = { imageUrls: [] };
+  const subpageDetails = needsMoreFromSubpages
+    ? await crawlSubpages(finalUrl, $).catch(() => emptySubpageDetails)
+    : emptySubpageDetails;
 
   // Extract CSS background images
   const bgImages: string[] = [];
@@ -1091,6 +1327,7 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
     ...(jsonLd.imageUrls || []),
     ...(meta.imageUrls || []),
     ...bgImages,
+    ...subpageDetails.imageUrls,
   ])]
     .filter((url) => url && url.length > 0)
     .map((url) => resolveUrl(url, finalUrl));
@@ -1104,10 +1341,10 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
     address: jsonLd.address,
     phone: jsonLd.phone,
     website: finalUrl,
-    hours: jsonLd.hours || pageDetails.hours,
-    priceRange: jsonLd.priceRange || pageDetails.priceRange,
-    dressCode: pageDetails.dressCode,
-    parking: jsonLd.parking || pageDetails.parking,
+    hours: jsonLd.hours || pageDetails.hours || subpageDetails.hours,
+    priceRange: jsonLd.priceRange || pageDetails.priceRange || subpageDetails.priceRange,
+    dressCode: pageDetails.dressCode || subpageDetails.dressCode,
+    parking: jsonLd.parking || pageDetails.parking || subpageDetails.parking,
     bookingUrl: booking.bookingUrl,
     bookingPlatform: booking.bookingPlatform,
     menuUrl,
