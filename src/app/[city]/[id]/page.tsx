@@ -466,9 +466,9 @@ export default async function SpotPage({
               variant="icon"
               spotInstagram={spot.instagram}
             />
+            <FavoriteButtonClient spotId={spot.id} size="icon" />
             <CheckInButton spotId={spot.id} variant="icon" />
             <WishlistButtonClient spotId={spot.id} size="icon" />
-            <FavoriteButtonClient spotId={spot.id} size="icon" />
           </div>
           {spot.bookingUrl && (
             <a

@@ -560,6 +560,11 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                         </p>
                       </Link>
                       <div className="flex items-center -space-x-1 mt-1 -ml-2">
+                        <FavoriteButton
+                          spotId={activeSpot.id}
+                          initialFavorited={favoritedSet.has(activeSpot.id)}
+                          size="icon"
+                        />
                         <CheckInButton
                           spotId={activeSpot.id}
                           variant="icon"
@@ -569,11 +574,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                         <WishlistButton
                           spotId={activeSpot.id}
                           initialWishlisted={wishlistedSet.has(activeSpot.id)}
-                          size="icon"
-                        />
-                        <FavoriteButton
-                          spotId={activeSpot.id}
-                          initialFavorited={favoritedSet.has(activeSpot.id)}
                           size="icon"
                         />
                       </div>
