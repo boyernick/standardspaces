@@ -42,13 +42,14 @@ export default function CommandMenu() {
   const listRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // Fetch spots once on first open
+  // Fetch spots once on first open. Only the columns the menu actually reads
+  // are selected to keep the payload small.
   useEffect(() => {
     if (!open || spots.length > 0) return;
     let cancelled = false;
     createClient()
       .from("spots")
-      .select("*")
+      .select("id, name, category, vibes, neighborhood, city, images")
       .order("name")
       .then(({ data }) => {
         if (cancelled || !data) return;
@@ -56,16 +57,10 @@ export default function CommandMenu() {
           id: r.id as string,
           name: r.name as string,
           category: r.category as Category[],
-          subcategory: r.subcategory as string[] | undefined,
           vibes: r.vibes as string[] | undefined,
           neighborhood: r.neighborhood as string,
           city: r.city as string,
-          description: r.description as string,
-          address: r.address as string,
           images: r.images as string[],
-          lng: r.lng as number,
-          lat: r.lat as number,
-          priceRange: r.price_range as string | undefined,
         } as Spot)));
       });
     return () => { cancelled = true; };
@@ -87,20 +82,21 @@ export default function CommandMenu() {
     return () => { cancelled = true; };
   }, [open, members.length]);
 
-  // Fetch upcoming public events once on first open
+  // Fetch upcoming public events once on first open. Only the columns the
+  // menu actually reads are selected to keep the payload small.
   useEffect(() => {
     if (!open || events.length > 0) return;
     let cancelled = false;
     createClient()
       .from("events")
-      .select("*")
+      .select("id, title, description, city, cover_image_url, images, starts_at")
       .eq("status", "published")
       .eq("visibility", "public")
       .gte("starts_at", new Date().toISOString())
       .order("starts_at", { ascending: true })
       .then(({ data }) => {
         if (cancelled || !data) return;
-        setEvents(data as EventRecord[]);
+        setEvents(data as unknown as EventRecord[]);
       });
     return () => { cancelled = true; };
   }, [open, events.length]);

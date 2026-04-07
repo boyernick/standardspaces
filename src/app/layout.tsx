@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import CommandMenu from "@/components/CommandMenu";
+import ThemeSync from "@/components/ThemeSync";
 import "./globals.css";
 
 const calibre = localFont({
@@ -55,11 +56,12 @@ export default function RootLayout({
           id="theme-init"
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){try{var t=localStorage.getItem('theme');var d=false;if(t==='dark'){d=true;}else if(t==='light'){d=false;}else{var h=new Date().getHours();d=(h>=19||h<7);}if(d){document.documentElement.classList.add('dark');document.documentElement.style.backgroundColor='#13120A';var m=document.querySelector('meta[name=\"theme-color\"]');if(m)m.setAttribute('content','#13120A');}}catch(e){}})();",
+              "(function(){try{var t=localStorage.getItem('theme');var d=false;if(t==='dark'){d=true;}else if(t==='light'){d=false;}else{d=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;}if(d){document.documentElement.classList.add('dark');document.documentElement.style.backgroundColor='#13120A';var m=document.querySelector('meta[name=\"theme-color\"]');if(m)m.setAttribute('content','#13120A');}}catch(e){}})();",
           }}
         />
       </head>
       <body className="h-full flex flex-col overflow-hidden">
+        <ThemeSync />
         <CommandMenu />
         {children}
       </body>

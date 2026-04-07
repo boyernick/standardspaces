@@ -99,19 +99,15 @@ export async function getPastAttendedEvents(userId: string): Promise<EventRecord
 
 export async function getInvitesForUser(userId: string): Promise<EventRecord[]> {
   const supabase = await createClient();
-  const { data: invites } = await supabase
-    .from("event_invites")
-    .select("event_id")
-    .eq("user_id", userId);
-  const eventIds = (invites ?? []).map((i) => i.event_id);
+  // Invites and the viewer's RSVPs both filter by user_id only — fetch in parallel.
+  const [invitesRes, rsvpsRes] = await Promise.all([
+    supabase.from("event_invites").select("event_id").eq("user_id", userId),
+    supabase.from("event_rsvps").select("event_id").eq("user_id", userId),
+  ]);
+  const eventIds = (invitesRes.data ?? []).map((i) => i.event_id);
   if (eventIds.length === 0) return [];
 
-  const { data: rsvps } = await supabase
-    .from("event_rsvps")
-    .select("event_id")
-    .eq("user_id", userId)
-    .in("event_id", eventIds);
-  const rsvpedIds = new Set((rsvps ?? []).map((r) => r.event_id));
+  const rsvpedIds = new Set((rsvpsRes.data ?? []).map((r) => r.event_id));
   const pendingIds = eventIds.filter((id) => !rsvpedIds.has(id));
   if (pendingIds.length === 0) return [];
 
@@ -127,9 +123,10 @@ export async function getInvitesForUser(userId: string): Promise<EventRecord[]> 
 
 export async function getRsvpsForEvent(eventId: string): Promise<EventRsvp[]> {
   const supabase = await createClient();
+  // Consumers only read user_id and status; trim payload to those columns.
   const { data } = await supabase
     .from("event_rsvps")
-    .select("*")
+    .select("user_id, status")
     .eq("event_id", eventId)
     .neq("status", "cancelled")
     .order("created_at", { ascending: true });

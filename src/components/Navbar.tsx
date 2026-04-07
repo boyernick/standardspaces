@@ -21,7 +21,14 @@ export default function Navbar() {
     let cancelled = false;
     const supabase = createClient();
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Run user fetch and pending-referrals fetch in parallel — neither depends
+      // on the other.
+      const [userRes, pendingCount] = await Promise.all([
+        supabase.auth.getUser(),
+        getPendingReferralCount(),
+      ]);
+      if (!cancelled) setPendingReferrals(pendingCount);
+      const user = userRes.data.user;
       if (cancelled || !user) return;
       const { data } = await supabase
         .from("profiles")
@@ -32,10 +39,6 @@ export default function Navbar() {
       if (data.role === "admin") setIsAdmin(true);
       if (data.avatar_url) setAvatarUrl(data.avatar_url);
     })();
-
-    getPendingReferralCount().then((count) => {
-      if (!cancelled) setPendingReferrals(count);
-    });
 
     return () => { cancelled = true; };
   }, []);

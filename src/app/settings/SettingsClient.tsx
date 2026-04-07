@@ -56,8 +56,9 @@ export default function SettingsClient({ phone, city, smsNotifications }: Props)
     let dark: boolean;
     if (nextMode === "auto") {
       localStorage.removeItem("theme");
-      const hour = new Date().getHours();
-      dark = hour >= 19 || hour < 7;
+      dark = typeof window !== "undefined" && window.matchMedia
+        ? window.matchMedia("(prefers-color-scheme: dark)").matches
+        : false;
     } else {
       localStorage.setItem("theme", nextMode);
       dark = nextMode === "dark";
