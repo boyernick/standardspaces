@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Link2, Check, AtSign, X, MessageCircle, Mail, Share2 } from "lucide-react";
+import { Link2, Check, AtSign, X, MessageCircle, Share2 } from "lucide-react";
 
 export default function ShareButton({
   spotName,
@@ -43,7 +43,6 @@ export default function ShareButton({
   // iOS uses ?body=, Android uses ?body= too on most modern devices
   const smsHref = `sms:&body=${encodeURIComponent(smsBody)}`;
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`;
-  const mailHref = `mailto:?subject=${encodeURIComponent(spotName || "Standard Spaces")}&body=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`;
 
   async function handleCopyLink() {
     try {
@@ -97,7 +96,6 @@ export default function ShareButton({
             spotInstagram={spotInstagram}
             smsHref={smsHref}
             whatsappHref={whatsappHref}
-            mailHref={mailHref}
             onCopy={handleCopyLink}
             copied={copied}
             onNativeShare={hasNativeShare ? handleNativeShare : undefined}
@@ -143,7 +141,6 @@ function ShareModal({
   spotInstagram,
   smsHref,
   whatsappHref,
-  mailHref,
   onCopy,
   copied,
   onNativeShare,
@@ -155,7 +152,6 @@ function ShareModal({
   spotInstagram?: string;
   smsHref: string;
   whatsappHref: string;
-  mailHref: string;
   onCopy: () => void;
   copied: boolean;
   onNativeShare?: () => void;
@@ -232,12 +228,6 @@ function ShareModal({
                 <path d="M19.11 17.21c-.27-.14-1.6-.79-1.85-.88-.25-.09-.43-.14-.61.14-.18.27-.7.88-.86 1.06-.16.18-.32.2-.59.07-.27-.14-1.13-.42-2.16-1.34-.8-.71-1.34-1.59-1.5-1.86-.16-.27-.02-.42.12-.55.12-.12.27-.32.41-.48.14-.16.18-.27.27-.45.09-.18.05-.34-.02-.48-.07-.14-.61-1.47-.84-2.01-.22-.53-.45-.46-.61-.47-.16-.01-.34-.01-.52-.01s-.48.07-.73.34c-.25.27-.95.93-.95 2.27 0 1.34.97 2.63 1.11 2.81.14.18 1.92 2.93 4.65 4.11.65.28 1.16.45 1.55.57.65.21 1.24.18 1.71.11.52-.08 1.6-.65 1.83-1.28.23-.63.23-1.16.16-1.28-.07-.12-.25-.18-.52-.32zM16.02 27.43h-.01c-1.97 0-3.91-.53-5.6-1.53l-.4-.24-4.16 1.09 1.11-4.06-.26-.42a11.27 11.27 0 0 1-1.73-6.02c0-6.23 5.07-11.3 11.3-11.3 3.02 0 5.86 1.18 7.99 3.31a11.23 11.23 0 0 1 3.31 7.99c0 6.23-5.07 11.3-11.3 11.3zM27.41 4.59A13.4 13.4 0 0 0 16.02 0C8.46 0 2.32 6.14 2.32 13.7c0 2.42.63 4.78 1.84 6.86L2.2 28l7.61-2c2 1.09 4.25 1.66 6.55 1.67h.01c7.55 0 13.69-6.14 13.7-13.7 0-3.66-1.43-7.1-4.01-9.69z" />
               </svg>
             }
-          />
-          <ShareTile
-            href={mailHref}
-            label="Email"
-            bg="bg-neutral-200 dark:bg-neutral-700"
-            icon={<Mail size={22} className="text-neutral-700 dark:text-neutral-200" />}
           />
           <ShareTile
             onClick={onCopy}
