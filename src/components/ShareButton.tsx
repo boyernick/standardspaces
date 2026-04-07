@@ -41,9 +41,11 @@ export default function ShareButton({
     ? `Check out ${spotName} on Standard Spaces`
     : "Check this out on Standard Spaces";
 
-  const smsBody = `${shareText} ${shareUrl}`;
-  // iOS uses ?body=, Android uses ?body= too on most modern devices
-  const smsHref = `sms:&body=${encodeURIComponent(smsBody)}`;
+  // iMessage only renders rich link previews (with photo) when the message
+  // body is the URL alone. Any preceding text suppresses the preview, so we
+  // send just the URL — the OG metadata on the destination page provides the
+  // title, description, and image.
+  const smsHref = `sms:&body=${encodeURIComponent(shareUrl)}`;
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`;
 
   async function handleCopyLink() {

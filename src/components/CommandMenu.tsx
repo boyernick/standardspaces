@@ -235,13 +235,13 @@ export default function CommandMenu() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[8vh] md:pt-[10vh]"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[max(0.75rem,env(safe-area-inset-top))] md:pt-[10vh] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0"
       onClick={() => setOpen(false)}
     >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" style={{ animation: "fadeIn 0.15s ease-out" }} />
 
       <div
-        className="relative w-full max-w-lg mx-4 md:mx-0 bg-surface rounded-2xl shadow-2xl dark:shadow-neutral-900/50 overflow-hidden"
+        className="relative flex flex-col w-full max-w-lg mx-3 md:mx-0 h-full md:h-auto bg-surface rounded-2xl shadow-2xl dark:shadow-neutral-900/50 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{ animation: "command-in 0.2s cubic-bezier(0.25,0.1,0.25,1)" }}
       >
@@ -266,7 +266,7 @@ export default function CommandMenu() {
         </div>
 
         {/* Content */}
-        <div ref={listRef} className="max-h-[400px] overflow-y-auto scrollbar-hide">
+        <div ref={listRef} className="flex-1 md:flex-none md:max-h-[400px] overflow-y-auto scrollbar-hide">
           {!hasQuery ? (
             <div className="px-5 pb-5 space-y-4">
               {/* Vibes — single scrollable row */}

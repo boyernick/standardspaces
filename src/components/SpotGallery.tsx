@@ -273,15 +273,15 @@ export default function SpotGallery({ images, name }: SpotGalleryProps) {
   return (
     <>
       {/* Mobile: horizontal scroll */}
-      <div className="md:hidden relative">
+      <div className="md:hidden relative px-3">
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+          className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide rounded-2xl"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           {(realImages.length > 0 ? realImages : ["/placeholder.jpg"]).map((src, i) => (
-            <div key={i} className="w-full shrink-0 snap-center aspect-[4/3]">
+            <div key={i} className="w-full shrink-0 snap-center aspect-[4/3] overflow-hidden rounded-2xl">
               <GalleryImage
                 src={src}
                 alt={`${name} ${i + 1}`}
@@ -291,7 +291,7 @@ export default function SpotGallery({ images, name }: SpotGalleryProps) {
           ))}
         </div>
         {realImages.length > 1 && (
-          <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm tabular-nums">
+          <div className="absolute bottom-3 right-6 bg-black/60 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm tabular-nums">
             {scrollIndex + 1} / {realImages.length}
           </div>
         )}
