@@ -458,7 +458,13 @@ export default async function SpotPage({
       <div className="shrink-0 bg-surface border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <div className="flex items-center gap-1">
-            <ShareButton spotName={spot.name} variant="icon" spotInstagram={spot.instagram} />
+            <ShareButton
+              spotName={spot.name}
+              spotImage={spot.images[0]}
+              spotSubtitle={[spot.neighborhood, spot.city].filter(Boolean).join(" · ")}
+              variant="icon"
+              spotInstagram={spot.instagram}
+            />
             <CheckInButton spotId={spot.id} variant="icon" />
             <WishlistButtonClient spotId={spot.id} size="icon" />
             <FavoriteButtonClient spotId={spot.id} size="icon" />

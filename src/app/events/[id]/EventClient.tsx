@@ -483,7 +483,12 @@ export default function EventClient({
       <div className="shrink-0 bg-surface border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <div className="flex items-center gap-1">
-            <ShareButton spotName={event.title} variant="icon" />
+            <ShareButton
+              spotName={event.title}
+              spotImage={event.cover_image_url || event.images?.[0]}
+              spotSubtitle={event.city}
+              variant="icon"
+            />
             <a
               href={`/api/events/${event.id}/ics`}
               download
