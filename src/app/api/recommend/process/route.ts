@@ -17,6 +17,7 @@ async function sendNotification(data: {
   recommendationId: string;
   name: string;
   url: string;
+  additionalUrls?: string[];
   category?: string | null;
   neighborhood?: string | null;
   notes?: string | null;
@@ -40,6 +41,16 @@ async function sendNotification(data: {
           <p style="margin: 0 0 16px;">
             <a href="${data.url}" style="color: #FD5304;">${data.url}</a>
           </p>
+          ${
+            data.additionalUrls && data.additionalUrls.length > 0
+              ? `<p style="color: #666; margin: 0 0 16px; font-size: 13px;">
+                  Additional links:<br/>
+                  ${data.additionalUrls
+                    .map((u) => `<a href="${u}" style="color: #FD5304;">${u}</a>`)
+                    .join("<br/>")}
+                </p>`
+              : ""
+          }
           ${data.notes ? `<p style="color: #444; margin: 0 0 16px;"><em>"${data.notes}"</em></p>` : ""}
           <p style="color: #999; font-size: 13px;">
             ${data.photos} photo${data.photos !== 1 ? "s" : ""} scraped
@@ -143,6 +154,7 @@ export async function POST(req: NextRequest) {
       recommendationId,
       name: mergedData.name,
       url: rec.url,
+      additionalUrls: rec.additional_urls || [],
       category: mergedData.category,
       neighborhood: mergedData.neighborhood,
       notes: rec.notes,

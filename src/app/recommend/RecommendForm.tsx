@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Globe, CheckCircle, Loader2 } from "lucide-react";
+import { Globe, CheckCircle, Loader2, Plus, X } from "lucide-react";
 
 type Step = "form" | "success";
 
 export default function RecommendForm() {
   const [step, setStep] = useState<Step>("form");
   const [url, setUrl] = useState("");
+  const [additionalUrls, setAdditionalUrls] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,6 +36,14 @@ export default function RecommendForm() {
       setError("Please paste a valid URL");
       return;
     }
+    // Validate any additional URLs that have been filled in
+    const cleanedExtras = additionalUrls.map((u) => u.trim()).filter(Boolean);
+    for (const extra of cleanedExtras) {
+      if (!detectUrlType(extra)) {
+        setError("One of your additional links isn't a valid URL");
+        return;
+      }
+    }
     setSubmitting(true);
     setError("");
 
@@ -43,6 +52,7 @@ export default function RecommendForm() {
       .from("recommendations")
       .insert({
         url: url.trim(),
+        additional_urls: cleanedExtras,
       })
       .select("id")
       .single();
@@ -82,7 +92,7 @@ export default function RecommendForm() {
         </a>
         <div className="mt-3">
           <button
-            onClick={() => { setStep("form"); setUrl(""); }}
+            onClick={() => { setStep("form"); setUrl(""); setAdditionalUrls([]); }}
             className="text-sm text-neutral-900 hover:underline"
           >
             Recommend another
@@ -118,8 +128,54 @@ export default function RecommendForm() {
               Detected: {urlType}
             </p>
           )}
-          {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
         </div>
+
+        {additionalUrls.map((extra, i) => {
+          const extraType = detectUrlType(extra);
+          return (
+            <div key={i}>
+              <div className="flex items-center gap-2">
+                <input
+                  type="url"
+                  value={extra}
+                  onChange={(e) => {
+                    const next = [...additionalUrls];
+                    next[i] = e.target.value;
+                    setAdditionalUrls(next);
+                    setError("");
+                  }}
+                  placeholder="Add another link (optional)"
+                  className="flex-1 px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-transparent placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => setAdditionalUrls(additionalUrls.filter((_, j) => j !== i))}
+                  aria-label="Remove link"
+                  className="p-2 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
+                >
+                  <X size={16} strokeWidth={1.5} />
+                </button>
+              </div>
+              {extraType && extra.trim() && (
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1.5 flex items-center gap-1.5">
+                  <Globe size={12} strokeWidth={1.5} />
+                  Detected: {extraType}
+                </p>
+              )}
+            </div>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={() => setAdditionalUrls([...additionalUrls, ""])}
+          className="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors flex items-center gap-1.5"
+        >
+          <Plus size={12} strokeWidth={2} />
+          Add another link
+        </button>
+
+        {error && <p className="text-xs text-red-500">{error}</p>}
 
         <button
           onClick={handleSubmit}
