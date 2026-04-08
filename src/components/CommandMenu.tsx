@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { CATEGORY_LABELS, CATEGORY_ORDER, TOP_VIBES, Category, Spot, EventRecord } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
+import { NewBadge } from "@/lib/new-badge";
 import { Search, MapPin, X, CircleUserRound, Calendar } from "lucide-react";
 
 function Highlight({ text, query }: { text: string; query: string }) {
@@ -309,7 +310,10 @@ export default function CommandMenu() {
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{spot.name}</p>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="text-sm font-medium truncate">{spot.name}</p>
+                            <NewBadge spot={spot} compact />
+                          </div>
                           <p className="text-xs text-neutral-400 dark:text-neutral-500 truncate">
                             {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
                           </p>
@@ -502,7 +506,10 @@ export default function CommandMenu() {
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate"><Highlight text={spot.name} query={query} /></p>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="text-sm font-medium truncate"><Highlight text={spot.name} query={query} /></p>
+                            <NewBadge spot={spot} compact />
+                          </div>
                           <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5 truncate">
                             <Highlight text={spot.neighborhood} query={query} /> · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
                           </p>

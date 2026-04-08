@@ -22,13 +22,19 @@ export default async function EditListingPage({
   if (error || !spot) notFound();
 
   return (
-    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--color-surface)" }}>
+    <div className="h-screen flex flex-col bg-surface">
       <Navbar />
-      <div className="max-w-2xl mx-auto px-5 py-8">
-        <h1 className="text-2xl font-medium mb-6" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
-          Edit: {spot.name}
-        </h1>
-        <EditListingForm spot={spot} />
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-4 py-12">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-semibold tracking-tight">Edit space</h1>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+              Update the details below and save to push changes live.
+            </p>
+          </div>
+
+          <EditListingForm spot={spot} />
+        </div>
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ import WishlistButtonClient from "@/components/WishlistButtonClient";
 import CheckInButton from "@/components/CheckInButton";
 import { Clock, Shirt, Car, MapPin, Newspaper, Smartphone, Globe, AtSign, CalendarCheck } from "lucide-react";
 import { FadeIn, GalleryReveal, SectionReveal } from "@/components/ListingAnimations";
+import { NewBadge } from "@/lib/new-badge";
 
 export async function generateStaticParams() {
   const ids = await getAllSpotIds();
@@ -347,7 +348,10 @@ export default async function SpotPage({
                   ))}
                 </div>
               )}
-              <h1 className="text-[26px] font-semibold tracking-tight">{spot.name}</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-[26px] font-semibold tracking-tight">{spot.name}</h1>
+                <NewBadge spot={spot} />
+              </div>
               <p className="text-[15px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
                 {spot.description}
               </p>

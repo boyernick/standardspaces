@@ -9,6 +9,7 @@ import { toggleFollow } from "@/app/actions/follows";
 import { citySlugFromName, CITIES } from "@/lib/cities";
 import { CATEGORY_LABELS } from "@/lib/types";
 import { Spot, EventRecord } from "@/lib/types";
+import { NewBadge } from "@/lib/new-badge";
 
 type Profile = {
   id: string;
@@ -464,6 +465,9 @@ export default function ProfileClient({
                 alt={spot.name}
                 className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
               />
+              <div className="absolute top-1.5 left-1.5">
+                <NewBadge spot={spot} compact />
+              </div>
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-2 pt-16">
                 <h4 className="text-sm font-medium text-white truncate" style={fontCalibre}>{spot.name}</h4>
                 <p className="text-xs text-white/70 truncate" style={fontCalibre}>

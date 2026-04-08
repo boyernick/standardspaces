@@ -152,6 +152,13 @@ export interface Spot {
   menuUrl?: string;
   /** @deprecated Use the `events` table instead. Retained for legacy data only. */
   events?: { name: string; date: string; description: string }[];
+  /**
+   * ISO timestamp set when an admin flips the "Mark as new" toggle in the
+   * listing edit form. The `<NewBadge />` renders iff this is within the
+   * `NEW_WINDOW_MS` window (7 days) of `Date.now()`. Null/undefined when
+   * the spot has never been marked or the admin cleared the toggle.
+   */
+  markedNewAt?: string | null;
 }
 
 export interface EventRecord {

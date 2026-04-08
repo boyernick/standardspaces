@@ -308,9 +308,20 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
           {name} is now live on the map.
         </p>
-        <button onClick={() => router.push(`/${citySlugFromName(city)}`)} className="mt-4 text-sm text-brand-500 hover:underline">
-          View on map
-        </button>
+        <div className="mt-5 flex items-center justify-center gap-3">
+          <button
+            onClick={() => router.push(`/${citySlugFromName(city)}`)}
+            className="px-4 py-2 text-sm font-medium rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors"
+          >
+            View on map
+          </button>
+          <button
+            onClick={() => router.push("/admin/recommendations")}
+            className="px-4 py-2 text-sm font-medium rounded-xl bg-brand-500 text-white hover:bg-brand-600 transition-colors"
+          >
+            Review more spaces
+          </button>
+        </div>
       </div>
     );
   }

@@ -12,6 +12,7 @@ import Navbar from "@/components/Navbar";
 import CheckInButton from "@/components/CheckInButton";
 import FavoriteButton from "@/components/FavoriteButton";
 import WishlistButton from "@/components/WishlistButton";
+import { NewBadge } from "@/lib/new-badge";
 import { ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, X, MapPin, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -726,11 +727,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
             <div className="p-4 pt-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6 md:gap-x-3 md:gap-y-4">
                 <AnimatePresence mode="popLayout">
-                {paginated.map((spot, i) => {
-                  // Temporary: highlight Mary Lou's with a "New" badge.
-                  // Case-insensitive match handles the curly apostrophe.
-                  const isMaryLous = spot.name.toLowerCase().includes("mary lou");
-                  return (
+                {paginated.map((spot, i) => (
                   <motion.div
                     key={spot.id}
                     initial={{ opacity: 0, y: 12 }}
@@ -751,11 +748,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                       <div className="p-3 rounded-b-2xl bg-surface">
                         <div className="flex items-center justify-between gap-2">
                           <h3 className="text-sm font-semibold line-clamp-1">{spot.name}</h3>
-                          {isMaryLous && (
-                            <span className="shrink-0 px-2 py-0.5 text-[10px] font-semibold rounded-full border border-brand-500 text-brand-500">
-                              New
-                            </span>
-                          )}
+                          <NewBadge spot={spot} />
                         </div>
                         <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">
                           {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
@@ -763,8 +756,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                       </div>
                     </Link>
                   </motion.div>
-                  );
-                })}
+                ))}
                 </AnimatePresence>
               </div>
             </div>

@@ -6,6 +6,7 @@ import { CATEGORY_LABELS, CATEGORY_ORDER, Category, Spot } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
 import ImageCarousel from "@/components/ImageCarousel";
 import WishlistButton from "@/components/WishlistButton";
+import { NewBadge } from "@/lib/new-badge";
 import { Bookmark, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 
 const PER_PAGE_SM = 8;
@@ -106,7 +107,10 @@ export default function WishlistClient({ spots, citySlug }: { spots: Spot[]; cit
                     </Link>
                     <div className="mt-3">
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
+                          <NewBadge spot={spot} />
+                        </div>
                         <WishlistButton spotId={spot.id} initialWishlisted={true} size="sm" />
                       </div>
                       <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">
