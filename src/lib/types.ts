@@ -8,7 +8,7 @@ export type Category =
   | "hotels";
 
 export const CATEGORY_LABELS: Record<Category, string> = {
-  coffee: "Café",
+  coffee: "Cafés",
   dining: "Dining",
   drinks: "Drinks",
   wellness: "Wellness",
