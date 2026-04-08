@@ -18,7 +18,6 @@ import {
   squaredDistance,
   isLngLatInBounds,
   boundsCenter,
-  inflateBounds,
   type LngLat,
   type LngLatBounds,
 } from "@/lib/geo";
@@ -296,12 +295,10 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
         hydrated: false,
       };
     }
-    // Inflate the bounds slightly so dots that are visually inside the map
-    // view aren't excluded by URL rounding, marker spider-offsets, or the
-    // mapbox canvas's round-corner clip mask.
-    const filterBounds = inflateBounds(committedBounds, 0.05);
+    // Strict viewport scoping — the panel should mirror exactly what's
+    // visible on the map, no padding, no fudge factor.
     const inside = filteredRaw
-      .filter((s) => isLngLatInBounds([s.lng, s.lat], filterBounds))
+      .filter((s) => isLngLatInBounds([s.lng, s.lat], committedBounds))
       .sort(
         (a, b) =>
           squaredDistance([a.lng, a.lat], committedCenter) -
