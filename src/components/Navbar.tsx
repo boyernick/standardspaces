@@ -160,14 +160,14 @@ export default function Navbar() {
               <Link href="/events" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
                 Events
               </Link>
-              <Link href="/recommend" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
-                Recommendations
-              </Link>
               <Link href="/notifications" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
                 Notifications
                 {(unreadNotifs > 0 || mockJewel) && (
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500" aria-label={`${unreadNotifs} unread`} />
                 )}
+              </Link>
+              <Link href="/recommend" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
+                Recommendations
               </Link>
               <Link href="/referrals" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
                 Referrals
