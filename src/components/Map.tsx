@@ -652,7 +652,7 @@ export default function SpotMap(props: MapProps) {
         <LocateFixed
           size={14}
           strokeWidth={1.75}
-          className="text-neutral-900 dark:text-neutral-100"
+          className="text-neutral-900 dark:text-white"
         />
       </button>
     </div>
