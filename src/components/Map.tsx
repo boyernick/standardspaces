@@ -7,6 +7,7 @@ import { LocateFixed } from "lucide-react";
 import { Spot } from "@/lib/types";
 import { THEME } from "@/lib/theme";
 import { getCustomMapStyle } from "./mapStyle";
+import { squaredDistance, type LngLat, type LngLatBounds } from "@/lib/geo";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
@@ -31,11 +32,7 @@ function computeCardSet(
   if (budget === Infinity) return new Set(spots.map((s) => s.id));
   if (budget <= 0) return new Set(activeId ? [activeId] : []);
   const ranked = spots
-    .map((s) => {
-      const dx = s.lng - center[0];
-      const dy = s.lat - center[1];
-      return { id: s.id, d: dx * dx + dy * dy };
-    })
+    .map((s) => ({ id: s.id, d: squaredDistance([s.lng, s.lat], center) }))
     .sort((a, b) => a.d - b.d)
     .slice(0, budget)
     .map((r) => r.id);
@@ -49,17 +46,39 @@ function isDarkMode() {
   return document.documentElement.classList.contains("dark");
 }
 
+export interface MapView {
+  center: LngLat;
+  bounds: LngLatBounds;
+  zoom: number;
+}
+
 interface MapProps {
   spots: Spot[];
   activeSpot: Spot | null;
   onSpotSelect: (spot: Spot | null) => void;
-  onCenterChange?: (center: [number, number]) => void;
+  /**
+   * Fires once on initial load and on every `moveend`. Carries the full
+   * viewport (center, bounds, zoom) so consumers can scope a list to it.
+   */
+  onViewChange?: (v: MapView) => void;
+  /**
+   * When provided, the map jumps directly to this center+zoom on init and
+   * skips the default fitBounds behavior. Used to hydrate the viewport from
+   * a shareable URL without flashing through fitBounds first.
+   */
+  initialView?: { center: LngLat; zoom: number };
 }
 
 export default function SpotMap(props: MapProps) {
-  const { spots = [], activeSpot = null, onSpotSelect = () => {}, onCenterChange } = props ?? {};
-  const onCenterChangeRef = useRef(onCenterChange);
-  onCenterChangeRef.current = onCenterChange;
+  const { spots = [], activeSpot = null, onSpotSelect = () => {}, onViewChange, initialView } = props ?? {};
+  const onViewChangeRef = useRef(onViewChange);
+  onViewChangeRef.current = onViewChange;
+  // Latch the initialView at first render so later prop changes (e.g. after
+  // a router.replace from URL sync) don't re-jump the map.
+  const initialViewRef = useRef(initialView);
+  if (initialViewRef.current === undefined && initialView) {
+    initialViewRef.current = initialView;
+  }
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<globalThis.Map<string, { marker: mapboxgl.Marker; el: HTMLDivElement; mode: MarkerMode }>>(new globalThis.Map());
@@ -219,13 +238,17 @@ export default function SpotMap(props: MapProps) {
 
     const init = () => {
       if (aborted || !mapContainer.current) return;
+      const hydrated = initialViewRef.current;
       m = new mapboxgl.Map({
         container: mapContainer.current,
         style: getCustomMapStyle(dark),
-        center: userLocation ?? MIAMI_CENTER,
-        zoom: userLocation ? 15 : MIAMI_ZOOM,
+        center: hydrated?.center ?? userLocation ?? MIAMI_CENTER,
+        zoom: hydrated?.zoom ?? (userLocation ? 15 : MIAMI_ZOOM),
         attributionControl: false,
       });
+      // If we hydrated from a URL viewport, mark fitBounds as already done so
+      // the fit effect below doesn't blow our restored view away.
+      if (hydrated) didInitialFitRef.current = true;
 
       m.on("load", () => {
         if (aborted || !m) return;
@@ -234,16 +257,34 @@ export default function SpotMap(props: MapProps) {
           onSpotSelectRef.current(null);
         });
 
+        // Build a {center, bounds, zoom} snapshot from the current map state.
+        // `getBounds()` can return null mid-init in mapbox 3.x — bail in that
+        // case so consumers never see a half-formed view.
+        const snapshot = (): MapView | null => {
+          if (!m) return null;
+          const b = m.getBounds();
+          if (!b) return null;
+          const c = m.getCenter();
+          return {
+            center: [c.lng, c.lat],
+            bounds: [
+              [b.getWest(), b.getSouth()],
+              [b.getEast(), b.getNorth()],
+            ],
+            zoom: m.getZoom(),
+          };
+        };
+
         // Recompute card/dot mix on every pan or zoom
         m.on("moveend", () => {
           recomputeModes();
-          const c = m!.getCenter();
-          onCenterChangeRef.current?.([c.lng, c.lat]);
+          const s = snapshot();
+          if (s) onViewChangeRef.current?.(s);
         });
 
-        // Emit initial center so consumers can sort by distance on first paint.
-        const initC = m.getCenter();
-        onCenterChangeRef.current?.([initC.lng, initC.lat]);
+        // Emit initial view so consumers can sort/scope to it on first paint.
+        const initS = snapshot();
+        if (initS) onViewChangeRef.current?.(initS);
 
         setMapReady(true);
       });

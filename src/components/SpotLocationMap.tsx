@@ -168,6 +168,11 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
     };
   }, [spot, nearby, setMarkerActive]);
 
+  // Only display the street portion of the address — strip city/state/zip/
+  // country. The full address is still passed to Google Maps for routing,
+  // since trimming it would degrade the directions accuracy.
+  const streetAddress = address.split(",")[0].trim();
+
   return (
     <div>
       <h2 className="text-lg font-semibold mb-4">Where you&apos;ll find it</h2>
@@ -181,7 +186,13 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
           className="inline-flex items-center gap-1.5 px-4 py-2 text-sm rounded-full border border-neutral-200 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors"
         >
           <MapPin size={14} strokeWidth={1.5} />
-          {address}
+          {streetAddress}
+          {spot.neighborhood && (
+            <>
+              <span className="text-neutral-300 dark:text-neutral-600">·</span>
+              <span>{spot.neighborhood}</span>
+            </>
+          )}
         </a>
       </div>
 

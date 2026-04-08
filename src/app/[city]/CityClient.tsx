@@ -14,6 +14,61 @@ import FavoriteButton from "@/components/FavoriteButton";
 import WishlistButton from "@/components/WishlistButton";
 import { ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, X, MapPin, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  squaredDistance,
+  isLngLatInBounds,
+  boundsCenter,
+  inflateBounds,
+  type LngLat,
+  type LngLatBounds,
+} from "@/lib/geo";
+import type { MapView } from "@/components/Map";
+
+const VIEWPORT_DEAD_ZONE = 0.0005;
+
+/**
+ * Pull a viewport out of the URL search params, if all four required pieces
+ * are present and well-formed. Used to hydrate the map + side panel from a
+ * shareable link without flashing through fitBounds first.
+ *
+ * URL shape mirrors Airbnb's: `?ne=lat,lng&sw=lat,lng&z=12.9&auto=1`. Lat/lng
+ * order matches the human convention even though Mapbox uses lng/lat
+ * internally.
+ */
+function parseViewportParams(sp: URLSearchParams): {
+  bounds: LngLatBounds;
+  center: LngLat;
+  zoom: number;
+  auto: boolean;
+} | null {
+  const ne = sp.get("ne");
+  const sw = sp.get("sw");
+  const z = sp.get("z");
+  if (!ne || !sw || !z) return null;
+  const [neLat, neLng] = ne.split(",").map(Number);
+  const [swLat, swLng] = sw.split(",").map(Number);
+  const zoom = Number(z);
+  if (
+    !Number.isFinite(neLat) ||
+    !Number.isFinite(neLng) ||
+    !Number.isFinite(swLat) ||
+    !Number.isFinite(swLng) ||
+    !Number.isFinite(zoom)
+  ) {
+    return null;
+  }
+  if (neLat < swLat || neLng < swLng) return null;
+  const bounds: LngLatBounds = [
+    [swLng, swLat],
+    [neLng, neLat],
+  ];
+  return {
+    bounds,
+    center: boundsCenter(bounds),
+    zoom,
+    auto: sp.get("auto") !== "0",
+  };
+}
 
 interface CityClientProps {
   spots: Spot[];
@@ -44,37 +99,114 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
   const [activeSpot, setActiveSpot] = useState<Spot | null>(null);
   const [neighborhoodOpen, setNeighborhoodOpen] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
-  const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
-  const handleCenterChange = useCallback((c: [number, number]) => {
-    setMapCenter((prev) => {
-      // Skip state update if the center barely moved (avoids re-sorts on tiny pans).
-      if (prev && Math.abs(prev[0] - c[0]) < 0.0005 && Math.abs(prev[1] - c[1]) < 0.0005) {
-        return prev;
-      }
-      return c;
-    });
-  }, []);
 
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+
+  // Hydrate viewport state from the URL on first render only. Later
+  // `searchParams` changes (from our own router.replace calls or pagination)
+  // must NOT re-trigger this — that would cause an infinite write loop.
+  const initialViewportRef = useRef<ReturnType<typeof parseViewportParams> | null>(null);
+  if (initialViewportRef.current === null) {
+    initialViewportRef.current = parseViewportParams(
+      new URLSearchParams(searchParams.toString()),
+    );
+  }
+  const initialViewport = initialViewportRef.current;
+
+  // Committed viewport: what the side panel actually filters against. Updated
+  // automatically on every moveend when `searchAsIMove` is on, or only when
+  // the user clicks the "Search this area" pill when it's off.
+  const [committedBounds, setCommittedBounds] = useState<LngLatBounds | null>(
+    initialViewport?.bounds ?? null,
+  );
+  const [committedCenter, setCommittedCenter] = useState<LngLat | null>(
+    initialViewport?.center ?? null,
+  );
+  const [committedZoom, setCommittedZoom] = useState<number | null>(
+    initialViewport?.zoom ?? null,
+  );
+
+  // Live viewport: what the map is currently showing. Diverges from the
+  // committed viewport when the user pans with the toggle off — that's what
+  // makes the "Search this area" pill appear.
+  const [liveCenter, setLiveCenter] = useState<LngLat | null>(
+    initialViewport?.center ?? null,
+  );
+  const liveBoundsRef = useRef<LngLatBounds | null>(initialViewport?.bounds ?? null);
+  const liveZoomRef = useRef<number | null>(initialViewport?.zoom ?? null);
+
+  // "Search as I move the map" is now always on — every moveend commits.
+  // Kept as constants (rather than ripped out entirely) so the existing
+  // refs/handlers still type-check and the URL contract is unchanged.
+  const searchAsIMove = true;
+  const committedBoundsRef = useRef(committedBounds);
+  committedBoundsRef.current = committedBounds;
   const [page, setPage] = useState(() => {
     const p = Number(searchParams.get("page"));
     return Number.isFinite(p) && p > 0 ? p : 1;
   });
   const perPage = 6;
 
-  // Sync page to URL whenever it changes (effect runs after render, so this
-  // never triggers a router update during render)
+  // Writes (or refreshes) the viewport params on the URL bar.
+  //
+  // We deliberately use `window.history.replaceState` instead of
+  // `router.replace`. Next.js's router replace on a dynamic route refetches
+  // the server component, which re-creates the `spots` array reference, which
+  // re-runs Map.tsx's fitBounds effect — and that yanks the user's pan/zoom
+  // back out on every moveend (bug observed: zooming in pans you back out).
+  // `history.replaceState` updates the URL bar in-place with no router churn,
+  // which is exactly what Airbnb does for their `?ne=…&sw=…&zoom=…` sync.
+  const writeViewportUrl = useCallback(
+    (b: LngLatBounds, z: number, auto: boolean) => {
+      const sp = new URLSearchParams(window.location.search);
+      sp.set("ne", `${b[1][1].toFixed(4)},${b[1][0].toFixed(4)}`);
+      sp.set("sw", `${b[0][1].toFixed(4)},${b[0][0].toFixed(4)}`);
+      sp.set("z", z.toFixed(2));
+      sp.set("auto", auto ? "1" : "0");
+      window.history.replaceState(null, "", `${pathname}?${sp.toString()}`);
+    },
+    [pathname],
+  );
+
+  const handleViewChange = useCallback(
+    (v: MapView) => {
+      setLiveCenter((prev) => {
+        if (
+          prev &&
+          Math.abs(prev[0] - v.center[0]) < 1e-6 &&
+          Math.abs(prev[1] - v.center[1]) < 1e-6
+        ) {
+          return prev;
+        }
+        return v.center;
+      });
+      liveBoundsRef.current = v.bounds;
+      liveZoomRef.current = v.zoom;
+      setCommittedBounds(v.bounds);
+      setCommittedCenter(v.center);
+      setCommittedZoom(v.zoom);
+      writeViewportUrl(v.bounds, v.zoom, true);
+    },
+    [writeViewportUrl],
+  );
+
+  // Sync page to URL whenever it changes. Use `history.replaceState` rather
+  // than `router.replace` for the same reason as the viewport sync below: a
+  // router replace on a dynamic route refetches the server component, which
+  // bumps the `spots` prop reference and re-runs Map.tsx's fitBounds effect —
+  // which would yank the user's pan/zoom back out every time they paginate.
   useEffect(() => {
-    const current = Number(searchParams.get("page")) || 1;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const current = Number(params.get("page")) || 1;
     if (current === page) return;
-    const params = new URLSearchParams(searchParams.toString());
     if (page <= 1) params.delete("page");
     else params.set("page", String(page));
     const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [page, searchParams, router, pathname]);
+    window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
+  }, [page, pathname]);
 
   const neighborhoodRef = useRef<HTMLDivElement>(null);
   const neighborhoodDropdownRef = useRef<HTMLDivElement>(null);
@@ -152,20 +284,42 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     return result;
   }, [eventsOnly, upcomingEvents, activeCategory, activeSubcategories, activeNeighborhood, allSpots]);
 
-  // Sorted copy for the list panel. When the map center is known, rank by
-  // squared distance so the list mirrors what the user sees on the map.
-  // Falls back to alphabetical on first paint (before the map emits a center).
-  const filtered = useMemo(() => {
-    if (!mapCenter) {
-      return [...filteredRaw].sort((a, b) => a.name.localeCompare(b.name));
+  // Viewport-scoped list. Spots inside the committed bounds, ranked nearest
+  // to map center first. When the viewport is empty, fall back to the 5
+  // nearest matching spots overall (Airbnb's `location_search=NEARBY`
+  // pattern) so the panel never goes blank.
+  const { filtered, nearby, hydrated } = useMemo(() => {
+    if (!committedBounds || !committedCenter) {
+      return {
+        filtered: [] as Spot[],
+        nearby: [] as Spot[],
+        hydrated: false,
+      };
     }
-    const [cLng, cLat] = mapCenter;
-    return [...filteredRaw].sort((a, b) => {
-      const da = (a.lng - cLng) ** 2 + (a.lat - cLat) ** 2;
-      const db = (b.lng - cLng) ** 2 + (b.lat - cLat) ** 2;
-      return da - db;
-    });
-  }, [filteredRaw, mapCenter]);
+    // Inflate the bounds slightly so dots that are visually inside the map
+    // view aren't excluded by URL rounding, marker spider-offsets, or the
+    // mapbox canvas's round-corner clip mask.
+    const filterBounds = inflateBounds(committedBounds, 0.05);
+    const inside = filteredRaw
+      .filter((s) => isLngLatInBounds([s.lng, s.lat], filterBounds))
+      .sort(
+        (a, b) =>
+          squaredDistance([a.lng, a.lat], committedCenter) -
+          squaredDistance([b.lng, b.lat], committedCenter),
+      );
+    if (inside.length > 0) {
+      return { filtered: inside, nearby: [] as Spot[], hydrated: true };
+    }
+    const fallback = [...filteredRaw]
+      .sort(
+        (a, b) =>
+          squaredDistance([a.lng, a.lat], committedCenter) -
+          squaredDistance([b.lng, b.lat], committedCenter),
+      )
+      .slice(0, 5);
+    return { filtered: [] as Spot[], nearby: fallback, hydrated: true };
+  }, [filteredRaw, committedBounds, committedCenter]);
+
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   useEffect(() => {
@@ -492,10 +646,73 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 Recommend a space
               </Link>
             </div>
-          ) : filtered.length === 0 ? (
+          ) : !hydrated ? (
+            // Pre-commit window: map hasn't emitted its first viewport yet.
+            // Render a skeleton grid so we never flash alphabetical content.
+            <div className="p-4 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6 md:gap-x-3 md:gap-y-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800"
+                  >
+                    <div className="aspect-[16/10] bg-neutral-100 dark:bg-neutral-900 animate-pulse" />
+                    <div className="p-3">
+                      <div className="h-3 w-2/3 rounded bg-neutral-100 dark:bg-neutral-900 animate-pulse" />
+                      <div className="h-2 w-1/2 rounded bg-neutral-100 dark:bg-neutral-900 mt-2 animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : filteredRaw.length === 0 ? (
             <div className="px-6 py-16 text-center">
               <p className="text-sm text-neutral-400 dark:text-neutral-500">No spaces match your filters</p>
               <button onClick={clearAll} className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white mt-2 transition-colors">Clear filters</button>
+            </div>
+          ) : filtered.length === 0 ? (
+            // Filters match real spots, but none of them are in the current
+            // viewport. Show "Nearby" fallback (Airbnb's NEARBY mode).
+            <div className="p-4 pt-2">
+              <div className="px-2 py-6 text-center">
+                <h3 className="text-base font-medium" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
+                  No spots in this area
+                </h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
+                  Pan or zoom the map, or try one of these nearby.
+                </p>
+              </div>
+              {nearby.length > 0 && (
+                <>
+                  <h4 className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 tracking-wider uppercase px-2 mb-2">
+                    Nearby
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6 md:gap-x-3 md:gap-y-4">
+                    {nearby.map((spot) => (
+                      <Link
+                        key={spot.id}
+                        href={`/${citySlug}/${spot.id}`}
+                        className="cursor-pointer group block rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors"
+                        onMouseEnter={() => setActiveSpot(spot)}
+                        onMouseLeave={() => setActiveSpot(null)}
+                      >
+                        <ImageCarousel
+                          images={spot.images}
+                          alt={spot.name}
+                          aspectClassName="aspect-[16/10]"
+                          roundedClassName="rounded-2xl"
+                        />
+                        <div className="p-3 rounded-b-2xl bg-surface">
+                          <h3 className="text-sm font-semibold line-clamp-1">{spot.name}</h3>
+                          <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">
+                            {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <div className="p-4 pt-2">
@@ -542,23 +759,29 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 })}
                 </AnimatePresence>
               </div>
-
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 pt-6 pb-2">
-                  <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="w-8 h-8 rounded-full border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-neutral-500 hover:border-neutral-400 disabled:opacity-30 disabled:cursor-default transition-colors">
-                    <ChevronLeft size={12} strokeWidth={1.5} />
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <button key={p} onClick={() => setPage(p)} className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${p === page ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"}`}>{p}</button>
-                  ))}
-                  <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 rounded-full border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-neutral-500 hover:border-neutral-400 disabled:opacity-30 disabled:cursor-default transition-colors">
-                    <ChevronRight size={12} strokeWidth={1.5} />
-                  </button>
-                </div>
-              )}
             </div>
           )}
           </div>
+
+          {/* Pagination — pinned to the bottom of the panel column instead of
+              living inside the scrollable area, so it stays put as the user
+              scrolls cards. Only shown in the regular list state, never on
+              the events / empty / skeleton / nearby branches. */}
+          {!eventsOnly && hydrated && filtered.length > 0 && totalPages > 1 && (
+            <div className={`shrink-0 bg-surface px-4 py-3 ${mobileView === "map" ? "hidden md:block" : ""}`}>
+              <div className="flex items-center justify-center gap-2">
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="w-8 h-8 rounded-full border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-neutral-500 hover:border-neutral-400 disabled:opacity-30 disabled:cursor-default transition-colors">
+                  <ChevronLeft size={12} strokeWidth={1.5} />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button key={p} onClick={() => setPage(p)} className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${p === page ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"}`}>{p}</button>
+                ))}
+                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 rounded-full border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-neutral-500 hover:border-neutral-400 disabled:opacity-30 disabled:cursor-default transition-colors">
+                  <ChevronRight size={12} strokeWidth={1.5} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Map — right */}
@@ -567,7 +790,18 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
             className="w-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative md:h-full"
             style={mapHeight && mobileView === "map" ? { height: mapHeight } : undefined}
           >
-            <SpotMap spots={filteredRaw} activeSpot={activeSpot} onSpotSelect={handleSpotSelect} onCenterChange={handleCenterChange} />
+            <SpotMap
+              spots={filteredRaw}
+              activeSpot={activeSpot}
+              onSpotSelect={handleSpotSelect}
+              onViewChange={handleViewChange}
+              initialView={
+                initialViewport
+                  ? { center: initialViewport.center, zoom: initialViewport.zoom }
+                  : undefined
+              }
+            />
+
 
             {/* Map card */}
             {activeSpot && (
