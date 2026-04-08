@@ -97,7 +97,7 @@ export default function CheckInButton({
         {/* Wishlist → Favorite prompt */}
         {showPrompt && (
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-lg p-3 z-50 animate-[fadeSlideDown_150ms_ease-out]">
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-2">You visited this spot! Add to favorites?</p>
+            <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-2">You visited this space! Add to favorites?</p>
             <div className="flex gap-2">
               <button
                 onClick={handleMoveToFavorites}

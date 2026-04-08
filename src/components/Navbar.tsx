@@ -7,6 +7,7 @@ import { Menu, Search, CircleUserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getPendingReferralCount } from "@/app/actions/referrals";
 import { getUnreadNotificationCount } from "@/app/actions/notifications";
+import { getAdminPendingCount } from "@/app/actions/admin";
 
 export default function Navbar() {
   const router = useRouter();
@@ -16,6 +17,9 @@ export default function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [pendingReferrals, setPendingReferrals] = useState(0);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  // Combined count of pending applications + unpublished recommendations.
+  // Admins only — non-admins always see 0.
+  const [adminPending, setAdminPending] = useState(0);
   // Forced on by `/notifications?mock=1` so the preview can show the jewel
   // state on the profile button without writing to the real db.
   const [mockJewel, setMockJewel] = useState(false);
@@ -35,21 +39,26 @@ export default function Navbar() {
       if (cached) setAvatarUrl(cached);
       const cachedUnread = localStorage.getItem("navUnreadCount");
       if (cachedUnread) setUnreadNotifs(parseInt(cachedUnread, 10) || 0);
+      const cachedAdminPending = localStorage.getItem("navAdminPending");
+      if (cachedAdminPending) setAdminPending(parseInt(cachedAdminPending, 10) || 0);
       if (localStorage.getItem("navMockJewel") === "1") setMockJewel(true);
     } catch {}
 
     (async () => {
       // Run user fetch + badge count fetches in parallel — none depend on each other.
-      const [userRes, pendingCount, unreadCount] = await Promise.all([
+      const [userRes, pendingCount, unreadCount, adminPendingCount] = await Promise.all([
         supabase.auth.getUser(),
         getPendingReferralCount(),
         getUnreadNotificationCount(),
+        getAdminPendingCount(),
       ]);
       if (!cancelled) {
         setPendingReferrals(pendingCount);
         setUnreadNotifs(unreadCount);
+        setAdminPending(adminPendingCount);
         try {
           localStorage.setItem("navUnreadCount", String(unreadCount));
+          localStorage.setItem("navAdminPending", String(adminPendingCount));
         } catch {}
       }
       const user = userRes.data.user;
@@ -122,7 +131,7 @@ export default function Navbar() {
             onClick={() => setMenuOpen(!menuOpen)}
             className="relative flex items-center gap-2 pl-3 pr-1.5 py-1 border border-neutral-200 dark:border-neutral-800 rounded-full hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
           >
-            {(unreadNotifs > 0 || mockJewel) && (
+            {(unreadNotifs > 0 || adminPending > 0 || mockJewel) && (
               <span
                 className="absolute w-1.5 h-1.5 rounded-full bg-red-500"
                 style={{
@@ -134,7 +143,7 @@ export default function Navbar() {
                   right: "1.5px",
                   boxShadow: "0 0 0 2px var(--color-surface)",
                 }}
-                aria-label={`${unreadNotifs} unread notifications`}
+                aria-label="Unread activity"
               />
             )}
             <Menu size={14} strokeWidth={2} className="text-neutral-600 dark:text-neutral-400" />
@@ -178,8 +187,11 @@ export default function Navbar() {
                 )}
               </Link>
               {isAdmin && (
-                <Link href="/admin" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
+                <Link href="/admin" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
                   Admin
+                  {adminPending > 0 && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" aria-label={`${adminPending} pending`} />
+                  )}
                 </Link>
               )}
               <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />

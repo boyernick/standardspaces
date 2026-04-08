@@ -92,7 +92,7 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
     case "follower_checkin":
       return {
         icon: "pin",
-        title: `${name} checked in at ${row.spot?.name ?? "a spot"}`,
+        title: `${name} checked in at ${row.spot?.name ?? "a space"}`,
         body: "See where they've been",
         href: spotHref(row),
         actorAvatar: avatar,
@@ -133,7 +133,7 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
       return {
         icon: "calendar",
         title: `You're in! ${row.event?.title ?? "An event"}`,
-        body: "A spot opened up on the guest list",
+        body: "A seat opened up on the guest list",
         href: eventHref(row),
         actorAvatar: null,
         actorName: null,

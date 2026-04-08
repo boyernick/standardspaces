@@ -313,7 +313,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
           squaredDistance([a.lng, a.lat], committedCenter) -
           squaredDistance([b.lng, b.lat], committedCenter),
       )
-      .slice(0, 5);
+      .slice(0, 6);
     return { filtered: [] as Spot[], nearby: fallback, hydrated: true };
   }, [filteredRaw, committedBounds, committedCenter]);
 
@@ -326,6 +326,17 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
   const paginated = filtered.slice((safePage - 1) * perPage, safePage * perPage);
 
   const handleSpotSelect = useCallback((spot: Spot | null) => { setActiveSpot(spot); }, []);
+
+  // Imperative focus mechanism for "Nearby spaces" card hover — bumping
+  // `focusToken` forces the map to pan to `focusSpot`, bypassing the normal
+  // activeSpot isOutside heuristic so the pan is guaranteed.
+  const [focusSpot, setFocusSpot] = useState<Spot | null>(null);
+  const [focusToken, setFocusToken] = useState(0);
+  const focusOnNearby = useCallback((spot: Spot) => {
+    setActiveSpot(spot);
+    setFocusSpot(spot);
+    setFocusToken((t) => t + 1);
+  }, []);
 
   const clearAll = () => {
     setActiveCategory(null);
@@ -637,7 +648,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               </div>
               <h3 className="text-base font-medium">No spaces yet</h3>
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
-                We&apos;re curating the best spots in {cityName}.<br />Know a place that belongs here?
+                We&apos;re curating the best spaces in {cityName}.<br />Know a place that belongs here?
               </p>
               <Link href="/recommend" className="inline-block mt-4 text-sm font-medium text-brand-500 hover:underline">
                 Recommend a space
@@ -673,7 +684,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
             <div className="p-4 pt-2">
               <div className="px-2 py-6 text-center">
                 <h3 className="text-base font-medium" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
-                  No spots in this area
+                  No spaces in this area
                 </h3>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
                   Pan or zoom the map, or try one of these nearby.
@@ -681,8 +692,8 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               </div>
               {nearby.length > 0 && (
                 <>
-                  <h4 className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 tracking-wider uppercase px-2 mb-2">
-                    Nearby
+                  <h4 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 px-2 mb-2">
+                    Nearby spaces
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6 md:gap-x-3 md:gap-y-4">
                     {nearby.map((spot) => (
@@ -690,7 +701,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                         key={spot.id}
                         href={`/${citySlug}/${spot.id}`}
                         className="cursor-pointer group block rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors"
-                        onMouseEnter={() => setActiveSpot(spot)}
+                        onMouseEnter={() => focusOnNearby(spot)}
                         onMouseLeave={() => setActiveSpot(null)}
                       >
                         <ImageCarousel
@@ -792,6 +803,8 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               activeSpot={activeSpot}
               onSpotSelect={handleSpotSelect}
               onViewChange={handleViewChange}
+              focusSpot={focusSpot}
+              focusToken={focusToken}
               initialView={
                 initialViewport
                   ? { center: initialViewport.center, zoom: initialViewport.zoom }

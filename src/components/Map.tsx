@@ -67,10 +67,18 @@ interface MapProps {
    * a shareable URL without flashing through fitBounds first.
    */
   initialView?: { center: LngLat; zoom: number };
+  /**
+   * Imperative pan request. When `focusToken` changes to a new value, the
+   * map eases to `focusSpot`'s coordinates. Use this to force a pan (e.g.
+   * from "Nearby" card hover) without relying on the activeSpot isOutside
+   * heuristic.
+   */
+  focusSpot?: Spot | null;
+  focusToken?: number;
 }
 
 export default function SpotMap(props: MapProps) {
-  const { spots = [], activeSpot = null, onSpotSelect = () => {}, onViewChange, initialView } = props ?? {};
+  const { spots = [], activeSpot = null, onSpotSelect = () => {}, onViewChange, initialView, focusSpot = null, focusToken } = props ?? {};
   const onViewChangeRef = useRef(onViewChange);
   onViewChangeRef.current = onViewChange;
   // Latch the initialView at first render so later prop changes (e.g. after
@@ -604,6 +612,21 @@ export default function SpotMap(props: MapProps) {
       });
     }
   }, [activeSpot, mapReady]);
+
+  // Imperative pan triggered by focusToken bumps. Always eases regardless of
+  // whether the spot is currently in the viewport — used by the "Nearby
+  // spaces" fallback cards so hovering reliably pans the map.
+  useEffect(() => {
+    if (!map.current || !mapReady || !focusSpot || focusToken == null) return;
+    map.current.easeTo({
+      center: [focusSpot.lng, focusSpot.lat],
+      zoom: Math.max(map.current.getZoom(), 14),
+      duration: 900,
+      easing: (t) => 1 - Math.pow(1 - t, 3),
+      essential: true,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusToken, mapReady]);
 
   const handleRecenter = useCallback(() => {
     const m = map.current;

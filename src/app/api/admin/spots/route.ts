@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function PUT(req: NextRequest) {
@@ -10,15 +11,25 @@ export async function PUT(req: NextRequest) {
     }
 
     const supabase = createAdminClient();
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("spots")
       .update(updates)
-      .eq("id", id);
+      .eq("id", id)
+      .select("id, city")
+      .single();
 
     if (error) {
       console.error("Update spot error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    // Invalidate the statically-generated detail page and city index so
+    // edits show up immediately instead of waiting for the next build.
+    if (updated?.city) {
+      revalidatePath(`/${updated.city}/${updated.id}`);
+      revalidatePath(`/${updated.city}`);
+    }
+    revalidatePath("/");
 
     return NextResponse.json({ ok: true });
   } catch (err) {
@@ -36,6 +47,12 @@ export async function DELETE(req: NextRequest) {
     }
 
     const supabase = createAdminClient();
+    const { data: existing } = await supabase
+      .from("spots")
+      .select("city")
+      .eq("id", id)
+      .maybeSingle();
+
     const { error } = await supabase
       .from("spots")
       .delete()
@@ -45,6 +62,12 @@ export async function DELETE(req: NextRequest) {
       console.error("Delete spot error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    if (existing?.city) {
+      revalidatePath(`/${existing.city}/${id}`);
+      revalidatePath(`/${existing.city}`);
+    }
+    revalidatePath("/");
 
     return NextResponse.json({ ok: true });
   } catch (err) {
