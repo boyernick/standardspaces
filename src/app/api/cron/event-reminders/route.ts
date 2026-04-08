@@ -4,12 +4,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 /**
- * Event reminder cron. Vercel hits this every 15 minutes.
- * - For events starting in ~24h (±15m window): insert `event_reminder_24h`.
- * - For events starting in ~1h (±15m window): insert `event_reminder_1h`.
- * The dedupe key `event_reminder_{24h,1h}:<eventId>` guarantees each user
- * receives at most one reminder per event per window even with overlapping
- * runs or retries.
+ * Event reminder cron. Vercel hits this once a day (14:00 UTC) — the Hobby
+ * plan caps crons at one run per day, so the previous 15-minute cadence is
+ * no longer available. To preserve "heads up" reminders we scan events
+ * starting within the next ~26 hours on every run and insert the 24h
+ * reminder. The 1h reminder window is dropped until we're on Pro.
+ *
+ * The dedupe key `event_reminder_24h:<eventId>` guarantees each user
+ * receives at most one reminder per event even if the cron runs overlap or
+ * retry on the same day.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -23,16 +26,13 @@ export async function GET(req: NextRequest) {
 
     const admin = createAdminClient();
     const now = Date.now();
+    // Daily run → scan a 26h window starting from "now" to catch every event
+    // that will start before the next run (24h later) plus a small overlap.
     const windows = [
       {
         type: "event_reminder_24h" as const,
-        from: new Date(now + 23 * 3600 * 1000 + 45 * 60 * 1000).toISOString(),
-        to: new Date(now + 24 * 3600 * 1000 + 15 * 60 * 1000).toISOString(),
-      },
-      {
-        type: "event_reminder_1h" as const,
-        from: new Date(now + 45 * 60 * 1000).toISOString(),
-        to: new Date(now + 75 * 60 * 1000).toISOString(),
+        from: new Date(now).toISOString(),
+        to: new Date(now + 26 * 3600 * 1000).toISOString(),
       },
     ];
 
