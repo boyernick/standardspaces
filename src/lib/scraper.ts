@@ -29,6 +29,62 @@ export interface ScrapedData {
   googlePlaceId?: string;
 }
 
+// Bot-wall detection --------------------------------------------------------
+
+/** Titles / body snippets that indicate a JS challenge page (Cloudflare,
+ *  Akamai, PerimeterX, etc.) instead of real content. */
+const BOT_WALL_SIGNALS = [
+  "just a moment",        // Cloudflare
+  "checking your browser", // Cloudflare variant
+  "please wait",          // PerimeterX
+  "access denied",        // Akamai / WAFs
+  "attention required",   // Cloudflare interstitial
+  "cf-browser-verification", // Cloudflare element ID
+  "ray id",               // Cloudflare footer
+];
+
+function isBotWall($: cheerio.CheerioAPI): boolean {
+  const title = $("title").text().trim().toLowerCase();
+  const bodyText = $("body").text().slice(0, 2000).toLowerCase();
+  // Very few real HTML elements means we likely got a challenge page
+  const elementCount = $("body *").length;
+  if (elementCount < 15 && BOT_WALL_SIGNALS.some((s) => title.includes(s) || bodyText.includes(s))) {
+    return true;
+  }
+  // Cloudflare's challenge page always has this
+  if (bodyText.includes("cf-browser-verification") || bodyText.includes("challenge-platform")) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Best-effort venue name from a URL when the HTML scrape was blocked.
+ *
+ * Examples:
+ *   "https://www.eatblueribbonmiami.com/" → "eatblueribbonmiami"
+ *   "https://www.casatua.com/"            → "casatua"
+ *   "https://the-surf-club.com/restaurant" → "the surf club"
+ *
+ * This is intentionally rough — it's only used as a Google Places text
+ * search query alongside a city bias, so "eatblueribbonmiami" is plenty
+ * for Google to find "Blue Ribbon Sushi Bar & Grill Miami".
+ */
+function nameFromUrl(url: string): string | undefined {
+  try {
+    let host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+    // Strip TLD (.com, .co, .io, etc.)
+    host = host.replace(/\.[a-z]{2,}$/, "");
+    // Strip second-level country TLDs (.co.uk, .com.au)
+    host = host.replace(/\.[a-z]{2,}$/, "");
+    // Replace hyphens/dots with spaces
+    host = host.replace(/[-_.]/g, " ").trim();
+    return host || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // Follow redirects and get final URL + HTML
 async function fetchPage(url: string): Promise<{ html: string; finalUrl: string }> {
   const res = await fetch(url, {
@@ -1547,6 +1603,17 @@ export async function scrapeUrl(
   const { html, finalUrl } = await fetchPage(url);
   const $ = cheerio.load(html);
 
+  // --- Bot-wall fast path ------------------------------------------------
+  // If the page is a Cloudflare/Akamai challenge, the HTML is useless. Skip
+  // all HTML extraction and go straight to Google Places using the domain
+  // name as a search query. This produces surprisingly good results because
+  // most venue domains contain their name (eatblueribbonmiami.com →
+  // "Blue Ribbon Sushi Bar & Grill").
+  if (isBotWall($)) {
+    console.warn(`Bot wall detected for ${url} — falling back to Google Places`);
+    return scrapeViaBotWallFallback(url, finalUrl, options);
+  }
+
   const meta = extractMeta($);
   const jsonLd = extractJsonLd($, finalUrl);
   const instagram = extractInstagram($);
@@ -1738,4 +1805,120 @@ export async function scrapeUrl(
   };
 
   return result;
+}
+
+// --- Bot-wall fallback ---------------------------------------------------
+// When the HTML scrape is blocked by Cloudflare et al., we skip all HTML
+// parsing and construct a ScrapedData entirely from Google Places data.
+// The domain name is used as the text-search query.
+
+async function scrapeViaBotWallFallback(
+  originalUrl: string,
+  finalUrl: string,
+  options?: ScrapeOptions,
+): Promise<ScrapedData> {
+  const domainName = nameFromUrl(originalUrl);
+
+  // If we don't even have a domain-derived name AND no knownPlaceId, give up
+  // and return a mostly-empty result so the admin can manually fill it in.
+  if (!domainName && !options?.knownPlaceId) {
+    return {
+      name: undefined,
+      website: finalUrl,
+      imageUrls: [],
+    };
+  }
+
+  let googlePlace: GooglePlace | null = null;
+  if (process.env.GOOGLE_PLACES_API_KEY) {
+    try {
+      const cityHint = options?.city || "Miami";
+      googlePlace = await findPlaceForScrape({
+        name: domainName,
+        city: cityHint,
+        website: finalUrl,
+        knownPlaceId: options?.knownPlaceId,
+      });
+    } catch (err) {
+      console.warn("Google Places fallback failed", err);
+    }
+  }
+
+  if (!googlePlace) {
+    return {
+      name: domainName,
+      website: finalUrl,
+      imageUrls: [],
+    };
+  }
+
+  // Build merged data from Google Places (the sole data source)
+  const merged: Partial<ScrapedData> = {
+    name: googlePlace.name,
+    website: finalUrl,
+    googlePlaceId: googlePlace.placeId,
+  };
+
+  if (googlePlace.lat && googlePlace.lng) {
+    merged.lat = googlePlace.lat;
+    merged.lng = googlePlace.lng;
+  }
+  if (googlePlace.phone) merged.phone = googlePlace.phone;
+  if (googlePlace.address) merged.address = googlePlace.address;
+  if (googlePlace.editorialSummary) merged.description = googlePlace.editorialSummary;
+
+  const ghours = googleHoursString(googlePlace);
+  if (ghours) merged.hours = ghours;
+
+  const gprice = googlePriceLevelToDollars(googlePlace.priceLevel);
+  if (gprice) merged.priceRange = gprice;
+
+  const gparking = googleParkingString(googlePlace);
+  if (gparking) merged.parking = gparking;
+
+  // Photos — all from Google
+  const googlePhotoUrls = googlePlace.photos
+    .map((p) => p.url)
+    .filter((u): u is string => !!u);
+  merged.imageUrls = googlePhotoUrls;
+
+  // Geocode if Google didn't provide coordinates
+  if (!merged.lat && !merged.lng && merged.address) {
+    const geo = await geocodeAddress(merged.address);
+    if (geo) {
+      merged.lat = geo.lat;
+      merged.lng = geo.lng;
+    }
+  }
+
+  // Infer category, neighborhood, vibes from Google data
+  const googleTypes = googleTypeTokens(googlePlace);
+  const googleVibeSignals = googleSignalText(googlePlace);
+
+  // Use a dummy cheerio instance since we have no real HTML
+  const empty$ = cheerio.load("<html><body></body></html>");
+  const inferred = inferSubcategories(merged, empty$, finalUrl, googleTypes);
+
+  const googleHood = googlePlace.addressComponents?.neighborhood;
+  const neighborhood =
+    googleHood && googleHood !== "City Center"
+      ? googleHood
+      : inferNeighborhood(merged.address, merged.description);
+
+  const finalPriceRange = merged.priceRange || inferPriceRange(inferred.category, inferred.subcategory);
+  const finalDressCode = merged.dressCode || inferDressCode(inferred.category, inferred.subcategory);
+  const finalParking = merged.parking || inferParking(merged.address);
+  const vibes = inferVibes(merged, empty$, inferred.category, inferred.subcategory, googleVibeSignals);
+
+  return {
+    ...merged,
+    imageUrls: merged.imageUrls || [],
+    category: inferred.category,
+    subcategory: inferred.subcategory.length > 0 ? inferred.subcategory : undefined,
+    vibes: vibes.length > 0 ? vibes : undefined,
+    neighborhood,
+    priceRange: finalPriceRange,
+    dressCode: finalDressCode,
+    parking: finalParking,
+  };
 }
