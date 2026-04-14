@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import Navbar from "@/components/Navbar";
+import PageShell from "@/components/ui/PageShell";
+import PageHeader from "@/components/ui/PageHeader";
 import ListingsTable from "./ListingsTable";
 
 export default async function AdminListingsPage() {
@@ -13,14 +14,9 @@ export default async function AdminListingsPage() {
     .order("name");
 
   return (
-    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--color-surface)" }}>
-      <Navbar />
-      <div className="max-w-3xl mx-auto px-5 py-8">
-        <h1 className="text-2xl font-medium mb-6" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
-          Listings
-        </h1>
-        <ListingsTable spots={spots ?? []} />
-      </div>
-    </div>
+    <PageShell maxWidth="lg">
+      <PageHeader title="Listings" />
+      <ListingsTable spots={spots ?? []} />
+    </PageShell>
   );
 }

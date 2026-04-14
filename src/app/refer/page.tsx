@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { submitReferral } from "@/app/actions/referrals";
 import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 
 export default function ReferPage() {
   const [name, setName] = useState("");
@@ -42,8 +43,6 @@ export default function ReferPage() {
   }
 
   const inputStyle = "w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-transparent text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors";
-  const fontCalibre = { fontFamily: "var(--font-calibre), system-ui, sans-serif" };
-  const fontMartina = { fontFamily: "var(--font-martina), Georgia, serif" };
 
   return (
     <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "var(--color-surface)" }}>
@@ -55,22 +54,21 @@ export default function ReferPage() {
 
           {submitted ? (
             <>
-              <h1 className="text-xl font-medium mb-3" style={fontMartina}>Invite sent</h1>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400" style={fontCalibre}>
+              <h1 className="mb-3">Invite sent</h1>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
                 We&apos;ll text {name} with a link to apply. You&apos;ll be asked to approve their application.
               </p>
               <div className="mt-6 space-y-3">
-                <button
+                <Button
+                  variant="primary"
+                  className="w-full"
                   onClick={() => { setSubmitted(false); setName(""); setPhone(""); }}
-                  className="w-full py-2.5 text-sm font-medium text-white bg-neutral-900 dark:bg-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
-                  style={fontCalibre}
                 >
                   Refer another friend
-                </button>
+                </Button>
                 <Link
                   href="/referrals"
                   className="block w-full py-2.5 text-sm text-center text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors"
-                  style={fontCalibre}
                 >
                   View your referrals
                 </Link>
@@ -78,8 +76,8 @@ export default function ReferPage() {
             </>
           ) : (
             <>
-              <h1 className="text-xl font-medium mb-1" style={fontMartina}>Refer a friend</h1>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400" style={fontCalibre}>
+              <h1 className="mb-1">Refer a friend</h1>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
                 They&apos;ll receive a text with a link to apply.
               </p>
             </>
@@ -95,7 +93,6 @@ export default function ReferPage() {
               placeholder="Their name"
               required
               className={inputStyle}
-              style={fontCalibre}
               autoFocus
             />
             <input
@@ -105,17 +102,16 @@ export default function ReferPage() {
               placeholder="Their phone number"
               required
               className={inputStyle}
-              style={fontCalibre}
             />
-            {error && <p className="text-xs text-red-600" style={fontCalibre}>{error}</p>}
-            <button
+            {error && <p className="text-xs text-red-600">{error}</p>}
+            <Button
               type="submit"
+              variant="primary"
+              className="w-full"
               disabled={loading || !name.trim() || rawDigits.length < 10}
-              className="w-full py-2.5 text-sm font-medium text-white bg-neutral-900 dark:bg-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50"
-              style={fontCalibre}
             >
               {loading ? "Sending..." : "Send invite"}
-            </button>
+            </Button>
           </form>
         )}
       </div>

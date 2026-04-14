@@ -48,7 +48,7 @@ export default function FavoritesClient({ spots, citySlug }: { spots: Spot[]; ci
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
         <div className="max-w-7xl mx-auto px-4 md:px-10 pt-4 pb-8">
           <div className="text-center mb-4">
-            <h1 className="text-xl font-medium mb-1" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>Favorites</h1>
+            <h1 className="mb-1">Favorites</h1>
           </div>
 
           {/* Filters */}
@@ -82,7 +82,7 @@ export default function FavoritesClient({ spots, citySlug }: { spots: Spot[]; ci
 
           {filtered.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-[#eceae2] dark:bg-[#0e0d07]">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-ink-100">
                 <Heart size={20} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
               </div>
               <h3 className="text-base font-medium">
