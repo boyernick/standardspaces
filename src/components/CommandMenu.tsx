@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { CATEGORY_LABELS, CATEGORY_ORDER, TOP_VIBES, Category, Spot, EventRecord } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
 import { NewBadge } from "@/lib/new-badge";
-import { Search, MapPin, X, CircleUserRound, Calendar } from "lucide-react";
+import { Search, MapPin, X, CircleUserRound, Calendar, Loader2 } from "lucide-react";
 
 function Highlight({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
@@ -42,6 +42,8 @@ export default function CommandMenu() {
   const [members, setMembers] = useState<Member[]>([]);
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [semantic, setSemantic] = useState<SemanticHit[]>([]);
+  const [semanticLoading, setSemanticLoading] = useState(false);
+  const [semanticError, setSemanticError] = useState<string | null>(null);
   const semanticCache = useRef<Map<string, SemanticHit[]>>(new Map());
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -216,22 +218,39 @@ export default function CommandMenu() {
     const q = query.trim();
     if (q.length < 4 || results.length >= 5) {
       setSemantic([]);
+      setSemanticLoading(false);
+      setSemanticError(null);
       return;
     }
     const cached = semanticCache.current.get(q);
     if (cached) {
       setSemantic(cached);
+      setSemanticLoading(false);
+      setSemanticError(null);
       return;
     }
     const controller = new AbortController();
     const timer = setTimeout(async () => {
+      setSemanticLoading(true);
+      setSemanticError(null);
       try {
         const res = await fetch(
           `/api/search/semantic?q=${encodeURIComponent(q)}`,
           { signal: controller.signal },
         );
         if (!res.ok) {
+          // Surface the specific failure mode so setup problems (missing
+          // key, missing migration, missing backfill) are debuggable from
+          // the UI instead of silently returning nothing.
+          let reason = `error ${res.status}`;
+          try {
+            const body: { error?: string } = await res.json();
+            if (body.error) reason = body.error;
+          } catch {
+            if (res.status === 401) reason = "sign in required";
+          }
           setSemantic([]);
+          setSemanticError(reason);
           return;
         }
         const json: { results?: SemanticHit[] } = await res.json();
@@ -241,7 +260,10 @@ export default function CommandMenu() {
       } catch (err) {
         if ((err as { name?: string })?.name !== "AbortError") {
           setSemantic([]);
+          setSemanticError("network error");
         }
+      } finally {
+        setSemanticLoading(false);
       }
     }, 250);
     return () => {
@@ -580,6 +602,25 @@ export default function CommandMenu() {
                       </button>
                     );
                   })}
+                </div>
+              )}
+
+              {/* Semantic search status — loading/error/empty states.
+                 Hidden entirely when suppressed (substring returned ≥5) or
+                 when results are rendering below; this is the UX signal that
+                 we tried and didn't find anything (or a setup issue). */}
+              {(semanticLoading || semanticError || (semantic.length > 0 && relatedSpots.length === 0)) && (
+                <div className="px-5 pt-3 pb-1 flex items-center gap-2 text-[11px] text-neutral-400 dark:text-neutral-500">
+                  {semanticLoading ? (
+                    <>
+                      <Loader2 size={11} strokeWidth={2} className="animate-spin" />
+                      <span>Searching related…</span>
+                    </>
+                  ) : semanticError ? (
+                    <span>Related search unavailable — {semanticError}</span>
+                  ) : (
+                    <span>No related matches</span>
+                  )}
                 </div>
               )}
 

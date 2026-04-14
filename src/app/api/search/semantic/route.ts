@@ -32,7 +32,10 @@ export async function GET(req: NextRequest) {
     // Soft-fail: the client treats any non-200 as "no related results" and
     // the substring path still works. This is the right response when the
     // feature simply isn't wired up in a given environment.
-    return NextResponse.json({ error: "not configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "OPENAI_API_KEY not set" },
+      { status: 503 },
+    );
   }
 
   let vector: number[] | null = null;
@@ -58,8 +61,23 @@ export async function GET(req: NextRequest) {
 
   if (error) {
     console.error("match_spots RPC failed:", error);
-    return NextResponse.json({ error: "search failed" }, { status: 500 });
+    // The most common cause of this error in a fresh environment is that
+    // migration 012 hasn't been applied yet. Surface that hint so setup
+    // problems aren't invisible.
+    const hint = /match_spots|function|vector|does not exist/i.test(error.message)
+      ? "migration 012 not applied"
+      : "search failed";
+    return NextResponse.json(
+      { error: hint, detail: error.message },
+      { status: 500 },
+    );
   }
 
-  return NextResponse.json({ results: data ?? [] });
+  const results = data ?? [];
+  return NextResponse.json({
+    results,
+    // Harmless in prod, useful in dev: lets the client distinguish "ran but
+    // no embeddings exist" (backfill not run) from "ran and found nothing."
+    meta: results.length === 0 ? { empty_reason: "no_matches" } : undefined,
+  });
 }
