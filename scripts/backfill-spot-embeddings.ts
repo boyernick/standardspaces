@@ -1,15 +1,15 @@
 /**
  * One-shot backfill for spot embeddings. Run after migration 012 has been
- * applied. Idempotent — re-embeds only rows whose `embedding_source` no
- * longer matches the current corpus (or is null).
+ * applied and the `embed` edge function has been deployed. Idempotent —
+ * re-embeds only rows whose `embedding_source` no longer matches the
+ * current corpus (or is null).
  *
- *   OPENAI_API_KEY=sk-... \
  *   NEXT_PUBLIC_SUPABASE_URL=... \
  *   SUPABASE_SERVICE_ROLE_KEY=... \
- *   bun run scripts/backfill-spot-embeddings.ts
+ *   npx tsx scripts/backfill-spot-embeddings.ts
  *
- * Safe to run multiple times. Stops on repeated failures (likely rate limit
- * or missing key) so a noisy OpenAI outage doesn't chew through the catalog.
+ * Safe to run multiple times. Stops on repeated failures so a noisy outage
+ * (or missing edge function) doesn't chew through the whole catalog.
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -20,10 +20,6 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
   console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
-  process.exit(1);
-}
-if (!process.env.OPENAI_API_KEY) {
-  console.error("Missing OPENAI_API_KEY");
   process.exit(1);
 }
 

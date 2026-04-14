@@ -12,7 +12,7 @@ import { embedQuery } from "@/lib/embeddings";
  *   → 200 { results: Array<{ id: string, similarity: number }> }
  *   → 400 if q is missing / too short
  *   → 401 if unauthenticated (the command menu is member-only)
- *   → 503 if embeddings are not configured
+ *   → 502 if the embed edge function errors or isn't deployed
  */
 export async function GET(req: NextRequest) {
   const user = await getSession();
@@ -28,22 +28,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "query too long" }, { status: 400 });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
-    // Soft-fail: the client treats any non-200 as "no related results" and
-    // the substring path still works. This is the right response when the
-    // feature simply isn't wired up in a given environment.
-    return NextResponse.json(
-      { error: "OPENAI_API_KEY not set" },
-      { status: 503 },
-    );
-  }
-
   let vector: number[] | null = null;
   try {
     vector = await embedQuery(q);
   } catch (err) {
     console.error("embedQuery failed:", err);
-    return NextResponse.json({ error: "embedding failed" }, { status: 502 });
+    const message = err instanceof Error ? err.message : "embedding failed";
+    return NextResponse.json({ error: message }, { status: 502 });
   }
   if (!vector) {
     return NextResponse.json({ results: [] });

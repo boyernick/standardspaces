@@ -1,16 +1,18 @@
 import { CATEGORY_LABELS, Category } from "@/lib/types";
 
 /**
- * Semantic search helpers. We use OpenAI text-embedding-3-small (1536 dim)
- * because it's cheap (~$0.02/1M tokens), fast, and good enough for a
- * catalog-sized corpus. Matches the vector(1536) column in migration 012.
+ * Semantic search helpers. We embed via a Supabase Edge Function that wraps
+ * the built-in `gte-small` model (384 dim, MIT-licensed). Free, no external
+ * API key, runs inside the same Supabase project that owns the data.
  *
- * All calls require OPENAI_API_KEY. This is a server-only module — never
- * import it from client code.
+ * The Edge Function source lives at `supabase/functions/embed/index.ts` and
+ * must be deployed once with `supabase functions deploy embed`.
+ *
+ * This module is server-only — do not import from client code; it uses the
+ * service role key to authenticate against the function.
  */
 
-const EMBEDDING_MODEL = "text-embedding-3-small";
-const EMBEDDING_DIM = 1536;
+const EMBEDDING_DIM = 384;
 
 export type SpotLike = {
   name?: string | null;
@@ -50,25 +52,33 @@ export function buildSpotCorpus(spot: SpotLike): string {
 }
 
 async function embed(text: string): Promise<number[]> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY is not set");
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!baseUrl || !serviceKey) {
+    throw new Error("Supabase env vars not set (URL + service role key)");
+  }
 
-  const res = await fetch("https://api.openai.com/v1/embeddings", {
+  const res = await fetch(`${baseUrl}/functions/v1/embed`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${serviceKey}`,
     },
-    body: JSON.stringify({ model: EMBEDDING_MODEL, input: text }),
+    body: JSON.stringify({ text }),
   });
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`OpenAI embeddings failed: ${res.status} ${body}`);
+    // Distinguish "function not deployed" (404) from runtime failures so
+    // upstream callers can surface a useful hint.
+    if (res.status === 404) {
+      throw new Error("embed edge function not deployed");
+    }
+    throw new Error(`embed function failed: ${res.status} ${body}`);
   }
 
-  const json = (await res.json()) as { data?: { embedding: number[] }[] };
-  const vec = json.data?.[0]?.embedding;
+  const json = (await res.json()) as { embedding?: number[] };
+  const vec = json.embedding;
   if (!vec || vec.length !== EMBEDDING_DIM) {
     throw new Error(`Unexpected embedding shape (len=${vec?.length})`);
   }

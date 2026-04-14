@@ -1,18 +1,18 @@
 -- Semantic search for spots via pgvector.
--- Embeddings are produced by OpenAI text-embedding-3-small (1536 dims) on
--- publish and on listing edit. Query embeddings are produced server-side
--- in /api/search/semantic. See src/lib/embeddings.ts.
+-- Embeddings are produced by Supabase's built-in gte-small model (384 dims)
+-- via the `embed` Edge Function on publish and on listing edit. Query
+-- embeddings come from the same function at search time. See
+-- src/lib/embeddings.ts and supabase/functions/embed/index.ts.
 
 create extension if not exists vector;
 
 alter table public.spots
-  add column if not exists embedding vector(1536),
+  add column if not exists embedding vector(384),
   add column if not exists embedding_source text,
   add column if not exists embedding_updated_at timestamptz;
 
 -- HNSW is the right choice at this scale — no training step, good recall at
--- low k. Cosine distance matches OpenAI's recommendation for their embedding
--- models.
+-- low k. Cosine distance is the standard for normalized sentence embeddings.
 create index if not exists spots_embedding_hnsw_idx
   on public.spots using hnsw (embedding vector_cosine_ops);
 
@@ -20,7 +20,7 @@ create index if not exists spots_embedding_hnsw_idx
 -- doesn't need to know pgvector syntax. Returns ids + similarity only; the
 -- caller joins against its already-fetched spot list.
 create or replace function public.match_spots(
-  query_embedding vector(1536),
+  query_embedding vector(384),
   match_count int default 8,
   min_similarity float default 0.25
 )
