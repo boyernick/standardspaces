@@ -121,10 +121,13 @@ export default function NotificationsClient({ initialRows, mock = false }: Props
       )}
 
       {isEmpty ? (
-        <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-10 text-center">
-          <Bell size={18} strokeWidth={1.5} className="text-neutral-400 mx-auto mb-3" />
-          <p className="text-sm text-neutral-500" style={fontCalibre}>
-            You&apos;re all caught up
+        <div className="px-6 py-20 text-center">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-[#eceae2] dark:bg-[#0e0d07]">
+            <Bell size={20} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
+          </div>
+          <h3 className="text-base font-medium">You&apos;re all caught up</h3>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto" style={fontCalibre}>
+            No new notifications right now.
           </p>
         </div>
       ) : (

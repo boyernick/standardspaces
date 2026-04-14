@@ -82,8 +82,8 @@ export default function FavoritesClient({ spots, citySlug }: { spots: Spot[]; ci
 
           {filtered.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-12 h-12 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mx-auto mb-4">
-                <Heart size={20} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500" />
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-[#eceae2] dark:bg-[#0e0d07]">
+                <Heart size={20} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
               </div>
               <h3 className="text-base font-medium">
                 {spots.length === 0 ? "No favorites yet" : "No matches"}
