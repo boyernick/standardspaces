@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import EventCard from "@/components/EventCard";
 import { EventRecord } from "@/lib/types";
 import { cancelEvent } from "@/app/actions/events";
+import { Calendar, Mail, CalendarPlus } from "lucide-react";
 
 type Tab = "invitations" | "going" | "hosting";
 
@@ -66,12 +67,13 @@ export default function EventsHubClient({ invitations, going, hosting, pastHosti
 
   const active =
     tab === "invitations" ? invitations : tab === "going" ? going : hosting;
-  const emptyText =
+  const emptyState =
     tab === "invitations"
-      ? "No pending invitations."
+      ? { icon: Mail, title: "No pending invitations", body: "You'll see event invitations here when hosts add you." }
       : tab === "going"
-      ? "You haven't RSVP'd to any upcoming events."
-      : "You haven't created any events yet.";
+      ? { icon: Calendar, title: "Nothing on your calendar", body: "You haven't RSVP'd to any upcoming events." }
+      : { icon: CalendarPlus, title: "No events yet", body: "You haven't created any events yet." };
+  const EmptyIcon = emptyState.icon;
 
   return (
     <>
@@ -101,7 +103,15 @@ export default function EventsHubClient({ invitations, going, hosting, pastHosti
       </div>
 
       {active.length === 0 ? (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">{emptyText}</p>
+        <div className="px-6 py-20 text-center">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-[#eceae2] dark:bg-[#0e0d07]">
+            <EmptyIcon size={20} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
+          </div>
+          <h3 className="text-base font-medium">{emptyState.title}</h3>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
+            {emptyState.body}
+          </p>
+        </div>
       ) : (
         <div className="flex flex-wrap gap-4">
           {active.map((e) =>
