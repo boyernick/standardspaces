@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { geocodeAddress } from "@/lib/geocode";
 import { createNotification, fanOutNewSpotToCity } from "@/lib/notifications";
+import { embedSpot } from "@/lib/embeddings";
 
 /**
  * Copy a batch of image URLs into a stable `spots/{spotId}/` subfolder of
@@ -198,6 +199,32 @@ export async function POST(req: NextRequest) {
       .from("recommendations")
       .update({ status: "published" })
       .eq("id", recommendationId);
+
+    // Best-effort semantic embedding. Never block publish if OpenAI is down
+    // or the key is missing — the spot is searchable by substring regardless.
+    try {
+      const result = await embedSpot({
+        name: spot.name,
+        category: spot.category,
+        subcategory: spot.subcategory,
+        vibes: spot.vibes,
+        neighborhood: spot.neighborhood,
+        city: spot.city,
+        description: spot.description,
+      });
+      if (result) {
+        await supabase
+          .from("spots")
+          .update({
+            embedding: result.embedding,
+            embedding_source: result.source,
+            embedding_updated_at: new Date().toISOString(),
+          })
+          .eq("id", spot.id);
+      }
+    } catch (embedErr) {
+      console.error("publish embedding failed:", embedErr);
+    }
 
     // Notifications: submitter first (direct), then city-wide curation fan-out.
     try {

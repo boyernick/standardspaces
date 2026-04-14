@@ -32,6 +32,8 @@ type Member = {
   city: string | null;
 };
 
+type SemanticHit = { id: string; similarity: number };
+
 export default function CommandMenu() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -39,6 +41,8 @@ export default function CommandMenu() {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [events, setEvents] = useState<EventRecord[]>([]);
+  const [semantic, setSemantic] = useState<SemanticHit[]>([]);
+  const semanticCache = useRef<Map<string, SemanticHit[]>>(new Map());
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -152,6 +156,22 @@ export default function CommandMenu() {
     });
   }, [query, events]);
 
+  // Semantic "Related" hits: only surface IDs that aren't already in the
+  // substring results. The substring path stays authoritative for anything
+  // it catches; semantic is purely additive.
+  const relatedSpots = useMemo(() => {
+    if (semantic.length === 0 || spots.length === 0) return [];
+    const seen = new Set(results.map((s) => s.id));
+    const byId = new Map(spots.map((s) => [s.id, s]));
+    const out: Spot[] = [];
+    for (const hit of semantic) {
+      if (seen.has(hit.id)) continue;
+      const spot = byId.get(hit.id);
+      if (spot) out.push(spot);
+    }
+    return out;
+  }, [semantic, spots, results]);
+
   const flatItems = useMemo(() => {
     const all: Array<{ type: string; value: string }> = [];
     for (const m of matchingMembers) all.push({ type: "member", value: m.id });
@@ -159,8 +179,9 @@ export default function CommandMenu() {
     for (const n of matchingNeighborhoods) all.push({ type: "neighborhood", value: n });
     for (const c of matchingCategories) all.push({ type: "category", value: c });
     for (const s of results) all.push({ type: "spot", value: s.id });
+    for (const s of relatedSpots) all.push({ type: "spot", value: s.id });
     return all;
-  }, [matchingMembers, matchingEvents, matchingNeighborhoods, matchingCategories, results]);
+  }, [matchingMembers, matchingEvents, matchingNeighborhoods, matchingCategories, results, relatedSpots]);
 
   const hasQuery = query.trim().length > 0;
   const hasResults = flatItems.length > 0;
@@ -186,6 +207,48 @@ export default function CommandMenu() {
   }, [open]);
 
   useEffect(() => { setSelectedIndex(0); }, [flatItems]);
+
+  // Semantic search — debounced, only fires when substring results are thin.
+  // Substring path stays instant; this paints in a second wave. Cached by
+  // query string so backspace/retype doesn't re-hit the network.
+  useEffect(() => {
+    if (!open) return;
+    const q = query.trim();
+    if (q.length < 4 || results.length >= 5) {
+      setSemantic([]);
+      return;
+    }
+    const cached = semanticCache.current.get(q);
+    if (cached) {
+      setSemantic(cached);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/search/semantic?q=${encodeURIComponent(q)}`,
+          { signal: controller.signal },
+        );
+        if (!res.ok) {
+          setSemantic([]);
+          return;
+        }
+        const json: { results?: SemanticHit[] } = await res.json();
+        const hits = json.results ?? [];
+        semanticCache.current.set(q, hits);
+        setSemantic(hits);
+      } catch (err) {
+        if ((err as { name?: string })?.name !== "AbortError") {
+          setSemantic([]);
+        }
+      }
+    }, 250);
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [open, query, results.length]);
 
   useEffect(() => {
     const el = listRef.current?.querySelector("[data-selected='true']");
@@ -512,6 +575,45 @@ export default function CommandMenu() {
                           </div>
                           <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5 truncate">
                             <Highlight text={spot.neighborhood} query={query} /> · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Semantic "Related" — vibe/intent matches not caught by substring */}
+              {relatedSpots.length > 0 && (
+                <div>
+                  <div className="px-5 pt-2 pb-1.5">
+                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Related</p>
+                  </div>
+                  {relatedSpots.map((spot) => {
+                    const idx = flatIdx++;
+                    const isSelected = idx === selectedIndex;
+                    return (
+                      <button
+                        key={spot.id}
+                        data-selected={isSelected}
+                        onClick={() => selectItem({ type: "spot", value: spot.id })}
+                        onMouseEnter={() => setSelectedIndex(idx)}
+                        className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
+                          isSelected ? "bg-neutral-50 dark:bg-neutral-900" : ""
+                        }`}
+                      >
+                        {spot.images?.[0] && (
+                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                            <img src={spot.images[0]} alt="" className="w-full h-full object-cover spot-img opacity-90" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="text-sm font-medium truncate text-neutral-700 dark:text-neutral-300">{spot.name}</p>
+                            <NewBadge spot={spot} compact />
+                          </div>
+                          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5 truncate">
+                            {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
                           </p>
                         </div>
                       </button>

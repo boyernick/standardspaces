@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { embedSpot, buildSpotCorpus } from "@/lib/embeddings";
+
+/** Fields that, when changed, require re-embedding. */
+const EMBEDDING_FIELDS = [
+  "name",
+  "category",
+  "subcategory",
+  "vibes",
+  "neighborhood",
+  "city",
+  "description",
+] as const;
 
 export async function PUT(req: NextRequest) {
   try {
@@ -15,7 +27,7 @@ export async function PUT(req: NextRequest) {
       .from("spots")
       .update(updates)
       .eq("id", id)
-      .select("id, city")
+      .select("id, city, name, category, subcategory, vibes, neighborhood, description, embedding_source")
       .single();
 
     if (error) {
@@ -30,6 +42,46 @@ export async function PUT(req: NextRequest) {
       revalidatePath(`/${updated.city}`);
     }
     revalidatePath("/");
+
+    // Best-effort re-embed. Skip if none of the searchable fields changed
+    // (saves an OpenAI call on logistics-only edits like hours or parking).
+    const touchedSearchable = EMBEDDING_FIELDS.some((f) => f in updates);
+    if (touchedSearchable && updated) {
+      try {
+        const nextCorpus = buildSpotCorpus({
+          name: updated.name,
+          category: updated.category,
+          subcategory: updated.subcategory,
+          vibes: updated.vibes,
+          neighborhood: updated.neighborhood,
+          city: updated.city,
+          description: updated.description,
+        });
+        if (nextCorpus && nextCorpus !== updated.embedding_source) {
+          const result = await embedSpot({
+            name: updated.name,
+            category: updated.category,
+            subcategory: updated.subcategory,
+            vibes: updated.vibes,
+            neighborhood: updated.neighborhood,
+            city: updated.city,
+            description: updated.description,
+          });
+          if (result) {
+            await supabase
+              .from("spots")
+              .update({
+                embedding: result.embedding,
+                embedding_source: result.source,
+                embedding_updated_at: new Date().toISOString(),
+              })
+              .eq("id", id);
+          }
+        }
+      } catch (embedErr) {
+        console.error("edit re-embed failed:", embedErr);
+      }
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
