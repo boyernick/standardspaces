@@ -7,6 +7,8 @@ import EventCard from "@/components/EventCard";
 import { EventRecord } from "@/lib/types";
 import { cancelEvent } from "@/app/actions/events";
 import { Calendar, Mail, CalendarPlus } from "lucide-react";
+import Tabs from "@/components/ui/Tabs";
+import EmptyState from "@/components/ui/EmptyState";
 
 type Tab = "invitations" | "going" | "hosting";
 
@@ -72,46 +74,14 @@ export default function EventsHubClient({ invitations, going, hosting, pastHosti
       ? { icon: Mail, title: "No pending invitations", body: "You'll see event invitations here when hosts add you." }
       : tab === "going"
       ? { icon: Calendar, title: "Nothing on your calendar", body: "You haven't RSVP'd to any upcoming events." }
-      : { icon: CalendarPlus, title: "No events yet", body: "You haven't created any events yet." };
-  const EmptyIcon = emptyState.icon;
+      : { icon: CalendarPlus, title: "No events", body: "You haven't created any events." };
 
   return (
     <>
-      <div className="flex items-center gap-1 border-b border-neutral-200 dark:border-neutral-800 mb-6">
-        {tabs.map((t) => {
-          const isActive = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`relative px-4 py-3 text-sm font-medium transition-colors ${
-                isActive
-                  ? "text-neutral-900 dark:text-white"
-                  : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
-              }`}
-            >
-              {t.label}
-              {t.count > 0 && (
-                <span className="ml-1.5 text-xs text-neutral-400">{t.count}</span>
-              )}
-              {isActive && (
-                <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-neutral-900 dark:bg-white" />
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <Tabs tabs={tabs} value={tab} onChange={setTab} />
 
       {active.length === 0 ? (
-        <div className="px-6 py-20 text-center">
-          <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-[#eceae2] dark:bg-[#0e0d07]">
-            <EmptyIcon size={20} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
-          </div>
-          <h3 className="text-base font-medium">{emptyState.title}</h3>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
-            {emptyState.body}
-          </p>
-        </div>
+        <EmptyState icon={emptyState.icon} title={emptyState.title} body={emptyState.body} />
       ) : (
         <div className="flex flex-wrap gap-4">
           {active.map((e) =>
@@ -126,7 +96,7 @@ export default function EventsHubClient({ invitations, going, hosting, pastHosti
 
       {tab === "hosting" && pastHosting.length > 0 && (
         <section className="mt-10">
-          <h2 className="text-sm font-semibold text-neutral-500 mb-4">Past hosted</h2>
+          <h2 className="eyebrow mb-4">Previously hosted</h2>
           <div className="flex flex-wrap gap-4">
             {pastHosting.map((e) => (
               <EventCard key={e.id} event={e} spotName={spotNames[e.spot_id]} />

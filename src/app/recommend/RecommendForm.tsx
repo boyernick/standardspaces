@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Globe, CheckCircle, Loader2, Plus, X } from "lucide-react";
+import { Button, ButtonLink } from "@/components/ui/Button";
 
 type Step = "form" | "success";
 
@@ -77,23 +78,20 @@ export default function RecommendForm() {
   if (step === "success") {
     return (
       <div className="mt-12 text-center">
-        <div className="w-12 h-12 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mx-auto mb-4">
-          <CheckCircle size={24} className="text-neutral-900" />
+        <div className="w-12 h-12 rounded-full bg-ink-100 flex items-center justify-center mx-auto mb-4">
+          <CheckCircle size={24} className="text-neutral-900 dark:text-white" />
         </div>
-        <h2 className="text-xl font-semibold">Thanks for the recommendation</h2>
+        <h2>Thanks for the recommendation</h2>
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2 max-w-sm mx-auto">
           We'll review this space and add it to the guide if it meets our standards.
         </p>
-        <a
-          href="/"
-          className="mt-6 inline-flex items-center px-6 py-3 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-medium rounded-full hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
-        >
-          Back to guide
-        </a>
+        <div className="mt-6">
+          <ButtonLink href="/" variant="primary">Back to guide</ButtonLink>
+        </div>
         <div className="mt-3">
           <button
             onClick={() => { setStep("form"); setUrl(""); setAdditionalUrls([]); }}
-            className="text-sm text-neutral-900 hover:underline"
+            className="text-sm text-neutral-900 dark:text-white hover:underline"
           >
             Recommend another
           </button>
@@ -105,8 +103,8 @@ export default function RecommendForm() {
   return (
     <div>
       <div className="text-center mb-8">
-        <h1 className="text-xl font-medium mb-1" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>Recommend a space</h1>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400" style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}>
+        <h1 className="mb-1">Recommend a space</h1>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
           Paste a link and we&apos;ll take it from there.
         </p>
       </div>
@@ -177,17 +175,18 @@ export default function RecommendForm() {
 
         {error && <p className="text-xs text-red-500">{error}</p>}
 
-        <button
+        <Button
           onClick={handleSubmit}
           disabled={!urlType || submitting}
-          className="w-full py-2.5 text-sm font-medium rounded-lg bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-default transition-colors flex items-center justify-center gap-2"
+          variant="primary"
+          className="w-full"
         >
           {submitting ? (
             <><Loader2 size={16} className="animate-spin" /> Submitting...</>
           ) : (
             <>Submit recommendation</>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );

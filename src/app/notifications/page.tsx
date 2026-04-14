@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getNotifications } from "@/app/actions/notifications";
-import Navbar from "@/components/Navbar";
+import PageShell from "@/components/ui/PageShell";
 import NotificationsClient from "./NotificationsClient";
 import { MOCK_NOTIFICATIONS } from "./mockData";
 
@@ -35,14 +35,8 @@ export default async function NotificationsPage({
   }
 
   return (
-    <div
-      className="flex flex-col h-full"
-      style={{ backgroundColor: "var(--color-surface)" }}
-    >
-      <Navbar />
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <NotificationsClient initialRows={rows} mock={isMock} />
-      </div>
-    </div>
+    <PageShell maxWidth="sm">
+      <NotificationsClient initialRows={rows} mock={isMock} />
+    </PageShell>
   );
 }

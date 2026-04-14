@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import Navbar from "@/components/Navbar";
+import PageShell from "@/components/ui/PageShell";
+import PageHeader from "@/components/ui/PageHeader";
 import ApplicationList from "./ApplicationList";
 
 export default async function AdminApplicationsPage() {
@@ -13,14 +14,9 @@ export default async function AdminApplicationsPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--color-surface)" }}>
-      <Navbar />
-      <div className="max-w-2xl mx-auto px-5 py-8">
-        <h1 className="text-2xl font-medium mb-6" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
-          Applications
-        </h1>
-        <ApplicationList applications={applications ?? []} />
-      </div>
-    </div>
+    <PageShell maxWidth="md">
+      <PageHeader title="Applications" />
+      <ApplicationList applications={applications ?? []} />
+    </PageShell>
   );
 }
