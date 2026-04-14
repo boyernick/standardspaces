@@ -8,7 +8,7 @@ interface Props {
 
 export default function EventCard({ event, spotName }: Props) {
   const d = new Date(event.starts_at);
-  const month = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+  const month = d.toLocaleDateString("en-US", { month: "short" });
   const day = d.getDate();
   const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
@@ -17,14 +17,14 @@ export default function EventCard({ event, spotName }: Props) {
   return (
     <Link
       href={`/events/${event.id}`}
-      className="group block w-[260px] shrink-0 rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors"
+      className="group block w-[260px] shrink-0 rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 shadow-sm hover:shadow-md hover:border-neutral-300 dark:hover:border-neutral-700 transition-[box-shadow,border-color] duration-[var(--duration-base)] ease-[var(--ease-out)]"
     >
       <div className="aspect-[16/10] bg-neutral-100 dark:bg-neutral-900 relative">
         {event.cover_image_url ? (
           <img
             src={event.cover_image_url}
             alt={event.title}
-            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
+            className="w-full h-full object-cover spot-img group-hover:scale-[1.02] transition-transform duration-[var(--duration-base)] ease-[var(--ease-out)]"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-neutral-700">
