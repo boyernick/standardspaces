@@ -68,28 +68,16 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
 
     const dark = document.documentElement.classList.contains("dark");
 
-    const allSpots = [spot, ...nearby];
-    const bounds = new mapboxgl.LngLatBounds();
-    allSpots.forEach((s) => bounds.extend([s.lng, s.lat]));
-
     const m = new mapboxgl.Map({
       container: container.current,
       style: getCustomMapStyle(dark),
       center: [spot.lng, spot.lat],
       zoom: 15,
-      interactive: true,
+      // Static map — no pan/zoom/rotate. Marker hover still works because
+      // those handlers live on the marker DOM elements, not the map canvas.
+      interactive: false,
       attributionControl: false,
     });
-
-    if (nearby.length > 0) {
-      m.on("load", () => {
-        m.fitBounds(bounds, {
-          padding: { top: 50, bottom: 50, left: 50, right: 50 },
-          maxZoom: 16,
-          duration: 0,
-        });
-      });
-    }
 
     function buildMarker(s: SpotInfo, isMain: boolean): HTMLDivElement {
       const el = document.createElement("div");
