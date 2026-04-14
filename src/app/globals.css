@@ -176,6 +176,13 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Page-enter animation. Applied by PageShell so every standard page
+   fades up on first paint. Keeps PageShell a server component (no
+   framer-motion boot cost). */
+.page-enter {
+  animation: fadeInUp var(--duration-base) var(--ease-out) both;
+}
+
 @keyframes galleryReveal {
   from { opacity: 0; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1); }
