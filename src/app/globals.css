@@ -8,6 +8,12 @@
   --color-surface: #F7F7F3;
   --color-surface-dark: #13120A;
 
+  /* Ink — the warm neutral used for empty-state circles, hover washes,
+     and anywhere we want a "one notch darker than surface" feel.
+     Also aliased as --color-ocean (matches the Mapbox water color). */
+  --color-ink-100: #eceae2;
+  --color-ocean: #eceae2;
+
   /* Text colors */
   --color-text: #1a1a1a;
   --color-text-dark: #ededed;
@@ -27,6 +33,27 @@
   --color-brand-800: #992b0e;
   --color-brand-900: #7c2510;
   --color-brand-950: #431006;
+
+  /* Radius scale — keep to these five.
+     sm = inline chips / inputs; md = buttons, tags;
+     lg = cards; xl = modals / big cards; pill = fully rounded. */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* Shadow scale — warm, low-contrast. Airbnb-style: resting cards are
+     barely there; hover lifts gently; popovers cast a soft wide halo. */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 16px -4px rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 12px 40px -12px rgb(0 0 0 / 0.12);
+
+  /* Motion — one curve, three speeds. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 150ms;
+  --duration-base: 220ms;
+  --duration-slow: 320ms;
 }
 
 html, body {
@@ -46,6 +73,13 @@ html {
   --color-neutral-800: #3F3E37;
   --color-neutral-700: #4A493F;
   --color-neutral-100: #2A2922;
+  /* Ink flips to the dark ocean color (Mapbox dark-style water). */
+  --color-ink-100: #0e0d07;
+  --color-ocean: #0e0d07;
+  /* Warmer blacks in dark mode so shadows don't read as gray smears. */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 16px -4px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 12px 40px -12px rgb(0 0 0 / 0.6);
 }
 .dark, .dark body {
   background: #13120A;
@@ -58,8 +92,59 @@ html.dark {
 .dark .nav-logo { filter: invert(1); }
 .dark .nav-title { color: #ededed !important; }
 
-h1, h2, h3 {
-  font-family: var(--font-martina), Georgia, serif;
+/* Type scale — one source of truth. Lives in @layer base so that Tailwind
+   utilities (text-xl, font-semibold, etc.) still override. Pages that
+   haven't been swept yet keep their existing sizing; swept pages omit
+   those utilities and inherit these defaults. */
+@layer base {
+  h1 {
+    font-family: var(--font-martina), Georgia, serif;
+    font-size: 28px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    font-weight: 500;
+  }
+  @media (min-width: 768px) {
+    h1 { font-size: 32px; }
+  }
+  h2 {
+    font-family: var(--font-martina), Georgia, serif;
+    font-size: 20px;
+    line-height: 1.25;
+    font-weight: 500;
+  }
+  @media (min-width: 768px) {
+    h2 { font-size: 24px; }
+  }
+  h3 {
+    /* h3 is a small-header / empty-state title. Calibre by default —
+       it reads as a label, not a display heading. */
+    font-family: var(--font-calibre), system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.35;
+    font-weight: 500;
+  }
+}
+
+/* Eyebrow / section label. Title case per AGENTS.md — never uppercase. */
+.eyebrow {
+  font-family: var(--font-calibre), system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  letter-spacing: 0;
+}
+
+/* Global focus ring — visible only on keyboard focus, never on click. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-brand-500) 40%, transparent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+  button:focus, a:focus, input:focus, select:focus, textarea:focus {
+    outline: none;
+  }
 }
 
 a, button, select, [role="button"] {
