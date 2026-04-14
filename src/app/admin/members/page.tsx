@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import Navbar from "@/components/Navbar";
+import PageShell from "@/components/ui/PageShell";
+import PageHeader from "@/components/ui/PageHeader";
 import MembersList from "./MembersList";
 
 export default async function AdminMembersPage() {
@@ -13,17 +14,9 @@ export default async function AdminMembersPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--color-surface)" }}>
-      <Navbar />
-      <div className="max-w-2xl mx-auto px-5 py-8">
-        <h1
-          className="text-2xl font-medium mb-6"
-          style={{ fontFamily: "var(--font-martina), Georgia, serif" }}
-        >
-          Members
-        </h1>
-        <MembersList members={members ?? []} />
-      </div>
-    </div>
+    <PageShell maxWidth="md">
+      <PageHeader title="Members" />
+      <MembersList members={members ?? []} />
+    </PageShell>
   );
 }

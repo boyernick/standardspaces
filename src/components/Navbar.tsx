@@ -94,7 +94,7 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const menuLinkClass = "block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors";
+  const menuLinkClass = "block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors";
 
   return (
     <header className="bg-surface shrink-0" style={{ position: "relative", zIndex: 40 }}>
@@ -169,7 +169,7 @@ export default function Navbar() {
               <Link href="/events" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
                 Events
               </Link>
-              <Link href="/notifications" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
+              <Link href="/notifications" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors">
                 Notifications
                 {(unreadNotifs > 0 || mockJewel) && (
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500" aria-label={`${unreadNotifs} unread`} />
@@ -178,7 +178,7 @@ export default function Navbar() {
               <Link href="/recommend" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
                 Recommendations
               </Link>
-              <Link href="/referrals" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
+              <Link href="/referrals" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors">
                 Referrals
                 {pendingReferrals > 0 && (
                   <span className="ml-2 px-1.5 py-0.5 text-[10px] font-medium bg-brand-500 text-white rounded-full min-w-[18px] text-center">
@@ -187,7 +187,7 @@ export default function Navbar() {
                 )}
               </Link>
               {isAdmin && (
-                <Link href="/admin" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
+                <Link href="/admin" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors">
                   Admin
                   {adminPending > 0 && (
                     <span className="w-1.5 h-1.5 rounded-full bg-red-500" aria-label={`${adminPending} pending`} />

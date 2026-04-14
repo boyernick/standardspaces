@@ -391,7 +391,7 @@ export default function CommandMenu() {
                           setOpen(false);
                           router.push(`/${citySlugFromName(spot.city)}/${spot.id}`);
                         }}
-                        className="w-full text-left px-5 py-2.5 flex items-center gap-3 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
+                        className="w-full text-left px-5 py-2.5 flex items-center gap-3 hover:bg-ink-100 transition-colors"
                       >
                         {spot.images?.[0] && (
                           <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
