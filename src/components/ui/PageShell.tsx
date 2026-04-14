@@ -31,7 +31,7 @@ export default function PageShell({
       style={{ backgroundColor: "var(--color-surface)" }}
     >
       <Navbar />
-      <div className={`${widthClass[maxWidth]} mx-auto px-4 md:px-6 py-8`}>
+      <div className={`${widthClass[maxWidth]} mx-auto px-4 md:px-6 py-8 page-enter`}>
         {children}
       </div>
     </div>
