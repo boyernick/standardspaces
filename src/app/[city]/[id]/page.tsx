@@ -327,6 +327,19 @@ export default async function SpotPage({
     ? "Book a stay"
     : "Book now";
 
+  // Primary action for the bottom action bar. Booking wins; fall back to
+  // the space's website, then Instagram, so the bar never looks empty.
+  const primaryAction = spot.bookingUrl
+    ? { href: spot.bookingUrl, label: bookingLabel }
+    : spot.website
+    ? { href: spot.website, label: "Visit website" }
+    : spot.instagram
+    ? {
+        href: `https://instagram.com/${spot.instagram.replace("@", "")}`,
+        label: "View on Instagram",
+      }
+    : null;
+
   return (
     <div className="h-[100dvh] flex flex-col bg-surface">
       <Navbar />
@@ -474,14 +487,14 @@ export default async function SpotPage({
             <CheckInButton spotId={spot.id} variant="icon" />
             <WishlistButtonClient spotId={spot.id} size="icon" />
           </div>
-          {spot.bookingUrl && (
+          {primaryAction && (
             <a
-              href={spot.bookingUrl}
+              href={primaryAction.href}
               target="_blank"
               rel="noopener noreferrer"
               className="ml-auto px-6 py-2.5 text-center bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-full text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
             >
-              Book
+              {primaryAction.label}
             </a>
           )}
         </div>
