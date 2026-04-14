@@ -18,6 +18,21 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // Custom auth: we deploy with verify_jwt=false because Supabase's new
+  // sb_secret_* keys aren't JWTs and fail the built-in check. Instead we
+  // require the service role secret in the Authorization header — all our
+  // callers are server-side and already have it.
+  // @ts-expect-error Deno global
+  const expected = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const authHeader = req.headers.get("authorization") || "";
+  const presented = authHeader.replace(/^Bearer\s+/i, "");
+  if (!expected || presented !== expected) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
   let text: unknown;
   try {
     const body = await req.json();
