@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import { requireAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import Navbar from "@/components/Navbar";
+
+export const metadata: Metadata = { title: "Settings" };
 import SettingsClient from "./SettingsClient";
 
 export default async function SettingsPage() {

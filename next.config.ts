@@ -24,6 +24,17 @@ const nextConfig: NextConfig = {
   experimental: {
     authInterrupts: true,
   },
+  images: {
+    remotePatterns: [
+      // Supabase storage — user uploads (avatars, spot photos, event covers).
+      { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
+      // Google Places photos served via lh3. Ephemeral URLs, but we copy
+      // to our bucket on publish; left here for pre-publish previews.
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      // Generic image CDN hosts we've linked to in older listings.
+      { protocol: "https", hostname: "images.unsplash.com" },
+    ],
+  },
   async headers() {
     return [
       {

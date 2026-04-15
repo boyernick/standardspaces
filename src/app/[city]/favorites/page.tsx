@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { requireAuth } from "@/lib/auth";
 import { getSpotsByIds } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import Navbar from "@/components/Navbar";
 import PageEnter from "@/components/PageEnter";
+
+export const metadata: Metadata = { title: "Favorites" };
 import FavoritesClient from "./FavoritesClient";
 
 export default async function FavoritesPage({

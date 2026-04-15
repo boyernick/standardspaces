@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { requireAuth } from "@/lib/auth";
 import {
   getEventsByHost,
@@ -9,6 +10,8 @@ import PageShell from "@/components/ui/PageShell";
 import PageHeader from "@/components/ui/PageHeader";
 import { ButtonLink } from "@/components/ui/Button";
 import EventsHubClient from "./EventsHubClient";
+
+export const metadata: Metadata = { title: "Events" };
 
 export default async function EventsHubPage() {
   const user = await requireAuth();

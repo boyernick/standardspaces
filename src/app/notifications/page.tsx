@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getNotifications } from "@/app/actions/notifications";
 import PageShell from "@/components/ui/PageShell";
 import NotificationsClient from "./NotificationsClient";
+
+export const metadata: Metadata = { title: "Notifications" };
 import { MOCK_NOTIFICATIONS } from "./mockData";
 
 export const dynamic = "force-dynamic";

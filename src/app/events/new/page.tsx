@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { requireAuth } from "@/lib/auth";
 import { getSpotById } from "@/lib/data";
 import Navbar from "@/components/Navbar";
 import NewEventClient from "./NewEventClient";
+
+export const metadata: Metadata = { title: "Host an event" };
 
 export default async function NewEventPage({
   searchParams,

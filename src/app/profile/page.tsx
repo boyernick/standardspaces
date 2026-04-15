@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { requireAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = { title: "Profile" };
 import { getSpotsByIds } from "@/lib/data";
 import { getProfileStats } from "@/app/actions/profile";
 import { getPastAttendedEvents } from "@/lib/events";
