@@ -90,7 +90,60 @@ function resolveAppleMaps(url: string): ResolvedUrlHint {
   return { finalUrl: url, query, locationBias, matched: true };
 }
 
-function resolveInstagram(url: string): ResolvedUrlHint {
+/**
+ * Turn an Instagram handle slug into a Google Places search query.
+ * `lionsden_miami` → "lions den miami". Splits on `_` and `.`, plus a
+ * camelCase boundary so handles like `MaryLouMiami` come out cleanly.
+ * Trailing two-letter state codes ("nyc", "mia") are kept since they help
+ * disambiguate; the city name appended downstream by the caller stays too.
+ */
+function humanizeHandle(slug: string): string {
+  return slug
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Best-effort fetch of the Instagram profile's og:title. Format is usually
+ * `Real Name (@handle) • Instagram photos and videos`, which gives us the
+ * venue's actual display name — far better than the raw handle for a
+ * Places text search (handle "lionsden_miami" → display "The Lion's Den").
+ */
+async function fetchInstagramProfileName(handle: string): Promise<string | undefined> {
+  const clean = handle.replace(/^@/, "").replace(/\/+$/, "");
+  if (!clean) return undefined;
+  try {
+    const res = await fetch(`https://www.instagram.com/${clean}/`, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+    });
+    if (!res.ok) return undefined;
+    const html = await res.text();
+    const titleMatch = html.match(
+      /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,
+    );
+    const raw = titleMatch?.[1];
+    if (!raw) return undefined;
+    // Strip the trailing " (@handle) • Instagram photos and videos" tail.
+    const cleaned = raw
+      .replace(/\s*[•·]\s*Instagram.*$/i, "")
+      .replace(/\s*\(@[^)]+\)\s*$/i, "")
+      .trim();
+    if (!cleaned || cleaned.toLowerCase() === clean.toLowerCase()) return undefined;
+    return cleaned;
+  } catch {
+    return undefined;
+  }
+}
+
+async function resolveInstagram(url: string): Promise<ResolvedUrlHint> {
   // Profile URLs: instagram.com/{handle}/ (also /{handle}?...)
   // Post URLs: instagram.com/p/{code}/ or /reel/{code}/ — handle not exposed
   try {
@@ -102,10 +155,14 @@ function resolveInstagram(url: string): ResolvedUrlHint {
       // Post URL — no handle in the path. Let the scraper extract what it can.
       return { finalUrl: url, matched: true };
     }
-    const handle = `@${seg1.replace(/\/+$/, "")}`;
+    const slug = seg1.replace(/\/+$/, "");
+    const handle = `@${slug}`;
+    // Prefer the og:title display name; fall back to a humanized slug.
+    const profileName = await fetchInstagramProfileName(slug);
+    const query = profileName || humanizeHandle(slug);
     return {
       finalUrl: url,
-      query: seg1,
+      query,
       instagramHandle: handle,
       matched: true,
     };
