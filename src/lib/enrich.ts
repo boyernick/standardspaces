@@ -62,17 +62,19 @@ async function searchGooglePlaces(query: string): Promise<PlaceResult | null> {
         return ((b.width as number) || 0) - ((a.width as number) || 0);
       });
 
-      for (const photo of sorted.slice(0, 5)) {
+      for (const photo of sorted.slice(0, 10)) {
         photos.push(
-          `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${photo.photo_reference}&key=${GOOGLE_API_KEY}`
+          `https://maps.googleapis.com/maps/api/place/photo?maxwidth=2400&photo_reference=${photo.photo_reference}&key=${GOOGLE_API_KEY}`
         );
       }
     }
 
-    // Format hours
+    // Format hours — newline-separated so the admin HoursEditor's day-regex
+    // parser round-trips each line cleanly (" · " joined everything into a
+    // single token that the parser could only partially recover).
     let hours: string | undefined;
     if (detail.opening_hours?.weekday_text) {
-      hours = detail.opening_hours.weekday_text.join(" · ");
+      hours = detail.opening_hours.weekday_text.join("\n");
     }
 
     return {

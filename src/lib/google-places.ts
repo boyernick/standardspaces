@@ -367,7 +367,7 @@ export async function getPlaceDetails(placeId: string): Promise<GooglePlace | nu
  */
 export async function getPhotoUrl(
   photoName: string,
-  maxHeightPx = 1600,
+  maxHeightPx = 2400,
 ): Promise<string | null> {
   try {
     const url =
@@ -387,7 +387,7 @@ export async function getPhotoUrl(
 /** Resolve every photo on a GooglePlace in parallel, filling in `photo.url`. */
 export async function resolvePhotoUrls(
   place: GooglePlace,
-  maxHeightPx = 1600,
+  maxHeightPx = 2400,
   limit = 10,
 ): Promise<GooglePlace> {
   const toResolve = place.photos.slice(0, limit);

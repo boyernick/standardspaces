@@ -1,6 +1,12 @@
 import * as cheerio from "cheerio";
 import { geocodeAddress } from "./geocode";
-import { findPlaceForScrape, type GooglePlace } from "./google-places";
+import {
+  findPlaceForScrape,
+  type GooglePlace,
+  type GoogleAmenities,
+  type GoogleParking,
+} from "./google-places";
+import { resolveUrlToPlace, fetchInstagramProfilePhotos, type ResolvedUrlHint } from "./url-resolvers";
 
 export interface ScrapedData {
   name?: string;
@@ -547,35 +553,30 @@ function inferPriceRange(category?: string, subcategories?: string[]): string | 
 }
 
 // Infer dress code from category context
+// Dress code is hard to pin down from structured data (Google doesn't
+// expose it), and defaulting to a guess ("Smart casual" everywhere) is
+// exactly the "wrong, forces a manual edit" failure mode we're fixing.
+// Only emit a value when the category strongly implies one; otherwise
+// leave it blank for the admin to decide.
 function inferDressCode(category?: string, subcategories?: string[]): string | undefined {
   const subs = subcategories || [];
   if (category === "dining") {
-    if (subs.includes("Fine dining") || subs.includes("Omakase") || subs.includes("Tasting menu")) return "Smart casual";
-    return "Smart casual";
+    if (subs.includes("Fine dining") || subs.includes("Omakase") || subs.includes("Tasting menu")) {
+      return "Smart casual";
+    }
   }
-  if (category === "drinks") {
-    if (subs.includes("Nightclub")) return "Upscale";
-    if (subs.includes("Speakeasy") || subs.includes("Lounge")) return "Smart casual";
-    return "Casual";
+  if (category === "drinks" && subs.includes("Nightclub")) {
+    return "Upscale";
   }
-  if (category === "hotels") return "Resort chic";
-  if (category === "members") return "Smart casual";
-  return "No dress code";
+  return undefined;
 }
 
-// Infer parking from address context
-function inferParking(address?: string): string | undefined {
-  if (!address) return undefined;
-  const lc = address.toLowerCase();
-  // Downtown/Brickell area — typically valet
-  if (/brickell|downtown|33131|33132|33130|33129/.test(lc)) return "Valet available";
-  // Beach areas
-  if (/miami\s*beach|south\s*beach|collins|ocean\s*dr|33139|33140|33141/.test(lc)) return "Valet available";
-  // Coral Gables
-  if (/coral\s*gables|33134|33146/.test(lc)) return "Street parking";
-  // Wynwood / Design District
-  if (/wynwood|design\s*district|33127|33137/.test(lc)) return "Street parking";
-  return "Street parking";
+// Parking is populated from Google's structured parkingOptions (see
+// googleParkingString); when Google doesn't know, leave it blank rather
+// than guessing from the address. A Brickell zip code does not imply
+// valet, and wrong defaults are worse than empty fields the admin can fill.
+function inferParking(_address?: string): string | undefined {
+  return undefined;
 }
 
 // Format openingHoursSpecification into a readable string
@@ -1187,6 +1188,16 @@ function inferSubcategories(
   return { category: bestCategory, subcategory: subcategories };
 }
 
+// Structured Google signals consumed directly by the contextual rules.
+// These avoid relying on lossy keyword matching against `googleSignalText`
+// when the HTML page has no body text (URL-hint / bot-wall paths).
+interface GoogleVibeSignals {
+  priceLevel?: string;
+  amenities?: GoogleAmenities;
+  parking?: GoogleParking;
+  userRatingCount?: number;
+}
+
 // Infer vibes from page content, category, and subcategories
 function inferVibes(
   data: Partial<ScrapedData>,
@@ -1196,6 +1207,8 @@ function inferVibes(
   /** Additional lowercased phrase blob from external sources (Google
    * amenities → "live music outdoor seating good for groups", etc). */
   extraSignals?: string,
+  /** Structured Google signals — used for price/amenity-driven rules. */
+  googleSignals?: GoogleVibeSignals,
 ): string[] {
   const text = [
     data.name,
@@ -1286,6 +1299,47 @@ function inferVibes(
   if (category === "wellness") {
     if (subs.includes("Spa") || subs.includes("Recovery") || subs.includes("Cold plunge") || subs.includes("Sauna")) {
       if (!matched.includes("Wellness ritual")) matched.push("Wellness ritual");
+    }
+  }
+
+  // Structured Google signals — these fire even when the HTML body is empty
+  // (URL-hint / bot-wall paths), which is the majority of submissions.
+  const g = googleSignals;
+  if (g) {
+    const add = (v: string) => { if (!matched.includes(v)) matched.push(v); };
+    const a = g.amenities || {};
+    const expensive =
+      g.priceLevel === "PRICE_LEVEL_EXPENSIVE" ||
+      g.priceLevel === "PRICE_LEVEL_VERY_EXPENSIVE";
+
+    // Amenity-driven — category-agnostic
+    if (a.outdoorSeating) add("Outdoor seating");
+    if (a.liveMusic) add("Live music");
+    if (a.goodForGroups) add("Group friendly");
+
+    // Dining: price level is the strongest date-night / special-occasion signal
+    // when subcategory keyword matching misses (e.g. Zuma tagged only as
+    // "Japanese"). Reservable + dinner service confirm the sit-down occasion.
+    if (category === "dining") {
+      if (expensive) {
+        add("Date night");
+        add("Special occasion");
+      }
+      if (a.reservable && (a.servesDinner || a.servesCocktails || a.servesWine)) {
+        add("Date night");
+      }
+      if (a.servesBrunch) add("Brunch");
+    }
+
+    if (category === "drinks") {
+      if (a.servesWine && !a.servesCocktails) add("Date night");
+      if (a.servesCocktails) add("Date night");
+    }
+
+    // Tourist must-do — very high rating counts indicate an iconic/landmark
+    // venue the concierge audience is likely to have heard of.
+    if (g.userRatingCount && g.userRatingCount >= 3000) {
+      add("Tourist must-do");
     }
   }
 
@@ -1557,17 +1611,18 @@ function googleSignalText(place: GooglePlace): string {
 }
 
 /** Human-readable parking string synthesized from Google parking booleans. */
+/**
+ * Map Google's parkingOptions booleans to one of the canonical strings the
+ * admin form's Parking dropdown recognizes (see PARKING_OPTIONS in
+ * ReviewForm.tsx). Keeps re-scrapes from dropping into "(custom)" mode.
+ */
 function googleParkingString(place: GooglePlace): string | undefined {
   const p = place.parking;
-  const opts: string[] = [];
-  if (p.valetParking) opts.push("Valet");
-  if (p.freeParkingLot) opts.push("Free lot");
-  if (p.paidParkingLot) opts.push("Paid lot");
-  if (p.freeGarageParking) opts.push("Free garage");
-  if (p.paidGarageParking) opts.push("Paid garage");
-  if (p.freeStreetParking) opts.push("Free street");
-  if (p.paidStreetParking) opts.push("Street");
-  return opts.length > 0 ? opts.join(", ") : undefined;
+  if (p.valetParking) return "Valet";
+  if (p.freeParkingLot || p.paidParkingLot) return "Parking lot";
+  if (p.freeGarageParking || p.paidGarageParking) return "Parking garage";
+  if (p.freeStreetParking || p.paidStreetParking) return "Street parking";
+  return undefined;
 }
 
 /** Price level enum → "$" string used throughout the app. */
@@ -1600,6 +1655,22 @@ export async function scrapeUrl(
   url: string,
   options?: ScrapeOptions,
 ): Promise<ScrapedData> {
+  // --- Maps / Apple Maps / Instagram fast path ---------------------------
+  // These URLs either redirect through a JS app or sit behind bot walls, so
+  // the HTML we'd fetch contains nothing useful. If we can pull a place ID
+  // or a coordinate-biased venue name out of the URL itself, skip straight
+  // to Google Places — we'll get a populated record instead of an empty
+  // shell for the admin to fill in by hand.
+  let urlHint: ResolvedUrlHint | null = null;
+  try {
+    urlHint = await resolveUrlToPlace(url);
+  } catch {
+    urlHint = null;
+  }
+  if (urlHint?.matched) {
+    return scrapeFromUrlHint(urlHint, options);
+  }
+
   const { html, finalUrl } = await fetchPage(url);
   const $ = cheerio.load(html);
 
@@ -1760,6 +1831,26 @@ export async function scrapeUrl(
     }
   }
 
+  // Backfill from Instagram when we have a handle but thin photo coverage
+  // (< 6). Best-effort — IG markup breaks periodically, so failures fall
+  // through silently.
+  if (merged.instagram && (merged.imageUrls?.length || 0) < 6) {
+    const igPhotos = await fetchInstagramProfilePhotos(merged.instagram, 6).catch(
+      () => [] as string[],
+    );
+    if (igPhotos.length > 0) {
+      const seen = new Set(merged.imageUrls || []);
+      const appended = [...(merged.imageUrls || [])];
+      for (const u of igPhotos) {
+        if (!seen.has(u)) {
+          appended.push(u);
+          seen.add(u);
+        }
+      }
+      merged.imageUrls = appended;
+    }
+  }
+
   // Geocode address when coordinates are still missing
   if (!merged.lat && !merged.lng && merged.address) {
     const geo = await geocodeAddress(merged.address);
@@ -1790,7 +1881,21 @@ export async function scrapeUrl(
   const finalParking = merged.parking || inferParking(merged.address);
 
   // Infer vibes — page content + category context + Google amenity signals
-  const vibes = inferVibes(merged, $, inferred.category, inferred.subcategory, googleVibeSignals);
+  const vibes = inferVibes(
+    merged,
+    $,
+    inferred.category,
+    inferred.subcategory,
+    googleVibeSignals,
+    googlePlace
+      ? {
+          priceLevel: googlePlace.priceLevel,
+          amenities: googlePlace.amenities,
+          parking: googlePlace.parking,
+          userRatingCount: googlePlace.userRatingCount,
+        }
+      : undefined,
+  );
 
   const result: ScrapedData = {
     ...merged,
@@ -1908,7 +2013,161 @@ async function scrapeViaBotWallFallback(
   const finalPriceRange = merged.priceRange || inferPriceRange(inferred.category, inferred.subcategory);
   const finalDressCode = merged.dressCode || inferDressCode(inferred.category, inferred.subcategory);
   const finalParking = merged.parking || inferParking(merged.address);
-  const vibes = inferVibes(merged, empty$, inferred.category, inferred.subcategory, googleVibeSignals);
+  const vibes = inferVibes(
+    merged,
+    empty$,
+    inferred.category,
+    inferred.subcategory,
+    googleVibeSignals,
+    googlePlace
+      ? {
+          priceLevel: googlePlace.priceLevel,
+          amenities: googlePlace.amenities,
+          parking: googlePlace.parking,
+          userRatingCount: googlePlace.userRatingCount,
+        }
+      : undefined,
+  );
+
+  return {
+    ...merged,
+    imageUrls: merged.imageUrls || [],
+    category: inferred.category,
+    subcategory: inferred.subcategory.length > 0 ? inferred.subcategory : undefined,
+    vibes: vibes.length > 0 ? vibes : undefined,
+    neighborhood,
+    priceRange: finalPriceRange,
+    dressCode: finalDressCode,
+    parking: finalParking,
+  };
+}
+
+// --- URL-hint fast path -------------------------------------------------
+// Used when the submitted URL was a Maps shortlink, Apple Maps, or
+// Instagram link — the HTML scrape would return nothing useful, so we go
+// straight to Google Places with whatever identifier the URL gave us.
+async function scrapeFromUrlHint(
+  hint: ResolvedUrlHint,
+  options?: ScrapeOptions,
+): Promise<ScrapedData> {
+  if (!process.env.GOOGLE_PLACES_API_KEY) {
+    // Without Places, the hint alone can't populate a record; return a
+    // near-empty shell so the admin sees the submission and can edit.
+    return {
+      name: hint.query,
+      website: hint.finalUrl,
+      instagram: hint.instagramHandle,
+      imageUrls: [],
+    };
+  }
+
+  let googlePlace: GooglePlace | null = null;
+  try {
+    googlePlace = await findPlaceForScrape({
+      name: hint.query,
+      city: options?.city || "Miami",
+      knownPlaceId: options?.knownPlaceId || hint.placeId,
+      locationBias: hint.locationBias
+        ? { lat: hint.locationBias.lat, lng: hint.locationBias.lng, radiusM: 5000 }
+        : undefined,
+    });
+  } catch (err) {
+    console.warn("findPlaceForScrape (URL hint) failed", err);
+  }
+
+  if (!googlePlace) {
+    return {
+      name: hint.query,
+      website: hint.finalUrl,
+      instagram: hint.instagramHandle,
+      imageUrls: [],
+    };
+  }
+
+  const merged: Partial<ScrapedData> = {
+    name: googlePlace.name,
+    // For Instagram submissions, the user's original URL is not a website —
+    // leave website undefined (or use the venue's own website from Places).
+    website: googlePlace.website,
+    googlePlaceId: googlePlace.placeId,
+    instagram: hint.instagramHandle,
+  };
+
+  if (googlePlace.lat && googlePlace.lng) {
+    merged.lat = googlePlace.lat;
+    merged.lng = googlePlace.lng;
+  }
+  if (googlePlace.phone) merged.phone = googlePlace.phone;
+  if (googlePlace.address) merged.address = googlePlace.address;
+  if (googlePlace.editorialSummary) merged.description = googlePlace.editorialSummary;
+
+  const ghours = googleHoursString(googlePlace);
+  if (ghours) merged.hours = ghours;
+
+  const gprice = googlePriceLevelToDollars(googlePlace.priceLevel);
+  if (gprice) merged.priceRange = gprice;
+
+  const gparking = googleParkingString(googlePlace);
+  if (gparking) merged.parking = gparking;
+
+  // Photos — start with Google's curated set, then optionally backfill
+  // from Instagram if we know the handle and Google came up light.
+  const googlePhotoUrls = googlePlace.photos
+    .map((p) => p.url)
+    .filter((u): u is string => !!u);
+  let imageUrls = [...googlePhotoUrls];
+  if (hint.instagramHandle && imageUrls.length < 6) {
+    const igPhotos = await fetchInstagramProfilePhotos(hint.instagramHandle, 6).catch(
+      () => [] as string[],
+    );
+    // De-dupe by URL — Instagram URLs never collide with Google CDN URLs.
+    const seen = new Set(imageUrls);
+    for (const u of igPhotos) {
+      if (!seen.has(u)) {
+        imageUrls.push(u);
+        seen.add(u);
+      }
+    }
+  }
+  merged.imageUrls = imageUrls;
+
+  if (!merged.lat && !merged.lng && merged.address) {
+    const geo = await geocodeAddress(merged.address);
+    if (geo) {
+      merged.lat = geo.lat;
+      merged.lng = geo.lng;
+    }
+  }
+
+  const googleTypes = googleTypeTokens(googlePlace);
+  const googleVibeSignals = googleSignalText(googlePlace);
+  const empty$ = cheerio.load("<html><body></body></html>");
+  const inferred = inferSubcategories(merged, empty$, hint.finalUrl, googleTypes);
+
+  const googleHood = googlePlace.addressComponents?.neighborhood;
+  const neighborhood =
+    googleHood && googleHood !== "City Center"
+      ? googleHood
+      : inferNeighborhood(merged.address, merged.description);
+
+  const finalPriceRange = merged.priceRange || inferPriceRange(inferred.category, inferred.subcategory);
+  const finalDressCode = merged.dressCode || inferDressCode(inferred.category, inferred.subcategory);
+  const finalParking = merged.parking || inferParking(merged.address);
+  const vibes = inferVibes(
+    merged,
+    empty$,
+    inferred.category,
+    inferred.subcategory,
+    googleVibeSignals,
+    googlePlace
+      ? {
+          priceLevel: googlePlace.priceLevel,
+          amenities: googlePlace.amenities,
+          parking: googlePlace.parking,
+          userRatingCount: googlePlace.userRatingCount,
+        }
+      : undefined,
+  );
 
   return {
     ...merged,

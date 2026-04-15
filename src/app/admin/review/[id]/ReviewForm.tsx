@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, VIBES, Category } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
@@ -384,13 +384,14 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
             options={category.flatMap((c) => SUBCATEGORIES[c as Category] || [])}
             selected={subcategory}
             onChange={setSubcategory}
+            allowCustom
           />
         </Field>
       )}
 
       {/* Vibes chips */}
       <Field label={`Vibes · ${vibes.length} selected`}>
-        <ChipSelect options={VIBES} selected={vibes} onChange={setVibes} />
+        <ChipSelect options={VIBES} selected={vibes} onChange={setVibes} allowCustom />
       </Field>
 
       <div className="grid grid-cols-2 gap-4">
@@ -452,10 +453,10 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
 
       <div className="grid grid-cols-2 gap-4">
         <Field label="Dress code">
-          <SelectInput value={dressCode} onChange={setDressCode} options={DRESS_CODES.map((d) => ({ value: d, label: d }))} placeholder="Select" />
+          <SelectInput value={dressCode} onChange={setDressCode} options={DRESS_CODES.map((d) => ({ value: d, label: d }))} placeholder="Select" allowCustom />
         </Field>
         <Field label="Parking">
-          <SelectInput value={parking} onChange={setParking} options={PARKING_OPTIONS.map((p) => ({ value: p, label: p }))} placeholder="Select" />
+          <SelectInput value={parking} onChange={setParking} options={PARKING_OPTIONS.map((p) => ({ value: p, label: p }))} placeholder="Select" allowCustom />
         </Field>
       </div>
 
@@ -526,6 +527,9 @@ function Field({ label, required, children }: { label: string; required?: boolea
 
 // --- SelectInput: styled dropdown with optional custom entry ---
 
+// When `allowCustom` is set the control becomes a combobox (text input +
+// native datalist), so the admin can type any value — not just the ones
+// in the preset list. Without `allowCustom` it stays a plain <select>.
 function SelectInput({
   value,
   onChange,
@@ -539,23 +543,40 @@ function SelectInput({
   placeholder: string;
   allowCustom?: boolean;
 }) {
-  const isCustom = allowCustom && value && !options.some((o) => o.value === value);
+  const listId = useId();
+
+  if (allowCustom) {
+    return (
+      <div className="relative">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          list={listId}
+          placeholder={placeholder}
+          className={inputClass + " pr-10"}
+        />
+        <datalist id={listId}>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </datalist>
+        <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative">
       <select
-        value={isCustom ? "__custom__" : value}
-        onChange={(e) => {
-          if (e.target.value === "__custom__") return;
-          onChange(e.target.value);
-        }}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         className={inputClass + " appearance-none pr-10"}
       >
         <option value="">{placeholder}</option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
-        {isCustom && <option value="__custom__">{value} (custom)</option>}
       </select>
       <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
     </div>
@@ -564,17 +585,26 @@ function SelectInput({
 
 // --- ChipSelect: toggleable chip grid for subcategories & vibes ---
 
+// ChipSelect shows a grid of selectable options. When `allowCustom` is
+// true, selected values that aren't in `options` render as additional
+// chips, and a "+ Add custom" chip opens a small inline input so admins
+// can add subcategories or vibes outside the preset dictionary.
 function ChipSelect({
   options,
   labels,
   selected,
   onChange,
+  allowCustom,
 }: {
   options: string[];
   labels?: Record<string, string>;
   selected: string[];
   onChange: (v: string[]) => void;
+  allowCustom?: boolean;
 }) {
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+
   function toggle(v: string) {
     if (selected.includes(v)) {
       onChange(selected.filter((s) => s !== v));
@@ -583,11 +613,24 @@ function ChipSelect({
     }
   }
 
+  function commitDraft() {
+    const v = draft.trim();
+    if (v && !selected.includes(v)) onChange([...selected, v]);
+    setDraft("");
+    setAdding(false);
+  }
+
+  const customValues = allowCustom ? selected.filter((s) => !options.includes(s)) : [];
+  // Render presets first, then any custom selections appended at the end
+  // so the canonical list order stays stable.
+  const displayOptions = [...options, ...customValues];
+
   return (
     <div>
-      <div className="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto scrollbar-hide p-0.5">
-        {options.map((opt) => {
+      <div className="flex flex-wrap gap-1.5 max-h-[180px] overflow-y-auto scrollbar-hide p-0.5">
+        {displayOptions.map((opt) => {
           const isActive = selected.includes(opt);
+          const isCustom = !options.includes(opt);
           return (
             <button
               key={opt}
@@ -600,9 +643,34 @@ function ChipSelect({
               }`}
             >
               {labels ? labels[opt] || opt : opt}
+              {isCustom && <span className="ml-1 opacity-60">·</span>}
             </button>
           );
         })}
+        {allowCustom && (
+          adding ? (
+            <input
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commitDraft}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); commitDraft(); }
+                if (e.key === "Escape") { setDraft(""); setAdding(false); }
+              }}
+              placeholder="Add custom…"
+              className="px-2.5 py-1 text-xs rounded-full border border-neutral-300 dark:border-neutral-600 bg-surface min-w-[110px] focus:outline-none focus:border-neutral-500"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="px-2.5 py-1 text-xs rounded-full border border-dashed border-neutral-300 dark:border-neutral-600 text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors"
+            >
+              + Add custom
+            </button>
+          )
+        )}
       </div>
       {selected.length > 0 && (
         <button type="button" onClick={() => onChange([])} className="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 mt-2 transition-colors">

@@ -20,8 +20,10 @@ export async function downloadAndUploadPhoto(
     const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
     const buffer = await res.arrayBuffer();
 
-    // Skip tiny images (likely icons)
-    if (buffer.byteLength < 10000) return null;
+    // Skip small images — the 10KB floor was too permissive and kept
+    // letting through low-res thumbnails. 30KB cleanly separates real
+    // photos from icons and tracking pixels in practice.
+    if (buffer.byteLength < 30000) return null;
 
     const path = `recommendations/${recommendationId}/${index}.${ext}`;
 
@@ -54,7 +56,7 @@ export async function processPhotos(
   recommendationId: string
 ): Promise<string[]> {
   const results = await Promise.allSettled(
-    imageUrls.slice(0, 5).map((url, i) =>
+    imageUrls.slice(0, 10).map((url, i) =>
       downloadAndUploadPhoto(url, recommendationId, i)
     )
   );
