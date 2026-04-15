@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { LocateFixed } from "lucide-react";
+import { LocateFixed, Plus, Minus } from "lucide-react";
 import { Spot } from "@/lib/types";
 import { THEME } from "@/lib/theme";
 import { getCustomMapStyle } from "./mapStyle";
@@ -670,21 +670,45 @@ export default function SpotMap(props: MapProps) {
     );
   }, [userLocation]);
 
+  const zoomBy = useCallback((delta: number) => {
+    const m = map.current;
+    if (!m) return;
+    m.easeTo({
+      zoom: m.getZoom() + delta,
+      duration: 250,
+      essential: true,
+    });
+  }, []);
+
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
-      <button
-        type="button"
-        onClick={handleRecenter}
-        aria-label="Center on my location"
-        className="absolute bottom-3 right-3 z-10 w-8 h-8 rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-md flex items-center justify-center hover:bg-white/70 dark:hover:bg-neutral-900/70 transition-colors"
-      >
-        <LocateFixed
-          size={14}
-          strokeWidth={1.75}
-          className="text-neutral-900 dark:text-white"
-        />
-      </button>
+      <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
+        <button
+          type="button"
+          onClick={() => zoomBy(1)}
+          aria-label="Zoom in"
+          className="w-8 h-8 rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-md flex items-center justify-center hover:bg-white/70 dark:hover:bg-neutral-900/70 transition-colors"
+        >
+          <Plus size={14} strokeWidth={1.75} className="text-neutral-900 dark:text-white" />
+        </button>
+        <button
+          type="button"
+          onClick={() => zoomBy(-1)}
+          aria-label="Zoom out"
+          className="w-8 h-8 rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-md flex items-center justify-center hover:bg-white/70 dark:hover:bg-neutral-900/70 transition-colors"
+        >
+          <Minus size={14} strokeWidth={1.75} className="text-neutral-900 dark:text-white" />
+        </button>
+        <button
+          type="button"
+          onClick={handleRecenter}
+          aria-label="Center on my location"
+          className="w-8 h-8 rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-md flex items-center justify-center hover:bg-white/70 dark:hover:bg-neutral-900/70 transition-colors"
+        >
+          <LocateFixed size={14} strokeWidth={1.75} className="text-neutral-900 dark:text-white" />
+        </button>
+      </div>
     </div>
   );
 }
