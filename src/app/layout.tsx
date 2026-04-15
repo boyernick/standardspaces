@@ -38,6 +38,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   maximumScale: 1,
+  // Belt-and-braces with maximumScale: some iOS Safari versions ignore
+  // maximumScale alone and let a two-finger pinch escape the Mapbox canvas
+  // and zoom the whole browser viewport.
+  userScalable: false,
   themeColor: "#F7F7F3",
 };
 

@@ -544,6 +544,11 @@ export default function SpotMap(props: MapProps) {
 
     if (!didInitialFitRef.current) {
       didInitialFitRef.current = true;
+      // Responsive padding — a flat 80px eats 40% of a ~400px mobile viewport
+      // and forces fitBounds to pick a much-too-far-out zoom.
+      const isNarrow =
+        typeof window !== "undefined" && window.innerWidth < 640;
+      const fitPad = isNarrow ? 32 : 80;
       // First-time centering: prefer user location, otherwise fit all spots
       if (userLocation) {
         map.current.easeTo({
@@ -557,7 +562,7 @@ export default function SpotMap(props: MapProps) {
         const bounds = new mapboxgl.LngLatBounds();
         spots.forEach((s) => bounds.extend([s.lng, s.lat]));
         map.current.fitBounds(bounds, {
-          padding: { top: 80, bottom: 80, left: 80, right: 80 },
+          padding: { top: fitPad, bottom: fitPad, left: fitPad, right: fitPad },
           maxZoom: 15,
           duration: 1200,
           essential: true,
@@ -579,8 +584,10 @@ export default function SpotMap(props: MapProps) {
     if (spots.length === 0) return;
     const bounds = new mapboxgl.LngLatBounds();
     spots.forEach((s) => bounds.extend([s.lng, s.lat]));
+    const isNarrow = typeof window !== "undefined" && window.innerWidth < 640;
+    const fitPad = isNarrow ? 32 : 80;
     map.current.fitBounds(bounds, {
-      padding: { top: 80, bottom: 80, left: 80, right: 80 },
+      padding: { top: fitPad, bottom: fitPad, left: fitPad, right: fitPad },
       maxZoom: 15,
       duration: 800,
       essential: true,
