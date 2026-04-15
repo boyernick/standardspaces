@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getSpotsByCity } from "@/lib/data";
@@ -6,6 +7,20 @@ import { requireAuth, getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { cityNameFromSlug, isValidCitySlug, citySlugFromName } from "@/lib/cities";
 import CityClient from "./CityClient";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ city: string }>;
+}): Promise<Metadata> {
+  const { city: citySlug } = await params;
+  if (!isValidCitySlug(citySlug)) return { title: "Not Found" };
+  const cityName = cityNameFromSlug(citySlug)!;
+  return {
+    title: cityName,
+    description: `A curated guide to the finest spaces in ${cityName}.`,
+  };
+}
 
 export default async function CityPage({
   params,

@@ -1,7 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import CommandMenu from "@/components/CommandMenu";
 import ThemeSync from "@/components/ThemeSync";
+import "@/lib/env"; // fail fast at boot if required env vars are missing
 import "./globals.css";
 
 const calibre = localFont({
@@ -85,6 +88,8 @@ export default function RootLayout({
         <ThemeSync />
         <CommandMenu />
         {children}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

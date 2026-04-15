@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent scratch (not part of the repo)
+/.agents/
+/.claude/skills/
+/.claude/worktrees/
+/skills-lock.json

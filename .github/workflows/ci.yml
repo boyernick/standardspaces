@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npx next build
+        env:
+          # Build-time env. Real values live in Vercel; these are just
+          # enough to let `next build` complete on CI.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+          SUPABASE_SERVICE_ROLE_KEY: placeholder
+          NEXT_PUBLIC_MAPBOX_TOKEN: placeholder
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          GOOGLE_PLACES_API_KEY: placeholder
+          RESEND_API_KEY: placeholder
+          CRON_SECRET: placeholder
+          TWILIO_ACCOUNT_SID: placeholder
+          TWILIO_AUTH_TOKEN: placeholder
+          TWILIO_MESSAGING_SERVICE_SID: placeholder
