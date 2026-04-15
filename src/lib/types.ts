@@ -191,8 +191,8 @@ export const TOP_VIBES: string[] = [
 export const CATEGORY_ORDER: Category[] = [
   "dining",
   "drinks",
-  "members",
   "coffee",
+  "members",
   "shopping",
   "wellness",
   "hotels",
