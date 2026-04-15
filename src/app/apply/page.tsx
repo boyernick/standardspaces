@@ -1,17 +1,18 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { submitApplication } from "@/app/actions/apply";
+import { checkApplicationByPhone, requestApplyOtp, submitApplication } from "@/app/actions/apply";
 import { getPopulatedCities } from "@/app/actions/cities";
 import { CITIES } from "@/lib/cities";
 import Link from "next/link";
 
-type Step = "phone" | "verify" | "details" | "submitted";
+type Step = "phone" | "verify" | "details" | "submitted" | "approved";
 
 function ApplyForm() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const refId = searchParams.get("ref");
 
   const [step, setStep] = useState<Step>("phone");
@@ -66,6 +67,24 @@ function ApplyForm() {
     e.preventDefault();
     setError("");
     setLoading(true);
+
+    // Block applying if this phone already has an application on file.
+    // We intentionally don't distinguish approved vs pending here to avoid
+    // leaking membership status to unauthenticated callers — the login page
+    // will surface the right next step once they verify ownership.
+    const { canApply } = await checkApplicationByPhone(fullPhone);
+    if (!canApply) {
+      router.push(`/login?phone=${encodeURIComponent(fullPhone)}`);
+      return;
+    }
+
+    // Per-phone rate limit gate before burning an SMS credit.
+    const gate = await requestApplyOtp(fullPhone);
+    if (!gate.allowed) {
+      setError(gate.error);
+      setLoading(false);
+      return;
+    }
 
     const supabase = createClient();
     const { error: otpError } = await supabase.auth.signInWithOtp({ phone: fullPhone });
@@ -127,7 +146,7 @@ function ApplyForm() {
       return;
     }
 
-    setStep("submitted");
+    setStep(result.autoApproved ? "approved" : "submitted");
     setLoading(false);
   }
 
@@ -143,7 +162,21 @@ function ApplyForm() {
             <img src="/logo.svg" alt="Standard Spaces" className="h-6 w-6 dark:invert" />
           </div>
 
-          {step === "submitted" ? (
+          {step === "approved" ? (
+            <>
+              <h1 className="text-xl font-medium mb-3" style={fontMartina}>You&apos;re in</h1>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6" style={fontCalibre}>
+                Welcome to Standard Spaces. Sign in to continue.
+              </p>
+              <Link
+                href={`/login?phone=${encodeURIComponent(fullPhone)}`}
+                className="inline-block px-6 py-2.5 text-sm font-medium text-white bg-neutral-900 dark:bg-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+                style={fontCalibre}
+              >
+                Go to sign in
+              </Link>
+            </>
+          ) : step === "submitted" ? (
             <>
               <h1 className="text-xl font-medium mb-3" style={fontMartina}>Application received</h1>
               <p className="text-sm text-neutral-500 dark:text-neutral-400" style={fontCalibre}>
@@ -284,11 +317,16 @@ function ApplyForm() {
             </select>
             {cityWarning && <p className="text-xs text-amber-600" style={fontCalibre}>{cityWarning}</p>}
 
-            {/* Referral fields */}
-            {refId && referrerDisplayName ? (
-              <div className="px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-neutral-50 dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400" style={fontCalibre}>
-                Referred by {referrerDisplayName}
-              </div>
+            {/* Referral fields — when a ?ref=<id> link is present the referral
+                is already encoded in the URL, so we only render the "Referred by"
+                chip (if we resolved the referrer's name) and hide the manual
+                referrer inputs entirely. */}
+            {refId ? (
+              referrerDisplayName ? (
+                <div className="px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-neutral-50 dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400" style={fontCalibre}>
+                  Referred by {referrerDisplayName}
+                </div>
+              ) : null
             ) : (
               <>
                 <div className="pt-2">
@@ -326,7 +364,7 @@ function ApplyForm() {
           </form>
         )}
 
-        {step !== "submitted" && (
+        {step !== "submitted" && step !== "approved" && (
           <div className="mt-6 text-center">
             <Link
               href="/login"

@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { citySlugFromName } from "@/lib/cities";
 import Link from "next/link";
 
-export default function LoginPage() {
-  const [phone, setPhone] = useState("");
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const prefillRaw = (searchParams.get("phone") || "").replace(/\D/g, "").slice(-10);
+  const [phone, setPhone] = useState(prefillRaw);
   const [otp, setOtp] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
@@ -211,5 +213,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

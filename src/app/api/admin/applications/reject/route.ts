@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { rejectApplication } from "@/app/actions/applicationDecision";
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,17 +7,10 @@ export async function POST(req: NextRequest) {
     if (!applicationId) {
       return NextResponse.json({ error: "Missing applicationId" }, { status: 400 });
     }
-
-    const supabase = createAdminClient();
-    const { error } = await supabase
-      .from("applications")
-      .update({ status: "rejected" })
-      .eq("id", applicationId);
-
-    if (error) {
-      return NextResponse.json({ error: "Failed to reject" }, { status: 500 });
+    const result = await rejectApplication(applicationId);
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
     }
-
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Reject error:", err);
