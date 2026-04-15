@@ -649,11 +649,40 @@ export default function SpotMap(props: MapProps) {
       });
     };
 
+    // Reset the map to the initial spots-fit view (or city default if no
+    // spots). Used when location is unavailable/denied so the center button
+    // still has an obvious effect.
+    const resetToInitial = () => {
+      const isNarrow = typeof window !== "undefined" && window.innerWidth < 640;
+      const fitPad = isNarrow ? 32 : 80;
+      if (spots.length > 0) {
+        const bounds = new mapboxgl.LngLatBounds();
+        spots.forEach((s) => bounds.extend([s.lng, s.lat]));
+        m.fitBounds(bounds, {
+          padding: { top: fitPad, bottom: fitPad, left: fitPad, right: fitPad },
+          maxZoom: 15,
+          duration: 900,
+          essential: true,
+        });
+      } else {
+        m.easeTo({
+          center: MIAMI_CENTER,
+          zoom: MIAMI_ZOOM,
+          duration: 900,
+          easing: (t: number) => 1 - Math.pow(1 - t, 3),
+          essential: true,
+        });
+      }
+    };
+
     if (userLocation) {
       flyTo(userLocation[0], userLocation[1]);
       return;
     }
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      resetToInitial();
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lng = pos.coords.longitude;
@@ -665,10 +694,13 @@ export default function SpotMap(props: MapProps) {
         } catch {}
         flyTo(lng, lat);
       },
-      () => {},
+      // Denied, timed out, or otherwise failed — reset to the default view.
+      () => {
+        resetToInitial();
+      },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
     );
-  }, [userLocation]);
+  }, [userLocation, spots]);
 
   const zoomBy = useCallback((delta: number) => {
     const m = map.current;

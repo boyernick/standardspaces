@@ -20,7 +20,11 @@ export async function GET(req: NextRequest) {
     // test-run header too for local dev.
     const auth = req.headers.get("authorization") || "";
     const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && auth !== `Bearer ${cronSecret}`) {
+    if (!cronSecret) {
+      console.error("event-reminders cron: CRON_SECRET is not set");
+      return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+    }
+    if (auth !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

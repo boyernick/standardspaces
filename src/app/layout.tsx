@@ -25,7 +25,11 @@ const martinaPlantijn = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Standard Spaces",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://standardspaces.com"),
+  title: {
+    default: "Standard Spaces",
+    template: "%s | Standard Spaces",
+  },
   description: "A curated guide to the finest spaces in every city.",
   icons: {
     icon: [
@@ -33,6 +37,19 @@ export const metadata: Metadata = {
       { url: "/favicon.png", type: "image/png", sizes: "32x32" },
     ],
     apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "Standard Spaces",
+    description: "A curated guide to the finest spaces in every city.",
+    siteName: "Standard Spaces",
+    type: "website",
+    images: [{ url: "/landing-bg.jpg", width: 1200, height: 630, alt: "Standard Spaces" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Standard Spaces",
+    description: "A curated guide to the finest spaces in every city.",
+    images: ["/landing-bg.jpg"],
   },
 };
 

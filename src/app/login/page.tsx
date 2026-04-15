@@ -29,21 +29,6 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    // Admin bypass — skip SMS verification
-    const bypassRes = await fetch("/api/auth/admin-bypass", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: fullPhone }),
-    });
-
-    if (bypassRes.ok) {
-      const bypassData = await bypassRes.json().catch(() => ({}));
-      const slug = bypassData.city ? citySlugFromName(bypassData.city) : "miami";
-      router.push(`/${slug}`);
-      return;
-    }
-
-    // Normal flow — send SMS OTP
     const supabase = createClient();
     const { error: otpError } = await supabase.auth.signInWithOtp({ phone: fullPhone });
 

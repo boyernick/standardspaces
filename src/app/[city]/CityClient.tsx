@@ -704,7 +704,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                       })}
                       {activeEventTypes.size > 0 && (
                         <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
-                          <button onClick={() => { setActiveEventTypes(new Set()); setEventTypesOpen(false); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear types</button>
+                          <button onClick={() => { setActiveEventTypes(new Set()); setEventTypesOpen(false); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear filter</button>
                         </div>
                       )}
                     </div>
@@ -748,7 +748,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                       })}
                       {activeVibes.size > 0 && (
                         <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
-                          <button onClick={() => { setActiveVibes(new Set()); setVibesOpen(false); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear vibes</button>
+                          <button onClick={() => { setActiveVibes(new Set()); setVibesOpen(false); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear filter</button>
                         </div>
                       )}
                     </div>
@@ -948,8 +948,16 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                   </div>
                   <h3 className="text-base font-medium">No upcoming events</h3>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
-                    Nothing on the calendar in {cityName} yet. Check back soon.
+                    {activeEventTypes.size > 0
+                      ? `No events match the selected types in ${cityName}.`
+                      : `Nothing on the calendar in ${cityName} yet. Check back soon.`}
                   </p>
+                  <button
+                    onClick={() => { setEventsOnly(false); setActiveEventTypes(new Set()); setEventTypesOpen(false); }}
+                    className="inline-block mt-4 text-sm font-medium text-brand-500 hover:underline"
+                  >
+                    Clear filter
+                  </button>
                 </div>
               )}
             </div>
@@ -996,7 +1004,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 Try removing a filter to see more spaces in {cityName}.
               </p>
               <button onClick={clearAll} className="inline-block mt-4 text-sm font-medium text-brand-500 hover:underline">
-                Clear filters
+                Clear filter
               </button>
             </div>
           ) : filtered.length === 0 ? (
