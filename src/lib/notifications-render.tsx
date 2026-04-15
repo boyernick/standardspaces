@@ -27,11 +27,13 @@ export interface NotificationRow {
     id: string;
     name: string;
     city: string;
+    neighborhood?: string | null;
   } | null;
   event?: {
     id: string;
     title: string;
     city: string;
+    neighborhood?: string | null;
   } | null;
   recommendation?: {
     id: string;
@@ -40,7 +42,7 @@ export interface NotificationRow {
 }
 
 export interface RenderedNotification {
-  icon: "user" | "calendar" | "pin" | "star" | "bell" | "sparkles";
+  icon: "user" | "calendar" | "pin" | "star" | "bell" | "sparkles" | "award" | "compass";
   title: string;
   body: string;
   href: string;
@@ -221,7 +223,7 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
 
     case "recommendation_published":
       return {
-        icon: "sparkles",
+        icon: "award",
         title: `Your recommendation is live`,
         body: row.recommendation?.name || row.spot?.name || "Tap to view",
         href: spotHref(row),
@@ -231,9 +233,9 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
 
     case "new_spot":
       return {
-        icon: "star",
+        icon: "compass",
         title: `New space: ${row.spot?.name ?? "Take a look"}`,
-        body: row.spot?.city ?? "",
+        body: row.spot?.neighborhood ?? row.spot?.city ?? "",
         href: spotHref(row),
         actorAvatar: null,
         actorName: null,
@@ -243,7 +245,7 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
       return {
         icon: "calendar",
         title: `New event: ${row.event?.title ?? "Take a look"}`,
-        body: row.event?.city ?? "",
+        body: row.event?.neighborhood ?? row.event?.city ?? "",
         href: eventHref(row),
         actorAvatar: null,
         actorName: null,

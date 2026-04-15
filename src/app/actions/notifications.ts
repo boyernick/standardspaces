@@ -52,8 +52,8 @@ export async function getNotifications(limit = 50): Promise<NotificationRow[]> {
           .in("id", actorIds)
       : Promise.resolve({ data: [] as Array<{ id: string; first_name: string | null; last_name: string | null; avatar_url: string | null }> }),
     spotIds.length
-      ? admin.from("spots").select("id, name, city").in("id", spotIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; name: string; city: string }> }),
+      ? admin.from("spots").select("id, name, city, neighborhood").in("id", spotIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string; city: string; neighborhood: string | null }> }),
     eventIds.length
       ? admin.from("events").select("id, title, city").in("id", eventIds)
       : Promise.resolve({ data: [] as Array<{ id: string; title: string; city: string }> }),

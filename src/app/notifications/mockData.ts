@@ -48,30 +48,35 @@ const spotMarys = {
   id: "mary-lous",
   name: "Mary Lou's",
   city: "Miami",
+  neighborhood: "Little Havana",
 };
 
 const spotSunset = {
   id: "sunset-harbor-club",
   name: "Sunset Harbor Club",
   city: "Miami",
+  neighborhood: "Sunset Harbor",
 };
 
 const eventRooftop = {
   id: "mock-event-rooftop",
   title: "Rooftop listening session",
   city: "Miami",
+  neighborhood: "Brickell",
 };
 
 const eventGallery = {
   id: "mock-event-gallery",
   title: "Wynwood gallery walk",
   city: "Miami",
+  neighborhood: "Wynwood",
 };
 
 const eventDinner = {
   id: "mock-event-dinner",
   title: "Friday supper club",
   city: "Miami",
+  neighborhood: "Design District",
 };
 
 function base(

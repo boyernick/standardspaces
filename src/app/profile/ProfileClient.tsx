@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Camera, X, Check, CircleUserRound, Heart, Bookmark, CircleCheck, Calendar } from "lucide-react";
+import { Camera, X, Check, CircleUserRound } from "lucide-react";
 import { updateProfile } from "@/app/actions/profile";
 import { toggleFollow } from "@/app/actions/follows";
 import { citySlugFromName, CITIES } from "@/lib/cities";
@@ -167,14 +167,14 @@ export default function ProfileClient({
           ? wishlistSpots ?? []
           : [];
 
-  const tabs: { key: Tab; icon: typeof Heart; label: string }[] = [
-    { key: "favorites", icon: Heart, label: "Favorites" },
-    { key: "checkins", icon: CircleCheck, label: "Check-ins" },
+  const tabs: { key: Tab; label: string; count: number }[] = [
+    { key: "favorites", label: "Favorites", count: favoriteSpots.length },
+    { key: "checkins", label: "Check-ins", count: checkinSpots.length },
     ...(isOwn && wishlistSpots
-      ? [{ key: "wishlist" as Tab, icon: Bookmark, label: "Wishlist" }]
+      ? [{ key: "wishlist" as Tab, label: "Wishlist", count: wishlistSpots.length }]
       : []),
     ...(attendedEvents.length > 0
-      ? [{ key: "attended" as Tab, icon: Calendar, label: "Attended" }]
+      ? [{ key: "attended" as Tab, label: "Attended", count: attendedEvents.length }]
       : []),
   ];
 
@@ -370,35 +370,25 @@ export default function ProfileClient({
       {/* Tab bar */}
       {!editing && (
       <div>
-      <div className="flex gap-1 mb-2">
-          {tabs.map(({ key, icon: Icon, label }) => {
+      <div className="flex items-center gap-1 mb-6 border-b border-neutral-200 dark:border-neutral-800">
+          {tabs.map(({ key, label, count }) => {
             const isActive = activeTab === key;
             return (
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
-                className={`flex-1 flex flex-col items-center gap-2 pt-2 pb-0 transition-colors ${
+                className={`relative px-3 py-2 text-sm transition-colors -mb-px ${
                   isActive
-                    ? "text-neutral-900 dark:text-white"
-                    : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                    ? "text-neutral-900 dark:text-white font-medium"
+                    : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
                 }`}
-                aria-label={label}
+                style={fontCalibre}
               >
-                {key === "favorites" && isActive ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
-                ) : key === "checkins" && isActive ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" fill="currentColor" />
-                    <path d="m9 12 2 2 4-4" stroke="var(--color-surface)" strokeWidth="2.5" />
-                  </svg>
-                ) : key === "wishlist" && isActive ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
-                ) : key === "attended" && isActive ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                ) : (
-                  <Icon size={17} strokeWidth={1.5} />
+                {label}
+                <span className="ml-1.5 text-neutral-400 dark:text-neutral-500">{count}</span>
+                {isActive && (
+                  <span className="absolute left-0 right-0 -bottom-px h-px bg-neutral-900 dark:bg-white" />
                 )}
-                <div className={`h-0.5 rounded-full w-full md:w-1/3 ${isActive ? "bg-neutral-900 dark:bg-white" : "bg-transparent"}`} />
               </button>
             );
           })}
