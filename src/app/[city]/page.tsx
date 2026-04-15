@@ -54,7 +54,11 @@ export default async function CityPage({
   const upcomingEvents = merged;
 
   const eventSpotNames: Record<string, string> = {};
-  for (const s of spots) eventSpotNames[s.id] = s.name;
+  const eventSpotCategories: Record<string, typeof spots[number]["category"]> = {};
+  for (const s of spots) {
+    eventSpotNames[s.id] = s.name;
+    eventSpotCategories[s.id] = s.category;
+  }
 
   return (
     <Suspense fallback={null}>
@@ -69,6 +73,7 @@ export default async function CityPage({
         upcomingEvents={upcomingEvents}
         invitedEvents={invites}
         eventSpotNames={eventSpotNames}
+        eventSpotCategories={eventSpotCategories}
       />
     </Suspense>
   );

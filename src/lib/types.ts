@@ -17,110 +17,184 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   hotels: "Stays",
 };
 
-// Subcategories — the type of place within each category
-export const SUBCATEGORIES: Record<Category, string[]> = {
-  coffee: [
-    "Specialty coffee", "Roastery", "Café", "Matcha", "Tea house",
-    "Bakery café", "Espresso bar", "Coffee lab",
-    "Bakery", "Patisserie", "Juice bar", "Açaí bar",
-  ],
+/**
+ * Subcategory groupings — used by the city sidebar to render visually
+ * grouped dropdowns for the categories that span very different concepts
+ * (Wellness mixes fitness/recovery/beauty/health, Shops mixes apparel/
+ * specialty/lifestyle/art, Dining mixes cuisines and formats). For
+ * categories not in this map the sidebar renders a single flat list.
+ *
+ * Concatenated in display order to produce the canonical flat
+ * `SUBCATEGORIES[category]` list, which still backs the admin chip
+ * selector and the scraper's keyword inference.
+ */
+export const SUBCATEGORY_GROUPS: Partial<Record<Category, { label: string; items: string[] }[]>> = {
   dining: [
-    "Fine dining", "Omakase", "Seafood", "Tasting menu",
-    "Steakhouse", "Italian", "French", "Japanese", "Mediterranean",
-    "Latin American", "Mexican", "Peruvian", "Asian fusion", "Thai",
-    "Indian", "Middle Eastern", "Greek", "Farm-to-table", "Raw bar",
-    "Sushi", "Tapas", "Contemporary American", "New American",
-    "Southern", "Barbecue", "Pizza", "Vegan", "Chef's table",
-  ],
-  drinks: [
-    "Cocktail bar", "Wine bar", "Speakeasy", "Nightclub", "Lounge",
-    "Rooftop bar", "Dive bar", "Tiki bar", "Mezcal bar", "Sake bar",
-    "Champagne bar", "Beer garden", "Brewery", "Sports bar",
-    "Jazz bar", "Piano bar", "Cigar lounge", "Pool bar", "Day club",
+    {
+      label: "Cuisine",
+      items: [
+        "Italian", "French", "Japanese", "Korean", "Chinese", "Vietnamese",
+        "Thai", "Indian", "Mediterranean", "Greek", "Middle Eastern", "Spanish",
+        "Mexican", "Peruvian", "Latin American", "Caribbean",
+        "Contemporary American", "New American", "Southern",
+      ],
+    },
+    {
+      label: "Format",
+      items: [
+        "Fine dining", "Omakase", "Tasting menu", "Chef's table", "Steakhouse",
+        "Seafood", "Raw bar", "Sushi", "Pizza", "Burger", "Sandwich shop",
+        "BBQ", "Farm-to-table", "Vegan",
+      ],
+    },
   ],
   wellness: [
-    "Gym", "Recovery", "Spa", "Yoga", "Pilates", "Barbershop", "Salon",
-    "CrossFit", "Boxing", "Martial arts", "Personal training",
-    "Cold plunge", "Sauna", "Cryotherapy", "IV therapy", "Medspa",
-    "Float therapy", "Massage", "Facial studio", "Nail studio",
-    "Acupuncture", "Chiropractic", "Physical therapy", "Cycling studio",
-    "Dance studio", "Climbing gym", "Tennis club", "Golf",
+    {
+      label: "Fitness",
+      items: [
+        "Gym", "CrossFit", "Boxing", "Martial arts", "Personal training",
+        "Pilates", "Yoga", "Cycling studio", "Dance studio", "Climbing gym",
+        "Tennis club", "Padel club", "Golf",
+      ],
+    },
+    {
+      label: "Recovery",
+      items: ["Sauna", "Cold plunge", "Cryotherapy", "Float therapy", "IV therapy", "Recovery"],
+    },
+    {
+      label: "Beauty",
+      items: [
+        "Spa", "Medspa", "Massage", "Facial studio", "Nail studio",
+        "Hair salon", "Barbershop", "Brow & lash",
+      ],
+    },
+    {
+      label: "Health",
+      items: ["Acupuncture", "Chiropractic", "Physical therapy"],
+    },
   ],
   shopping: [
-    "Fashion", "Jewelry", "Watches", "Art gallery", "Vintage",
-    "Menswear", "Womenswear", "Streetwear", "Designer", "Boutique",
-    "Sneakers", "Eyewear", "Leather goods", "Home décor", "Furniture",
-    "Bookshop", "Record shop", "Plant shop", "Fragrance",
-    "Concept store", "Tailoring", "Bridal", "Swimwear", "Athleisure",
-  ],
-  members: [
-    "Social club", "Business club", "Event space",
-    "Coworking", "Private dining", "Wine club", "Cigar club",
-    "Beach club", "Country club", "Networking club", "Arts club",
-    "Supper club",
-  ],
-  hotels: [
-    "Boutique hotel", "Resort", "Villa",
-    "Design hotel", "Historic hotel", "Beach hotel", "Luxury hotel",
-    "Aparthotel", "Hostel", "Bed & breakfast", "Eco lodge",
-    "Wellness retreat", "Casino hotel",
+    {
+      label: "Apparel",
+      items: [
+        "Menswear", "Womenswear", "Designer", "Streetwear", "Vintage",
+        "Sneakers", "Athleisure", "Swimwear", "Bridal", "Boutique", "Tailoring",
+      ],
+    },
+    {
+      label: "Specialty",
+      items: ["Jewelry", "Watches", "Eyewear", "Leather goods", "Fragrance"],
+    },
+    {
+      label: "Lifestyle",
+      items: [
+        "Concept store", "Home décor", "Furniture", "Plant shop", "Florist",
+        "Bookshop", "Record shop", "Stationery",
+      ],
+    },
+    {
+      label: "Art",
+      items: ["Art gallery"],
+    },
   ],
 };
 
-// Vibes — cross-category mood/experience tags
+// Subcategories — the type of place within each category. For grouped
+// categories this is derived from SUBCATEGORY_GROUPS so the two never
+// drift apart.
+export const SUBCATEGORIES: Record<Category, string[]> = {
+  coffee: [
+    "Specialty coffee", "Roastery", "Espresso bar", "Coffee lab",
+    "Matcha bar", "Tea house",
+    "Bakery café", "Patisserie",
+    "Juice bar", "Açaí bar", "Smoothie bar",
+    "Breakfast spot",
+  ],
+  dining: SUBCATEGORY_GROUPS.dining!.flatMap((g) => g.items),
+  drinks: [
+    "Cocktail bar", "Speakeasy", "Hotel bar", "Lounge",
+    "Wine bar", "Natural wine bar", "Champagne bar",
+    "Sake bar", "Mezcal bar", "Whiskey bar", "Tiki bar",
+    "Beer garden", "Brewery",
+    "Rooftop bar", "Beach bar",
+    "Sports bar", "Dive bar",
+    "Nightclub",
+    "Jazz bar", "Piano bar", "Cigar lounge",
+  ],
+  wellness: SUBCATEGORY_GROUPS.wellness!.flatMap((g) => g.items),
+  shopping: SUBCATEGORY_GROUPS.shopping!.flatMap((g) => g.items),
+  members: [
+    "Social club", "Business club", "Beach club", "Day club",
+    "Country club", "Wine club", "Cigar club", "Arts club", "Supper club",
+    "Private dining", "Coworking", "Event space",
+  ],
+  hotels: [
+    "Boutique hotel", "Design hotel", "Luxury hotel",
+    "Resort", "Beach resort", "Wellness retreat", "Eco lodge",
+    "Historic hotel", "Aparthotel", "Villa", "Bed & breakfast", "Glamping",
+  ],
+};
+
+// Vibes — cross-category mood/experience tags. One bucket, but ordered
+// by intent so the sidebar's count-desc sort can fall back to a sensible
+// canonical order for ties.
 export const VIBES: string[] = [
+  // Occasion
   "Date night",
-  "Late night",
   "Special occasion",
-  "Brunch",
   "Business dinner",
+  "Power lunch",
+  "Brunch",
+  "Late night",
+  "Sunday funday",
+  "After party",
+  // Group
+  "Solo friendly",
   "Group friendly",
-  "Outdoor seating",
+  "Family friendly",
+  "Pet friendly",
+  // Setting
+  "Outdoor",
   "Rooftop",
   "Waterfront",
+  "Garden",
+  "Intimate",
+  "Lively",
+  // Programming
   "Live music",
-  "People watching",
+  // Identity
   "Hidden gem",
-  "Sceney",
-  "Chill",
-  "Romantic",
-  "Power lunch",
-  "Pre-game",
-  "After party",
-  "Day drinking",
-  "Sunday funday",
-  "Solo friendly",
-  "Tourist must-do",
   "Local favorite",
-  "Aperitivo",
-  "Natural wine",
-  "Wellness ritual",
+  "Iconic",
+  "Tourist must-do",
+  "Romantic",
+  "Sceney",
 ];
 
 // Top 12 vibes for the command menu grid
 export const TOP_VIBES: string[] = [
   "Date night",
-  "Late night",
   "Special occasion",
   "Brunch",
+  "Late night",
   "Rooftop",
+  "Outdoor",
+  "Live music",
   "Hidden gem",
   "Romantic",
-  "Aperitivo",
-  "Live music",
   "Solo friendly",
   "Local favorite",
   "Power lunch",
 ];
 
-// Ordered by frequency of use
+// Editorial order — drives the city-page filter pill row left-to-right.
 export const CATEGORY_ORDER: Category[] = [
-  "coffee",
   "dining",
   "drinks",
-  "wellness",
-  "shopping",
   "members",
+  "coffee",
+  "shopping",
+  "wellness",
   "hotels",
 ];
 
@@ -159,6 +233,9 @@ export interface Spot {
    * the spot has never been marked or the admin cleared the toggle.
    */
   markedNewAt?: string | null;
+  /** ISO timestamp; sourced from `spots.created_at`. Used by the "Newest"
+   * sort in the city sidebar. */
+  createdAt?: string;
 }
 
 export interface EventRecord {

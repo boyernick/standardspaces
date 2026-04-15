@@ -29,6 +29,7 @@ function mapRow(row: Record<string, unknown>): Spot {
     events: (row.events as Spot["events"]) ?? [],
     vibes: row.vibes as string[] | undefined,
     markedNewAt: (row.marked_new_at as string | null) ?? null,
+    createdAt: row.created_at as string | undefined,
   };
 }
 

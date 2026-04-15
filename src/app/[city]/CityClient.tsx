@@ -3,7 +3,8 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, Category, Spot, EventRecord } from "@/lib/types";
+import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, SUBCATEGORY_GROUPS, VIBES, Category, Spot, EventRecord } from "@/lib/types";
+import { isSpotNew } from "@/lib/new-badge";
 import UpcomingEventsStrip from "@/components/UpcomingEventsStrip";
 import dynamic from "next/dynamic";
 const SpotMap = dynamic(() => import("@/components/Map"), { ssr: false });
@@ -81,21 +82,66 @@ interface CityClientProps {
   upcomingEvents?: EventRecord[];
   invitedEvents?: EventRecord[];
   eventSpotNames?: Record<string, string>;
+  eventSpotCategories?: Record<string, Category[]>;
 }
 
-export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wishlistedSpotIds = [], checkedInSpotIds = [], cityName, citySlug, userCitySlug, upcomingEvents = [], invitedEvents = [], eventSpotNames = {} }: CityClientProps) {
+export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wishlistedSpotIds = [], checkedInSpotIds = [], cityName, citySlug, userCitySlug, upcomingEvents = [], invitedEvents = [], eventSpotNames = {}, eventSpotCategories = {} }: CityClientProps) {
   const favoritedSet = useMemo(() => new Set(favoritedSpotIds), [favoritedSpotIds]);
   const wishlistedSet = useMemo(() => new Set(wishlistedSpotIds), [wishlistedSpotIds]);
   const checkedInSet = useMemo(() => new Set(checkedInSpotIds), [checkedInSpotIds]);
-  const activeCategories = useMemo(() => new Set(allSpots.flatMap((s) => s.category)), [allSpots]);
-  const categories = useMemo(() => CATEGORY_ORDER.filter((c) => activeCategories.has(c)), [activeCategories]);
-  const neighborhoods = useMemo(() => [...new Set(allSpots.map((s) => s.neighborhood))].sort(), [allSpots]);
+  // Spot counts per facet — drive the count-desc ordering of pills, with
+  // the canonical array order in CATEGORY_ORDER / VIBES / SUBCATEGORIES as
+  // the deterministic tiebreak.
+  const categoryCount = useMemo(() => {
+    const m = new Map<Category, number>();
+    for (const s of allSpots) for (const c of s.category) m.set(c, (m.get(c) ?? 0) + 1);
+    return m;
+  }, [allSpots]);
+  const vibeCount = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of allSpots) for (const v of s.vibes ?? []) m.set(v, (m.get(v) ?? 0) + 1);
+    return m;
+  }, [allSpots]);
+  const neighborhoodCount = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of allSpots) m.set(s.neighborhood, (m.get(s.neighborhood) ?? 0) + 1);
+    return m;
+  }, [allSpots]);
+
+  // Editorial order from CATEGORY_ORDER — categories are 7 items where the
+  // intentional left-to-right hierarchy beats data-driven shuffling.
+  const categories = useMemo(
+    () => CATEGORY_ORDER.filter((c) => (categoryCount.get(c) ?? 0) > 0),
+    [categoryCount],
+  );
+  const vibes = useMemo(
+    () =>
+      VIBES
+        .filter((v) => (vibeCount.get(v) ?? 0) > 0)
+        .sort((a, b) => {
+          const diff = (vibeCount.get(b) ?? 0) - (vibeCount.get(a) ?? 0);
+          return diff !== 0 ? diff : VIBES.indexOf(a) - VIBES.indexOf(b);
+        }),
+    [vibeCount],
+  );
+  const neighborhoods = useMemo(
+    () =>
+      [...neighborhoodCount.keys()].sort((a, b) => {
+        const diff = (neighborhoodCount.get(b) ?? 0) - (neighborhoodCount.get(a) ?? 0);
+        return diff !== 0 ? diff : a.localeCompare(b);
+      }),
+    [neighborhoodCount],
+  );
 
   const [eventsOnly, setEventsOnly] = useState(false);
   const [activeCategory, setActiveCategory] = useState<Category | null>(null);
   const [activeSubcategories, setActiveSubcategories] = useState<Set<string>>(new Set());
   const [categoryDropdown, setCategoryDropdown] = useState<Category | null>(null);
   const [activeNeighborhood, setActiveNeighborhood] = useState<string | null>(null);
+  const [activeVibes, setActiveVibes] = useState<Set<string>>(new Set());
+  const [vibesOpen, setVibesOpen] = useState(false);
+  const [activeEventTypes, setActiveEventTypes] = useState<Set<Category>>(new Set());
+  const [eventTypesOpen, setEventTypesOpen] = useState(false);
   const [activeSpot, setActiveSpot] = useState<Spot | null>(null);
   const [neighborhoodOpen, setNeighborhoodOpen] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
@@ -192,6 +238,10 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
 
   const neighborhoodRef = useRef<HTMLDivElement>(null);
   const neighborhoodDropdownRef = useRef<HTMLDivElement>(null);
+  const vibesRef = useRef<HTMLDivElement>(null);
+  const vibesDropdownRef = useRef<HTMLDivElement>(null);
+  const eventTypesRef = useRef<HTMLDivElement>(null);
+  const eventTypesDropdownRef = useRef<HTMLDivElement>(null);
   const categoryRef = useRef<HTMLDivElement>(null);
   const filterScrollRef = useRef<HTMLDivElement>(null);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
@@ -214,6 +264,36 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [neighborhoodOpen]);
+
+  useEffect(() => {
+    if (!vibesOpen) return;
+    function handleClick(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        vibesRef.current && !vibesRef.current.contains(target) &&
+        vibesDropdownRef.current && !vibesDropdownRef.current.contains(target)
+      ) {
+        setVibesOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [vibesOpen]);
+
+  useEffect(() => {
+    if (!eventTypesOpen) return;
+    function handleClick(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        eventTypesRef.current && !eventTypesRef.current.contains(target) &&
+        eventTypesDropdownRef.current && !eventTypesDropdownRef.current.contains(target)
+      ) {
+        setEventTypesOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [eventTypesOpen]);
 
   useEffect(() => {
     if (!categoryDropdown) return;
@@ -259,8 +339,11 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     if (activeNeighborhood) {
       result = result.filter((s) => s.neighborhood === activeNeighborhood);
     }
+    if (activeVibes.size > 0) {
+      result = result.filter((s) => s.vibes?.some((v) => activeVibes.has(v)));
+    }
     return result;
-  }, [eventsOnly, upcomingEvents, activeCategory, activeSubcategories, activeNeighborhood, allSpots]);
+  }, [eventsOnly, upcomingEvents, activeCategory, activeSubcategories, activeVibes, activeNeighborhood, allSpots]);
 
   // Viewport-scoped list. Spots inside the committed bounds, ranked nearest
   // to map center first. When the viewport is empty, fall back to the 5
@@ -276,23 +359,23 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     }
     // Strict viewport scoping — the panel should mirror exactly what's
     // visible on the map, no padding, no fudge factor.
+    const sortFn = (a: Spot, b: Spot): number => {
+      // is_new pinned, then distance from map center.
+      const an = isSpotNew(a) ? 1 : 0;
+      const bn = isSpotNew(b) ? 1 : 0;
+      if (an !== bn) return bn - an;
+      return (
+        squaredDistance([a.lng, a.lat], committedCenter) -
+        squaredDistance([b.lng, b.lat], committedCenter)
+      );
+    };
     const inside = filteredRaw
       .filter((s) => isLngLatInBounds([s.lng, s.lat], committedBounds))
-      .sort(
-        (a, b) =>
-          squaredDistance([a.lng, a.lat], committedCenter) -
-          squaredDistance([b.lng, b.lat], committedCenter),
-      );
+      .sort(sortFn);
     if (inside.length > 0) {
       return { filtered: inside, nearby: [] as Spot[], hydrated: true };
     }
-    const fallback = [...filteredRaw]
-      .sort(
-        (a, b) =>
-          squaredDistance([a.lng, a.lat], committedCenter) -
-          squaredDistance([b.lng, b.lat], committedCenter),
-      )
-      .slice(0, 6);
+    const fallback = [...filteredRaw].sort(sortFn).slice(0, 6);
     return { filtered: [] as Spot[], nearby: fallback, hydrated: true };
   }, [filteredRaw, committedBounds, committedCenter]);
 
@@ -343,10 +426,10 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     setActiveSubcategories(new Set());
     setCategoryDropdown(null);
     setActiveNeighborhood(null);
+    setActiveVibes(new Set());
     setActiveSpot(null);
   };
 
-  const hasFilters = activeCategory || activeNeighborhood;
 
   return (
     <div className="h-[100dvh] flex flex-col bg-surface">
@@ -381,53 +464,87 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 </>
               )}
 
-              {/* Neighborhood */}
-              <div ref={neighborhoodRef} className="relative shrink-0">
-                <button
-                  onClick={() => setNeighborhoodOpen(!neighborhoodOpen)}
-                  className={`flex items-center justify-between gap-1.5 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${
-                    activeNeighborhood
+              {/* Vibes — first; cross-category mood/experience filter */}
+              {vibes.length > 0 && (
+                <>
+                  <div ref={vibesRef} className="relative shrink-0">
+                    <button
+                      onClick={() => setVibesOpen((v) => !v)}
+                      className={`flex items-center justify-between gap-1.5 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${
+                        activeVibes.size > 0
+                          ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
+                          : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
+                      }`}
+                    >
+                      Vibe
+                      {activeVibes.size > 0 && <span className="text-[10px] opacity-80">({activeVibes.size})</span>}
+                      {activeVibes.size > 0 ? (
+                        <X size={12} strokeWidth={2} className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setActiveVibes(new Set()); setVibesOpen(false); }} />
+                      ) : (
+                        <ChevronDown size={10} strokeWidth={1.5} className={`transition-transform ${vibesOpen ? "rotate-180" : ""}`} />
+                      )}
+                    </button>
+                  </div>
+                  <div className="w-px h-5 bg-neutral-200 dark:bg-neutral-700 shrink-0" />
+                </>
+              )}
+
+              {/* Events — body toggles eventsOnly; chevron opens type dropdown */}
+              <div ref={eventTypesRef} className="relative shrink-0">
+                <div
+                  className={`flex items-center gap-1 pl-3.5 pr-2 py-1.5 text-sm rounded-full border whitespace-nowrap transition-colors ${
+                    eventsOnly || activeEventTypes.size > 0
                       ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
                       : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
                   }`}
                 >
-                  {activeNeighborhood ?? "Neighborhood"}
-                  {activeNeighborhood ? (
-                    <X size={12} strokeWidth={2} className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setActiveNeighborhood(null); setNeighborhoodOpen(false); }} />
+                  <button
+                    onClick={() => {
+                      setEventsOnly((v) => {
+                        const next = !v;
+                        if (next) {
+                          setActiveCategory(null);
+                          setActiveSubcategories(new Set());
+                          setCategoryDropdown(null);
+                          setActiveNeighborhood(null);
+                          setActiveVibes(new Set());
+                        } else {
+                          setActiveEventTypes(new Set());
+                        }
+                        return next;
+                      });
+                    }}
+                    className="flex items-center gap-1"
+                  >
+                    Events
+                    {activeEventTypes.size > 0 && <span className="text-[10px] opacity-80">({activeEventTypes.size})</span>}
+                  </button>
+                  {activeEventTypes.size > 0 ? (
+                    <button
+                      onClick={() => { setActiveEventTypes(new Set()); setEventTypesOpen(false); }}
+                      className="ml-1 opacity-70 hover:opacity-100 p-0.5 -mr-1"
+                      aria-label="Clear event types"
+                    >
+                      <X size={12} strokeWidth={2} />
+                    </button>
                   ) : (
-                    <ChevronDown size={10} strokeWidth={1.5} className={`transition-transform ${neighborhoodOpen ? "rotate-180" : ""}`} />
+                    <button
+                      onClick={() => setEventTypesOpen((o) => !o)}
+                      className="ml-0.5 p-0.5 -mr-1"
+                      aria-label="Toggle event type filter"
+                    >
+                      <ChevronDown
+                        size={10}
+                        strokeWidth={1.5}
+                        className={`transition-transform ${eventTypesOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
                   )}
-                </button>
+                </div>
               </div>
-
-              <div className="w-px h-5 bg-neutral-200 dark:bg-neutral-700 shrink-0" />
 
               {/* Category pills — scrollable, dropdowns rendered outside */}
               <div ref={categoryRef} className="flex gap-1.5 md:overflow-x-auto scrollbar-hide shrink-0">
-                <button
-                  onClick={() => {
-                    setEventsOnly((v) => {
-                      const next = !v;
-                      if (next) {
-                        setActiveCategory(null);
-                        setActiveSubcategories(new Set());
-                        setCategoryDropdown(null);
-                        setActiveNeighborhood(null);
-                      }
-                      return next;
-                    });
-                  }}
-                  className={`flex items-center gap-1 px-3.5 py-1.5 text-sm rounded-full border whitespace-nowrap shrink-0 transition-colors ${
-                    eventsOnly
-                      ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
-                      : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
-                  }`}
-                >
-                  Events
-                  {eventsOnly && (
-                    <X size={12} strokeWidth={2} className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setEventsOnly(false); }} />
-                  )}
-                </button>
                 {categories.map((cat) => {
                   const isActive = activeCategory === cat;
                   const isDropdownOpen = categoryDropdown === cat;
@@ -497,7 +614,146 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                   );
                 })}
               </div>
+
+              <div className="w-px h-5 bg-neutral-200 dark:bg-neutral-700 shrink-0" />
+
+              {/* Neighborhood — last; map already does spatial filtering */}
+              <div ref={neighborhoodRef} className="relative shrink-0">
+                <button
+                  onClick={() => setNeighborhoodOpen(!neighborhoodOpen)}
+                  className={`flex items-center justify-between gap-1.5 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${
+                    activeNeighborhood
+                      ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
+                      : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
+                  }`}
+                >
+                  {activeNeighborhood ?? "Neighborhood"}
+                  {activeNeighborhood ? (
+                    <X size={12} strokeWidth={2} className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setActiveNeighborhood(null); setNeighborhoodOpen(false); }} />
+                  ) : (
+                    <ChevronDown size={10} strokeWidth={1.5} className={`transition-transform ${neighborhoodOpen ? "rotate-180" : ""}`} />
+                  )}
+                </button>
+              </div>
             </div>
+
+            {/* Event types dropdown — rendered outside scrollable container so it isn't clipped */}
+            {eventTypesOpen && (() => {
+              const btn = eventTypesRef.current;
+              const bar = filterBarRef.current;
+              const barWidth = bar?.getBoundingClientRect().width ?? 375;
+              const dropdownWidth = 224;
+              let left = btn && bar ? btn.getBoundingClientRect().left - bar.getBoundingClientRect().left : 16;
+              if (left + dropdownWidth > barWidth - 8) {
+                left = btn && bar ? btn.getBoundingClientRect().right - bar.getBoundingClientRect().left - dropdownWidth : left;
+              }
+              left = Math.max(8, left);
+              // Per-type counts: number of upcoming events whose host spot
+              // includes this category. Hide types with zero events.
+              const typeCount = new Map<Category, number>();
+              for (const e of upcomingEvents) {
+                const cats = eventSpotCategories[e.spot_id];
+                if (!cats) continue;
+                for (const c of cats) typeCount.set(c, (typeCount.get(c) ?? 0) + 1);
+              }
+              const visibleTypes = CATEGORY_ORDER.filter((c) => (typeCount.get(c) ?? 0) > 0);
+              return (
+                <div ref={eventTypesDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
+                  <div className="relative" style={{ marginLeft: left }}>
+                    <div className="mt-1.5 w-56 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-72 overflow-y-auto scrollbar-hide animate-[fadeSlideDown_150ms_ease-out]">
+                      <button onClick={() => setActiveEventTypes(new Set())} className={`block w-full text-left px-4 py-2 text-xs transition-colors ${activeEventTypes.size === 0 ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
+                        All event types
+                      </button>
+                      {visibleTypes.length === 0 && (
+                        <div className="px-4 py-3 text-xs text-neutral-400">No upcoming events</div>
+                      )}
+                      {visibleTypes.map((c) => {
+                        const isActive = activeEventTypes.has(c);
+                        const count = typeCount.get(c) ?? 0;
+                        return (
+                          <button
+                            key={c}
+                            onClick={() => {
+                              setActiveEventTypes((prev) => {
+                                const next = new Set(prev);
+                                isActive ? next.delete(c) : next.add(c);
+                                return next;
+                              });
+                              if (!eventsOnly) {
+                                setEventsOnly(true);
+                                setActiveCategory(null);
+                                setActiveSubcategories(new Set());
+                                setCategoryDropdown(null);
+                                setActiveNeighborhood(null);
+                                setActiveVibes(new Set());
+                              }
+                            }}
+                            className={`flex w-full items-center justify-between gap-2.5 px-4 py-2 text-xs transition-colors ${isActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}
+                          >
+                            <span className="flex items-center gap-2.5 min-w-0">
+                              <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isActive ? "bg-brand-500 border-brand-500" : "border-neutral-300 dark:border-neutral-600"}`}>
+                                {isActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                              </span>
+                              <span className="truncate">{CATEGORY_LABELS[c]}</span>
+                            </span>
+                            <span className="text-neutral-300 dark:text-neutral-600 shrink-0">{count}</span>
+                          </button>
+                        );
+                      })}
+                      {activeEventTypes.size > 0 && (
+                        <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
+                          <button onClick={() => { setActiveEventTypes(new Set()); setEventTypesOpen(false); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear types</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Vibes dropdown — rendered outside scrollable container so it isn't clipped */}
+            {vibesOpen && (() => {
+              const btn = vibesRef.current;
+              const bar = filterBarRef.current;
+              const barWidth = bar?.getBoundingClientRect().width ?? 375;
+              const dropdownWidth = 240; // w-60
+              let left = btn && bar ? btn.getBoundingClientRect().left - bar.getBoundingClientRect().left : 16;
+              if (left + dropdownWidth > barWidth - 8) {
+                left = btn && bar ? btn.getBoundingClientRect().right - bar.getBoundingClientRect().left - dropdownWidth : left;
+              }
+              left = Math.max(8, left);
+              return (
+                <div ref={vibesDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
+                  <div className="relative" style={{ marginLeft: left }}>
+                    <div className="mt-1.5 w-60 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-72 overflow-y-auto scrollbar-hide animate-[fadeSlideDown_150ms_ease-out]">
+                      <button onClick={() => setActiveVibes(new Set())} className={`block w-full text-left px-4 py-2 text-xs transition-colors ${activeVibes.size === 0 ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
+                        All vibes
+                      </button>
+                      {vibes.map((v) => {
+                        const isActive = activeVibes.has(v);
+                        const count = vibeCount.get(v) ?? 0;
+                        return (
+                          <button key={v} onClick={() => { setActiveVibes((prev) => { const next = new Set(prev); isActive ? next.delete(v) : next.add(v); return next; }); }} className={`flex w-full items-center justify-between gap-2.5 px-4 py-2 text-xs transition-colors ${isActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
+                            <span className="flex items-center gap-2.5 min-w-0">
+                              <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isActive ? "bg-brand-500 border-brand-500" : "border-neutral-300 dark:border-neutral-600"}`}>
+                                {isActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                              </span>
+                              <span className="truncate">{v}</span>
+                            </span>
+                            <span className="text-neutral-300 dark:text-neutral-600 shrink-0">{count}</span>
+                          </button>
+                        );
+                      })}
+                      {activeVibes.size > 0 && (
+                        <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
+                          <button onClick={() => { setActiveVibes(new Set()); setVibesOpen(false); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear vibes</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Neighborhood dropdown — rendered outside scrollable container so it isn't clipped on mobile */}
             {neighborhoodOpen && (() => {
@@ -535,38 +791,76 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
             {/* Category dropdown — rendered outside scrollable pills so it isn't clipped */}
             {categoryDropdown && (() => {
               const cat = categoryDropdown;
-              const subs = SUBCATEGORIES[cat].filter((sub) =>
-                allSpots.some((s) => s.category.includes(cat) && s.subcategory?.includes(sub))
-              );
+              // Per-subcategory spot count in this city (0 → hidden).
+              const subCount = new Map<string, number>();
+              for (const s of allSpots) {
+                if (!s.category.includes(cat)) continue;
+                for (const sc of s.subcategory ?? []) {
+                  subCount.set(sc, (subCount.get(sc) ?? 0) + 1);
+                }
+              }
+              const sortByCount = (a: string, b: string, canonical: string[]): number => {
+                const diff = (subCount.get(b) ?? 0) - (subCount.get(a) ?? 0);
+                if (diff !== 0) return diff;
+                return canonical.indexOf(a) - canonical.indexOf(b);
+              };
+              // Grouped layout for categories with semantic groupings (Wellness,
+              // Shops, Dining); flat for the rest.
+              const groups = SUBCATEGORY_GROUPS[cat];
+              const flatSubs = SUBCATEGORIES[cat].filter((s) => (subCount.get(s) ?? 0) > 0);
+              const renderedGroups = groups
+                ? groups
+                    .map((g) => ({
+                      label: g.label,
+                      items: g.items.filter((s) => (subCount.get(s) ?? 0) > 0).sort((a, b) => sortByCount(a, b, g.items)),
+                    }))
+                    .filter((g) => g.items.length > 0)
+                : null;
+              const ungroupedSubs = !groups
+                ? [...flatSubs].sort((a, b) => sortByCount(a, b, SUBCATEGORIES[cat]))
+                : null;
               const activeSubCount = activeCategory === cat ? activeSubcategories.size : 0;
               const btn = categoryRef.current?.querySelector(`[data-category="${cat}"]`) as HTMLElement | null;
               const bar = filterBarRef.current;
               const barWidth = bar?.getBoundingClientRect().width ?? 375;
-              const dropdownWidth = 192; // w-48
+              const dropdownWidth = 208; // w-52 — slightly wider to hold group labels
               let left = btn && bar ? btn.getBoundingClientRect().left - bar.getBoundingClientRect().left : 0;
-              // If dropdown overflows right, align right edge to pill's right edge
               if (left + dropdownWidth > barWidth - 8) {
                 left = btn && bar ? btn.getBoundingClientRect().right - bar.getBoundingClientRect().left - dropdownWidth : left;
               }
               left = Math.max(8, left);
+              const renderSub = (sub: string) => {
+                const isSubActive = activeSubcategories.has(sub);
+                const count = subCount.get(sub) ?? 0;
+                return (
+                  <button key={sub} onClick={() => { setActiveSubcategories((prev) => { const next = new Set(prev); isSubActive ? next.delete(sub) : next.add(sub); return next; }); }} className={`flex w-full items-center justify-between gap-2.5 px-4 py-2 text-xs transition-colors ${isSubActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
+                    <span className="flex items-center gap-2.5 min-w-0">
+                      <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isSubActive ? "bg-brand-500 border-brand-500" : "border-neutral-300 dark:border-neutral-600"}`}>
+                        {isSubActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                      </span>
+                      <span className="truncate">{sub}</span>
+                    </span>
+                    <span className="text-neutral-300 dark:text-neutral-600 shrink-0">{count}</span>
+                  </button>
+                );
+              };
               return (
                 <div ref={categoryDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                   <div className="relative" style={{ marginLeft: left }}>
-                    <div className="mt-1.5 w-48 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-64 overflow-y-auto scrollbar-hide animate-[fadeSlideDown_150ms_ease-out]">
+                    <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-72 overflow-y-auto scrollbar-hide animate-[fadeSlideDown_150ms_ease-out]">
                       <button onClick={() => { setActiveSubcategories(new Set()); }} className={`block w-full text-left px-4 py-2 text-xs transition-colors ${activeSubCount === 0 ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
                         All {CATEGORY_LABELS[cat]}
                       </button>
-                      {subs.map((sub) => {
-                        const isSubActive = activeSubcategories.has(sub);
-                        return (
-                          <button key={sub} onClick={() => { setActiveSubcategories((prev) => { const next = new Set(prev); isSubActive ? next.delete(sub) : next.add(sub); return next; }); }} className={`flex w-full items-center gap-2.5 px-4 py-2 text-xs transition-colors ${isSubActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
-                            <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isSubActive ? "bg-brand-500 border-brand-500" : "border-neutral-300 dark:border-neutral-600"}`}>
-                              {isSubActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                            </span>
-                            {sub}
-                          </button>
-                        );
-                      })}
+                      {renderedGroups
+                        ? renderedGroups.map((g) => (
+                            <div key={g.label}>
+                              <div className="px-4 pt-2 pb-1 text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
+                                {g.label}
+                              </div>
+                              {g.items.map(renderSub)}
+                            </div>
+                          ))
+                        : ungroupedSubs?.map(renderSub)}
                       <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
                         <button onClick={() => { setActiveCategory(null); setActiveSubcategories(new Set()); setCategoryDropdown(null); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear filter</button>
                       </div>
@@ -579,19 +873,29 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
 
           {/* Scrollable content — hidden on mobile map view */}
           <div ref={panelRef} className={`flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-36 md:pb-0 ${mobileView === "map" ? "hidden md:block" : ""}`}>
-          {eventsOnly ? (
+          {eventsOnly ? (() => {
+            const matchesType = (e: typeof upcomingEvents[number]) => {
+              if (activeEventTypes.size === 0) return true;
+              const cats = eventSpotCategories?.[e.spot_id];
+              if (!cats) return false;
+              for (const c of cats) if (activeEventTypes.has(c)) return true;
+              return false;
+            };
+            const filteredUpcoming = upcomingEvents.filter(matchesType);
+            const filteredInvited = invitedEvents.filter(matchesType);
+            return (
             <div className="p-4 pt-2 space-y-6">
-              {invitedEvents.length > 0 && (
+              {filteredInvited.length > 0 && (
                 <UpcomingEventsStrip
-                  events={invitedEvents}
+                  events={filteredInvited}
                   spotNames={eventSpotNames}
                   title="You're invited"
                 />
               )}
-              {upcomingEvents.length > 0 ? (
+              {filteredUpcoming.length > 0 ? (
                 <div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {upcomingEvents.map((event) => {
+                    {filteredUpcoming.map((event) => {
                       const d = new Date(event.starts_at);
                       const month = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
                       const day = d.getDate();
@@ -647,7 +951,8 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 </div>
               )}
             </div>
-          ) : allSpots.length === 0 ? (
+            );
+          })() : allSpots.length === 0 ? (
             <div className="px-6 py-20 text-center">
               <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-[#eceae2] dark:bg-[#0e0d07]">
                 <MapPin size={20} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
