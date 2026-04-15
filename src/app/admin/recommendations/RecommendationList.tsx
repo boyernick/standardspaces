@@ -59,7 +59,11 @@ export default function RecommendationList({
       });
       if (res.ok) {
         setRecommendations((prev) =>
-          prev.map((r) => (r.id === id ? { ...r, status: "processing" } : r))
+          prev.map((r) =>
+            r.id === id
+              ? { ...r, status: "scraped", processed_at: new Date().toISOString() }
+              : r
+          )
         );
       }
     } finally {

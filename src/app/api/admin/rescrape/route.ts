@@ -69,6 +69,8 @@ export async function POST(req: NextRequest) {
         scraped_data: mergedData,
         scraped_images: uploadedPhotos,
         name: mergedData.name,
+        status: "scraped",
+        processed_at: new Date().toISOString(),
       })
       .eq("id", recommendationId);
 
