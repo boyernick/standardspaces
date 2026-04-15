@@ -3,7 +3,8 @@
 import { useState, useEffect, useTransition } from "react";
 import { getReferrals, approveReferral, denyReferral } from "@/app/actions/referrals";
 import Link from "next/link";
-import { Check, X, Clock, UserPlus, Send } from "lucide-react";
+import { Check, X, UserPlus, Send } from "lucide-react";
+import Navbar from "@/components/Navbar";
 
 type Referral = {
   id: string;
@@ -61,42 +62,39 @@ export default function ReferralsPage() {
   const resolved = referrals.filter((r) => r.status === "approved" || r.status === "denied");
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--color-surface)" }}>
-      <div className="max-w-lg mx-auto px-6 py-12">
+    <div className="flex flex-col h-full" style={{ backgroundColor: "var(--color-surface)" }}>
+      <Navbar />
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="max-w-lg mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-xl font-medium" style={fontMartina}>Referrals</h1>
           <Link
             href="/refer"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-neutral-200 dark:border-neutral-700 rounded-full hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors"
+            className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
             style={fontCalibre}
           >
-            <UserPlus size={13} />
             Refer a friend
           </Link>
         </div>
 
         {loading ? (
-          <p className="text-sm text-neutral-400 dark:text-neutral-500" style={fontCalibre}>Loading...</p>
+          <p className="text-sm text-neutral-400 dark:text-neutral-500" style={fontCalibre}>Loading…</p>
         ) : referrals.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-sm text-neutral-400 dark:text-neutral-500 mb-4" style={fontCalibre}>
-              No referrals yet.
+          <div className="px-6 py-20 text-center">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-[#eceae2] dark:bg-[#0e0d07]">
+              <UserPlus size={20} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
+            </div>
+            <h3 className="text-base font-medium" style={fontMartina}>No referrals yet</h3>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto" style={fontCalibre}>
+              When you invite a friend they&apos;ll show up here.
             </p>
-            <Link
-              href="/refer"
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-neutral-900 dark:bg-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
-              style={fontCalibre}
-            >
-              <UserPlus size={14} />
-              Refer a friend
-            </Link>
           </div>
         ) : (
           <div className="space-y-8">
             {/* Pending approval */}
             {pending.length > 0 && (
               <section>
-                <h2 className="text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-3" style={fontCalibre}>
+                <h2 className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tracking-wider mb-3" style={fontCalibre}>
                   Needs your approval
                 </h2>
                 <div className="space-y-2">
@@ -139,7 +137,7 @@ export default function ReferralsPage() {
             {/* Waiting to apply */}
             {waitingToApply.length > 0 && (
               <section>
-                <h2 className="text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-3" style={fontCalibre}>
+                <h2 className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tracking-wider mb-3" style={fontCalibre}>
                   Invited — waiting to apply
                 </h2>
                 <div className="space-y-2">
@@ -163,7 +161,7 @@ export default function ReferralsPage() {
             {/* Resolved */}
             {resolved.length > 0 && (
               <section>
-                <h2 className="text-xs font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-3" style={fontCalibre}>
+                <h2 className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tracking-wider mb-3" style={fontCalibre}>
                   Past referrals
                 </h2>
                 <div className="space-y-2">
@@ -188,6 +186,7 @@ export default function ReferralsPage() {
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
