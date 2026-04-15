@@ -54,7 +54,7 @@ export default function ApplicationList({ applications: initial }: { application
             key={f}
             onClick={() => setFilter(f)}
             className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-              filter === f ? "bg-black text-white border-black" : "border-black/15 text-black/60 hover:border-black/30"
+              filter === f ? "bg-black dark:bg-white text-white dark:text-black border-black dark:border-white" : "border-black/15 dark:border-white/15 text-black/60 dark:text-white/60 hover:border-black/30 dark:hover:border-white/30"
             }`}
           >
             {f.charAt(0).toUpperCase() + f.slice(1)} ({counts[f]})
@@ -63,17 +63,17 @@ export default function ApplicationList({ applications: initial }: { application
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-sm text-black/40" style={fontCalibre}>No applications.</p>
+        <p className="text-sm text-black/40 dark:text-white/40" style={fontCalibre}>No applications.</p>
       ) : (
         <div className="space-y-3">
           {filtered.map((app) => (
-            <div key={app.id} className="border border-black/10 rounded-lg p-4 bg-white">
+            <div key={app.id} className="border border-black/10 dark:border-white/10 rounded-lg p-4 bg-white dark:bg-neutral-900">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm font-medium" style={fontCalibre}>{app.first_name} {app.last_name}</p>
-                  <p className="text-xs text-black/50" style={fontCalibre}>{app.phone}</p>
+                  <p className="text-sm font-medium text-black dark:text-white" style={fontCalibre}>{app.first_name} {app.last_name}</p>
+                  <p className="text-xs text-black/50 dark:text-white/50" style={fontCalibre}>{app.phone}</p>
                   {app.instagram && (
-                    <p className="text-xs text-black/40 mt-0.5" style={fontCalibre}>@{app.instagram.replace("@", "")}</p>
+                    <p className="text-xs text-black/40 dark:text-white/40 mt-0.5" style={fontCalibre}>@{app.instagram.replace("@", "")}</p>
                   )}
                 </div>
                 <span
@@ -91,7 +91,7 @@ export default function ApplicationList({ applications: initial }: { application
               </div>
               {app.referred_by_name && (
                 <div className="flex items-center gap-1.5 mt-2">
-                  <span className="text-xs text-black/40" style={fontCalibre}>
+                  <span className="text-xs text-black/40 dark:text-white/40" style={fontCalibre}>
                     Referred by: {app.referred_by_name}{app.referred_by_phone ? ` (${app.referred_by_phone})` : ""}
                   </span>
                   {app.referral_status && (
@@ -107,7 +107,7 @@ export default function ApplicationList({ applications: initial }: { application
                   )}
                 </div>
               )}
-              <p className="text-xs text-black/30 mt-2" style={fontCalibre}>
+              <p className="text-xs text-black/30 dark:text-white/30 mt-2" style={fontCalibre}>
                 {new Date(app.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </p>
               {app.status === "pending" && (
@@ -123,7 +123,7 @@ export default function ApplicationList({ applications: initial }: { application
                   <button
                     onClick={() => handleAction(app.id, "reject")}
                     disabled={processing === app.id}
-                    className="px-3 py-1.5 text-xs font-medium text-black/60 border border-black/15 rounded-full hover:border-black/30 transition-colors disabled:opacity-50"
+                    className="px-3 py-1.5 text-xs font-medium text-black/60 dark:text-white/60 border border-black/15 dark:border-white/15 rounded-full hover:border-black/30 dark:hover:border-white/30 transition-colors disabled:opacity-50"
                     style={fontCalibre}
                   >
                     Reject

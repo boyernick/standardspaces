@@ -37,41 +37,41 @@ export default function ListingsTable({ spots }: { spots: SpotRow[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search listings..."
-          className="w-full pl-10 pr-4 py-2.5 text-sm border border-black/10 rounded-lg bg-white focus:outline-none focus:border-black/30 transition-colors"
+          className="w-full pl-10 pr-4 py-2.5 text-sm border border-black/10 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-900 text-black dark:text-white focus:outline-none focus:border-black/30 dark:focus:border-white/30 placeholder:text-black/40 dark:placeholder:text-white/40 transition-colors"
           style={fontCalibre}
         />
       </div>
 
-      <p className="text-xs text-black/40 mb-3" style={fontCalibre}>
+      <p className="text-xs text-black/40 dark:text-white/40 mb-3" style={fontCalibre}>
         {filtered.length} listing{filtered.length !== 1 ? "s" : ""}
       </p>
 
       {filtered.length === 0 ? (
-        <p className="text-sm text-black/40 py-8 text-center" style={fontCalibre}>No listings found.</p>
+        <p className="text-sm text-black/40 dark:text-white/40 py-8 text-center" style={fontCalibre}>No listings found.</p>
       ) : (
         <div className="space-y-2">
           {filtered.map((spot) => (
             <Link
               key={spot.id}
               href={`/admin/listings/${spot.id}`}
-              className="flex items-center gap-4 p-3 border border-black/10 rounded-lg bg-white hover:border-black/20 transition-colors"
+              className="flex items-center gap-4 p-3 border border-black/10 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-900 hover:border-black/20 dark:hover:border-white/20 transition-colors"
             >
-              <div className="w-12 h-12 rounded-lg overflow-hidden bg-neutral-100 shrink-0">
+              <div className="w-12 h-12 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 shrink-0">
                 {spot.images?.[0] ? (
                   <img src={spot.images[0]} alt={spot.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-neutral-300 text-xs">
+                  <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-neutral-600 text-xs">
                     No img
                   </div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate" style={fontCalibre}>{spot.name}</p>
-                <p className="text-xs text-black/50" style={fontCalibre}>
+                <p className="text-sm font-medium truncate text-black dark:text-white" style={fontCalibre}>{spot.name}</p>
+                <p className="text-xs text-black/50 dark:text-white/50" style={fontCalibre}>
                   {spot.category.map((c) => CATEGORY_LABELS[c as Category] || c).join(" · ")} · {spot.neighborhood}
                 </p>
               </div>
-              <span className="text-xs text-black/30 shrink-0" style={fontCalibre}>Edit</span>
+              <span className="text-xs text-black/30 dark:text-white/30 shrink-0" style={fontCalibre}>Edit</span>
             </Link>
           ))}
         </div>

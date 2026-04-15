@@ -93,8 +93,8 @@ export default function RecommendationList({
             onClick={() => setFilter(f)}
             className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
               filter === f
-                ? "bg-black text-white border-black"
-                : "border-black/15 text-black/60 hover:border-black/30"
+                ? "bg-black dark:bg-white text-white dark:text-black border-black dark:border-white"
+                : "border-black/15 dark:border-white/15 text-black/60 dark:text-white/60 hover:border-black/30 dark:hover:border-white/30"
             }`}
           >
             {f.charAt(0).toUpperCase() + f.slice(1)} ({counts[f]})
@@ -103,7 +103,7 @@ export default function RecommendationList({
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-sm text-black/40" style={fontCalibre}>
+        <p className="text-sm text-black/40 dark:text-white/40" style={fontCalibre}>
           No recommendations.
         </p>
       ) : (
@@ -114,23 +114,23 @@ export default function RecommendationList({
             return (
               <div
                 key={rec.id}
-                className="border border-black/10 rounded-lg p-4 bg-white flex items-start gap-4"
+                className="border border-black/10 dark:border-white/10 rounded-lg p-4 bg-white dark:bg-neutral-900 flex items-start gap-4"
               >
                 <div
-                  className="w-14 h-14 rounded-md shrink-0 bg-neutral-100 bg-cover bg-center"
+                  className="w-14 h-14 rounded-md shrink-0 bg-neutral-100 dark:bg-neutral-800 bg-cover bg-center"
                   style={thumb ? { backgroundImage: `url(${thumb})` } : undefined}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate" style={fontCalibre}>
+                      <p className="text-sm font-medium truncate text-black dark:text-white" style={fontCalibre}>
                         {rec.name || "Untitled"}
                       </p>
                       <a
                         href={rec.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-black/50 hover:text-brand-500 break-all"
+                        className="text-xs text-black/50 dark:text-white/50 hover:text-brand-500 break-all"
                         style={fontCalibre}
                       >
                         {rec.url}
@@ -147,18 +147,18 @@ export default function RecommendationList({
                   </div>
 
                   {(rec.category || rec.neighborhood) && (
-                    <p className="text-xs text-black/40 mt-1" style={fontCalibre}>
+                    <p className="text-xs text-black/40 dark:text-white/40 mt-1" style={fontCalibre}>
                       {[rec.category, rec.neighborhood].filter(Boolean).join(" · ")}
                     </p>
                   )}
 
                   {rec.notes && (
-                    <p className="text-xs text-black/50 mt-1 italic line-clamp-2" style={fontCalibre}>
+                    <p className="text-xs text-black/50 dark:text-white/50 mt-1 italic line-clamp-2" style={fontCalibre}>
                       &ldquo;{rec.notes}&rdquo;
                     </p>
                   )}
 
-                  <div className="flex items-center gap-3 mt-2 text-xs text-black/30" style={fontCalibre}>
+                  <div className="flex items-center gap-3 mt-2 text-xs text-black/30 dark:text-white/30" style={fontCalibre}>
                     <span>
                       {new Date(rec.created_at).toLocaleDateString("en-US", {
                         month: "short",
@@ -195,7 +195,7 @@ export default function RecommendationList({
                       <button
                         onClick={() => handleRescrape(rec.id, rec.url)}
                         disabled={busy === rec.id}
-                        className="px-3 py-1.5 text-xs font-medium text-black/60 border border-black/15 rounded-full hover:border-black/30 transition-colors disabled:opacity-50"
+                        className="px-3 py-1.5 text-xs font-medium text-black/60 dark:text-white/60 border border-black/15 dark:border-white/15 rounded-full hover:border-black/30 dark:hover:border-white/30 transition-colors disabled:opacity-50"
                         style={fontCalibre}
                       >
                         {busy === rec.id ? "..." : "Re-scrape"}

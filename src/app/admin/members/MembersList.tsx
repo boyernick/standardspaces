@@ -61,8 +61,8 @@ export default function MembersList({ members }: { members: Member[] }) {
             onClick={() => setFilter(f)}
             className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
               filter === f
-                ? "bg-black text-white border-black"
-                : "border-black/15 text-black/60 hover:border-black/30"
+                ? "bg-black dark:bg-white text-white dark:text-black border-black dark:border-white"
+                : "border-black/15 dark:border-white/15 text-black/60 dark:text-white/60 hover:border-black/30 dark:hover:border-white/30"
             }`}
           >
             {f.charAt(0).toUpperCase() + f.slice(1)} ({counts[f]})
@@ -73,12 +73,12 @@ export default function MembersList({ members }: { members: Member[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search name, email, phone…"
-          className="ml-auto min-w-[180px] flex-1 sm:flex-none px-3 py-1.5 text-xs rounded-full border border-black/15 bg-white focus:outline-none focus:border-black/30 placeholder:text-black/30"
+          className="ml-auto min-w-[180px] flex-1 sm:flex-none px-3 py-1.5 text-xs rounded-full border border-black/15 dark:border-white/15 bg-white dark:bg-neutral-900 text-black dark:text-white focus:outline-none focus:border-black/30 dark:focus:border-white/30 placeholder:text-black/30 dark:placeholder:text-white/30"
         />
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-sm text-black/40" style={fontCalibre}>
+        <p className="text-sm text-black/40 dark:text-white/40" style={fontCalibre}>
           No members match.
         </p>
       ) : (
@@ -94,9 +94,9 @@ export default function MembersList({ members }: { members: Member[] }) {
               <Link
                 key={m.id}
                 href={`/members/${m.id}`}
-                className="flex items-center gap-4 border border-black/10 rounded-lg p-4 bg-white hover:border-black/20 transition-colors"
+                className="flex items-center gap-4 border border-black/10 dark:border-white/10 rounded-lg p-4 bg-white dark:bg-neutral-900 hover:border-black/20 dark:hover:border-white/20 transition-colors"
               >
-                <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-neutral-100 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
                   {m.avatar_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -105,14 +105,14 @@ export default function MembersList({ members }: { members: Member[] }) {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-xs font-medium text-black/50" style={fontCalibre}>
+                    <span className="text-xs font-medium text-black/50 dark:text-white/50" style={fontCalibre}>
                       {initials}
                     </span>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium truncate" style={fontCalibre}>
+                    <p className="text-sm font-medium truncate text-black dark:text-white" style={fontCalibre}>
                       {displayName}
                     </p>
                     {m.role === "admin" && (
@@ -132,11 +132,11 @@ export default function MembersList({ members }: { members: Member[] }) {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-black/50 truncate" style={fontCalibre}>
+                  <p className="text-xs text-black/50 dark:text-white/50 truncate" style={fontCalibre}>
                     {m.email}
                   </p>
                   <div
-                    className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-black/40 mt-0.5"
+                    className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-black/40 dark:text-white/40 mt-0.5"
                     style={fontCalibre}
                   >
                     {m.phone && <span>{m.phone}</span>}
