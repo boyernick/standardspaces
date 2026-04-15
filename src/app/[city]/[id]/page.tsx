@@ -328,7 +328,8 @@ export default async function SpotPage({
     : "Book now";
 
   // Primary action for the bottom action bar. Booking wins; fall back to
-  // the space's website, then Instagram, so the bar never looks empty.
+  // the space's website, then Instagram, and finally Google Maps directions
+  // (available for every space with an address) so the bar always has a CTA.
   const primaryAction = spot.bookingUrl
     ? { href: spot.bookingUrl, label: bookingLabel }
     : spot.website
@@ -337,6 +338,11 @@ export default async function SpotPage({
     ? {
         href: `https://instagram.com/${spot.instagram.replace("@", "")}`,
         label: "View on Instagram",
+      }
+    : spot.address
+    ? {
+        href: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(spot.address)}`,
+        label: "Get directions",
       }
     : null;
 

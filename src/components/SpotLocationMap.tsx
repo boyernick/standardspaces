@@ -186,7 +186,14 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
 
       {/* Map */}
       <div className="relative">
-        <div ref={container} className="w-full h-[350px] rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800" />
+        <div
+          ref={container}
+          // `touch-action: pan-y` lets a vertical page scroll pass through
+          // the static map on mobile — otherwise a finger-drag that starts
+          // on the map gets eaten by Mapbox's internal gesture handling
+          // and the page appears stuck.
+          className="w-full h-[350px] rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 touch-pan-y"
+        />
 
         {/* Hover card from map dot */}
         {hoveredFromMap && (
