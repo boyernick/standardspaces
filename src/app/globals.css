@@ -254,3 +254,10 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Hide the native datalist dropdown indicator on <input list>. We draw
+   our own ChevronDown icon for consistency with the <select> variant. */
+.datalist-input::-webkit-calendar-picker-indicator {
+  display: none !important;
+  opacity: 0;
+}

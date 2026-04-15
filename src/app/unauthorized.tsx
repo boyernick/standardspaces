@@ -15,7 +15,7 @@ export default function Unauthorized() {
         <div className="flex gap-3 justify-center">
           <Link
             href="/login"
-            className="px-5 py-2 text-sm font-medium text-white bg-brand-500 rounded-full hover:bg-brand-600 transition-colors"
+            className="px-5 py-2 text-sm font-medium text-white bg-black dark:bg-white dark:text-black rounded-full hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
             style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}
           >
             Log in

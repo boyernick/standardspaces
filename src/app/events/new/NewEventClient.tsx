@@ -1,14 +1,29 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Upload, Lock, Globe, Loader2, Trash2, GripVertical, Plus } from "lucide-react";
+import { Search, Lock, Globe, Loader2, X } from "lucide-react";
 import { Spot, EventRecord } from "@/lib/types";
-import { createEvent, updateEvent, searchSpotsForPicker } from "@/app/actions/events";
+import {
+  createEvent,
+  inviteMembers,
+  removeInvite,
+  searchMembers,
+  searchSpotsForPicker,
+  updateEvent,
+  type MemberSearchResult,
+} from "@/app/actions/events";
+import {
+  Field,
+  PhotoManager,
+  SectionHeader,
+  inputClass,
+} from "@/components/admin/form";
 
 interface Props {
   initialSpot: Spot | null;
   existingEvent?: EventRecord | null;
+  initialInvitees?: MemberSearchResult[];
 }
 
 function toLocalInput(iso: string): string {
@@ -18,7 +33,24 @@ function toLocalInput(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export default function NewEventClient({ initialSpot, existingEvent = null }: Props) {
+async function uploadEventCover(file: File): Promise<string | null> {
+  const formData = new FormData();
+  formData.append("file", file);
+  try {
+    const res = await fetch("/api/events/upload-cover", { method: "POST", body: formData });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.url;
+  } catch {
+    return null;
+  }
+}
+
+export default function NewEventClient({
+  initialSpot,
+  existingEvent = null,
+  initialInvitees = [],
+}: Props) {
   const router = useRouter();
   const isEdit = !!existingEvent;
   const [pending, startTransition] = useTransition();
@@ -39,6 +71,15 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
   );
   const [visibility, setVisibility] = useState<"public" | "private">(existingEvent?.visibility ?? "public");
   const [ageRestriction, setAgeRestriction] = useState(existingEvent?.age_restriction ?? "");
+  const [invitees, setInvitees] = useState<MemberSearchResult[]>(initialInvitees);
+  // Track the snapshot we loaded with so edit-mode removals can be persisted
+  // server-side when the host removes an already-invited member.
+  const [originalInviteeIds] = useState<Set<string>>(
+    () => new Set(initialInvitees.map((m) => m.id)),
+  );
+  const [inviteQuery, setInviteQuery] = useState("");
+  const [inviteResults, setInviteResults] = useState<MemberSearchResult[]>([]);
+  const [inviteSearching, setInviteSearching] = useState(false);
   const initialImages =
     existingEvent?.images && existingEvent.images.length > 0
       ? existingEvent.images
@@ -62,12 +103,44 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
     return () => clearTimeout(t);
   }, [spotQuery, spot]);
 
+  // Debounced member search for the invite list. Only runs when visibility is
+  // private — public events don't have invitees.
+  useEffect(() => {
+    if (visibility !== "private" || !inviteQuery.trim()) {
+      setInviteResults([]);
+      return;
+    }
+    setInviteSearching(true);
+    const t = setTimeout(async () => {
+      const results = await searchMembers(inviteQuery);
+      setInviteResults(results);
+      setInviteSearching(false);
+    }, 200);
+    return () => clearTimeout(t);
+  }, [inviteQuery, visibility]);
+
+  function addInvitee(m: MemberSearchResult) {
+    if (invitees.some((i) => i.id === m.id)) return;
+    setInvitees((prev) => [...prev, m]);
+    setInviteQuery("");
+    setInviteResults([]);
+  }
+
+  function removeInvitee(id: string) {
+    setInvitees((prev) => prev.filter((m) => m.id !== id));
+  }
+
+  function memberLabel(m: MemberSearchResult): string {
+    const full = [m.first_name, m.last_name].filter(Boolean).join(" ").trim();
+    return full || m.instagram || "Member";
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
     if (!spot) {
-      setError("Pick a spot");
+      setError("Pick a space");
       return;
     }
     if (!title.trim()) {
@@ -93,11 +166,25 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
         visibility,
         age_restriction: ageRestriction || null,
       };
+      // Only sync invitees for private events — public events ignore the list.
+      const inviteeIds = visibility === "private" ? invitees.map((m) => m.id) : [];
+      const toRemove =
+        visibility === "private"
+          ? [...originalInviteeIds].filter((id) => !inviteeIds.includes(id))
+          : [...originalInviteeIds];
+
       if (isEdit && existingEvent) {
         const res = await updateEvent(existingEvent.id, payload);
         if (!res.ok) {
           setError(res.error);
           return;
+        }
+        // Persist invite changes against the existing event. Failures here
+        // shouldn't block navigation — the event itself saved — but we log
+        // and surface a soft error after the redirect via query params.
+        await Promise.all(toRemove.map((id) => removeInvite(existingEvent.id, id)));
+        if (inviteeIds.length > 0) {
+          await inviteMembers(existingEvent.id, inviteeIds);
         }
         router.push(`/events/${existingEvent.id}`);
       } else {
@@ -106,27 +193,33 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
           setError(res.error);
           return;
         }
+        if (inviteeIds.length > 0) {
+          await inviteMembers(res.id, inviteeIds);
+        }
         router.push(`/events/${res.id}`);
       }
     });
   }
 
-  const inputClass =
-    "w-full px-3 py-2 rounded-lg bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-sm focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600";
-
   return (
     <div className="max-w-2xl mx-auto px-4 md:px-6 py-8">
-      <h1 className="text-2xl font-semibold mb-6">{isEdit ? "Edit event" : "Host an event"}</h1>
+      <h1
+        className="text-3xl font-medium mb-6"
+        style={{ fontFamily: "var(--font-martina), Georgia, serif" }}
+      >
+        {isEdit ? "Edit event" : "Host an event"}
+      </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Photos */}
-        <PhotoManager images={images} onChange={setImages} onError={setError} />
+        <PhotoManager images={images} onChange={setImages} uploadFn={uploadEventCover} />
 
-        {/* Spot picker */}
-        <div>
-          <label className="block text-xs font-medium text-neutral-500 mb-2">Spot</label>
+        {/* === Basic info === */}
+        <SectionHeader>Basic info</SectionHeader>
+
+        <Field label="Space" required>
           {spot ? (
-            <div className="flex items-center justify-between p-3 rounded-lg border border-neutral-200 dark:border-neutral-800">
+            <div className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-surface">
               <div className="min-w-0">
                 <div className="text-sm font-medium truncate">{spot.name}</div>
                 <div className="text-xs text-neutral-500 truncate">{spot.neighborhood}, {spot.city}</div>
@@ -134,7 +227,7 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
               <button
                 type="button"
                 onClick={() => { setSpot(null); setSpotQuery(""); }}
-                className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
+                className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white shrink-0 ml-2"
               >
                 Change
               </button>
@@ -142,26 +235,26 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
           ) : (
             <div className="relative">
               <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
                 <input
                   type="text"
-                  placeholder="Search for a spot…"
+                  placeholder="Search for a space…"
                   value={spotQuery}
                   onChange={(e) => setSpotQuery(e.target.value)}
                   className={inputClass + " pl-9"}
                 />
               </div>
               {spotQuery && (spotResults.length > 0 || searching) && (
-                <div className="absolute z-10 left-0 right-0 mt-1 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+                <div className="absolute z-10 left-0 right-0 mt-1.5 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg max-h-72 overflow-y-auto">
                   {searching && spotResults.length === 0 && (
-                    <div className="px-3 py-2 text-xs text-neutral-500">Searching…</div>
+                    <div className="px-4 py-2 text-xs text-neutral-500">Searching…</div>
                   )}
                   {spotResults.map((s) => (
                     <button
                       key={s.id}
                       type="button"
                       onClick={() => { setSpot(s); setSpotQuery(""); setSpotResults([]); }}
-                      className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                      className="w-full text-left px-4 py-2 hover:bg-ink-100 transition-colors"
                     >
                       <div className="text-sm font-medium">{s.name}</div>
                       <div className="text-xs text-neutral-500">{s.neighborhood}, {s.city}</div>
@@ -171,11 +264,9 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
               )}
             </div>
           )}
-        </div>
+        </Field>
 
-        {/* Title */}
-        <div>
-          <label className="block text-xs font-medium text-neutral-500 mb-2">Title</label>
+        <Field label="Title" required>
           <input
             type="text"
             value={title}
@@ -184,24 +275,23 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
             className={inputClass}
             required
           />
-        </div>
+        </Field>
 
-        {/* Description */}
-        <div>
-          <label className="block text-xs font-medium text-neutral-500 mb-2">Description</label>
+        <Field label="Description">
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            rows={4}
+            rows={5}
             placeholder="What's the vibe? Who should come?"
-            className={inputClass}
+            className={inputClass + " resize-none"}
           />
-        </div>
+        </Field>
 
-        {/* Times */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-neutral-500 mb-2">Starts</label>
+        {/* === When === */}
+        <SectionHeader>When</SectionHeader>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Starts" required>
             <input
               type="datetime-local"
               value={startsAt}
@@ -209,9 +299,8 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
               className={inputClass}
               required
             />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-neutral-500 mb-2">Ends</label>
+          </Field>
+          <Field label="Ends" required>
             <input
               type="datetime-local"
               value={endsAt}
@@ -219,24 +308,24 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
               className={inputClass}
               required
             />
-          </div>
+          </Field>
         </div>
 
-        {/* Capacity + price */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-neutral-500 mb-2">Capacity (optional)</label>
+        {/* === Details === */}
+        <SectionHeader>Details</SectionHeader>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Capacity">
             <input
               type="number"
               min={1}
               value={capacity}
               onChange={(e) => setCapacity(e.target.value)}
-              placeholder="Leave empty for unlimited"
+              placeholder="Unlimited"
               className={inputClass}
             />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-neutral-500 mb-2">Price USD (0 = free)</label>
+          </Field>
+          <Field label="Price USD">
             <input
               type="number"
               min={0}
@@ -246,12 +335,10 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
               placeholder="0"
               className={inputClass}
             />
-          </div>
+          </Field>
         </div>
 
-        {/* Age */}
-        <div>
-          <label className="block text-xs font-medium text-neutral-500 mb-2">Age (optional)</label>
+        <Field label="Age restriction">
           <input
             type="text"
             value={ageRestriction}
@@ -259,19 +346,17 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
             placeholder="e.g. 18+, 21+, All ages"
             className={inputClass}
           />
-        </div>
+        </Field>
 
-        {/* Visibility */}
-        <div>
-          <label className="block text-xs font-medium text-neutral-500 mb-2">Visibility</label>
+        <Field label="Visibility">
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => setVisibility("public")}
-              className={`flex items-center gap-2 p-3 rounded-lg border text-sm ${
+              className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm transition-colors ${
                 visibility === "public"
                   ? "border-neutral-900 dark:border-white"
-                  : "border-neutral-200 dark:border-neutral-800"
+                  : "border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
               }`}
             >
               <Globe size={14} />
@@ -283,10 +368,10 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
             <button
               type="button"
               onClick={() => setVisibility("private")}
-              className={`flex items-center gap-2 p-3 rounded-lg border text-sm ${
+              className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm transition-colors ${
                 visibility === "private"
                   ? "border-neutral-900 dark:border-white"
-                  : "border-neutral-200 dark:border-neutral-800"
+                  : "border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
               }`}
             >
               <Lock size={14} />
@@ -296,227 +381,128 @@ export default function NewEventClient({ initialSpot, existingEvent = null }: Pr
               </div>
             </button>
           </div>
-          {visibility === "private" && (
-            <p className="text-xs text-neutral-500 mt-2">
-              You&apos;ll be able to invite members from the event page after creating it.
-            </p>
-          )}
-        </div>
+        </Field>
 
-        {error && (
-          <div className="text-sm text-red-600 dark:text-red-400">{error}</div>
+        {visibility === "private" && (
+          <Field label={`Invite members · ${invitees.length} invited`}>
+            <div className="relative">
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <input
+                type="text"
+                placeholder="Search by name or Instagram handle…"
+                value={inviteQuery}
+                onChange={(e) => setInviteQuery(e.target.value)}
+                className={inputClass + " pl-9"}
+              />
+              {inviteQuery && (inviteResults.length > 0 || inviteSearching) && (
+                <div className="absolute z-10 left-0 right-0 mt-1.5 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+                  {inviteSearching && inviteResults.length === 0 && (
+                    <div className="px-4 py-2 text-xs text-neutral-500">Searching…</div>
+                  )}
+                  {inviteResults
+                    .filter((m) => !invitees.some((i) => i.id === m.id))
+                    .map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => addInvitee(m)}
+                        className="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-ink-100 transition-colors"
+                      >
+                        <Avatar member={m} />
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">{memberLabel(m)}</div>
+                          {m.instagram && (
+                            <div className="text-xs text-neutral-500 truncate">@{m.instagram}</div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {invitees.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {invitees.map((m) => (
+                  <span
+                    key={m.id}
+                    className="inline-flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full border border-neutral-200 dark:border-neutral-700 bg-surface text-xs text-neutral-700 dark:text-neutral-200"
+                  >
+                    <Avatar member={m} size={20} />
+                    {memberLabel(m)}
+                    <button
+                      type="button"
+                      onClick={() => removeInvitee(m.id)}
+                      className="text-neutral-400 hover:text-red-500 transition-colors"
+                      aria-label={`Remove ${memberLabel(m)}`}
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-neutral-500 mt-2">
+              Invitees get a notification and can RSVP. You can adjust this list anytime.
+            </p>
+          </Field>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="px-4 py-2 rounded-full text-sm font-medium border border-neutral-200 dark:border-neutral-800"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={pending}
-            className="px-5 py-2 rounded-full text-sm font-medium bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 disabled:opacity-50"
-          >
-            {pending ? (isEdit ? "Saving…" : "Creating…") : isEdit ? "Save changes" : "Create event"}
-          </button>
+        {error && <p className="text-sm text-red-500">{error}</p>}
+        <div className="h-32" />
+
+        {/* Fixed bottom bar — mirrors EditListingForm/ReviewForm */}
+        <div className="fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-surface/90 backdrop-blur-lg border-t border-neutral-200 dark:border-neutral-800">
+          <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              disabled={pending}
+              className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white disabled:opacity-60 transition-colors shrink-0"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={pending}
+              className="px-8 py-2.5 text-sm font-medium rounded-xl bg-black text-white dark:bg-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-60 transition-colors flex items-center gap-2 shrink-0"
+            >
+              {pending ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" /> {isEdit ? "Saving..." : "Creating..."}
+                </>
+              ) : (
+                isEdit ? "Save" : "Create event"
+              )}
+            </button>
+          </div>
         </div>
       </form>
     </div>
   );
 }
 
-function PhotoManager({
-  images,
-  onChange,
-  onError,
-}: {
-  images: string[];
-  onChange: (images: string[]) => void;
-  onError: (msg: string | null) => void;
-}) {
-  const [uploading, setUploading] = useState<number | "add" | null>(null);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const replaceIndexRef = useRef<number | null>(null);
-
-  async function uploadFile(file: File): Promise<string | null> {
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const res = await fetch("/api/events/upload-cover", { method: "POST", body: formData });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        onError(json.error || "Upload failed");
-        return null;
-      }
-      const data = await res.json();
-      return data.url;
-    } catch {
-      onError("Upload failed");
-      return null;
-    }
+function Avatar({ member, size = 28 }: { member: MemberSearchResult; size?: number }) {
+  const initial = (member.first_name?.[0] || member.instagram?.[0] || "?").toUpperCase();
+  if (member.avatar_url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={member.avatar_url}
+        alt=""
+        width={size}
+        height={size}
+        className="rounded-full object-cover shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
   }
-
-  function triggerFileInput(replaceIndex: number | null) {
-    replaceIndexRef.current = replaceIndex;
-    fileInputRef.current?.click();
-  }
-
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    onError(null);
-
-    const replaceIndex = replaceIndexRef.current;
-    replaceIndexRef.current = null;
-
-    if (replaceIndex !== null) {
-      setUploading(replaceIndex);
-      const url = await uploadFile(files[0]);
-      if (url) {
-        const next = [...images];
-        next[replaceIndex] = url;
-        onChange(next);
-      }
-      setUploading(null);
-    } else {
-      setUploading("add");
-      const newUrls: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const url = await uploadFile(files[i]);
-        if (url) newUrls.push(url);
-      }
-      if (newUrls.length > 0) onChange([...images, ...newUrls]);
-      setUploading(null);
-    }
-
-    e.target.value = "";
-  }
-
-  function removeImage(index: number) {
-    onChange(images.filter((_, i) => i !== index));
-  }
-
-  function handleDrop(fromIndex: number, toIndex: number) {
-    if (fromIndex === toIndex) return;
-    const next = [...images];
-    const [moved] = next.splice(fromIndex, 1);
-    next.splice(toIndex, 0, moved);
-    onChange(next);
-  }
-
   return (
-    <div>
-      <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
-      <p className="text-sm font-medium mb-3">Photos</p>
-
-      {images.length > 0 && (
-        <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[320px] rounded-xl overflow-hidden mb-3">
-          {(() => {
-            const slots = [...images.slice(0, 5)];
-            while (slots.length < 5) slots.push("");
-            return (
-              <>
-                <div className="col-span-2 row-span-2 relative group bg-neutral-100 dark:bg-neutral-800">
-                  {slots[0] ? (
-                    <>
-                      <img src={slots[0]} alt="Photo 1" className="w-full h-full object-cover" />
-                      <div
-                        draggable
-                        onDragStart={() => setDragIndex(0)}
-                        onDragOver={(e) => { e.preventDefault(); setDragOverIndex(0); }}
-                        onDrop={() => { if (dragIndex !== null) handleDrop(dragIndex, 0); setDragIndex(null); setDragOverIndex(null); }}
-                        onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
-                        className={`absolute inset-0 flex items-center justify-center transition-all ${dragOverIndex === 0 ? "bg-neutral-900/20 ring-2 ring-inset ring-neutral-900" : uploading === 0 ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
-                      >
-                        {uploading === 0 ? (
-                          <Loader2 size={20} className="text-white animate-spin" />
-                        ) : (
-                          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity">
-                            <button type="button" onClick={() => triggerFileInput(0)} className="p-2 rounded-lg bg-white/90 text-neutral-700 hover:bg-white"><Upload size={14} /></button>
-                            <button type="button" onClick={() => removeImage(0)} className="p-2 rounded-lg bg-white/90 text-red-500 hover:bg-white"><Trash2 size={14} /></button>
-                            <div className="p-2 rounded-lg bg-white/90 text-neutral-700 cursor-grab"><GripVertical size={14} /></div>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <button type="button" onClick={() => triggerFileInput(null)} className="w-full h-full flex flex-col items-center justify-center text-neutral-400 hover:text-neutral-500">
-                      <Plus size={20} /><span className="text-xs mt-1">Add</span>
-                    </button>
-                  )}
-                </div>
-                {slots.slice(1, 5).map((url, i) => {
-                  const idx = i + 1;
-                  return (
-                    <div key={idx} className="relative group bg-neutral-100 dark:bg-neutral-800">
-                      {url ? (
-                        <>
-                          <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                          <div
-                            draggable
-                            onDragStart={() => setDragIndex(idx)}
-                            onDragOver={(e) => { e.preventDefault(); setDragOverIndex(idx); }}
-                            onDrop={() => { if (dragIndex !== null) handleDrop(dragIndex, idx); setDragIndex(null); setDragOverIndex(null); }}
-                            onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
-                            className={`absolute inset-0 flex items-center justify-center transition-all ${dragOverIndex === idx ? "bg-neutral-900/20 ring-2 ring-inset ring-neutral-900" : uploading === idx ? "bg-black/40" : "bg-black/0 hover:bg-black/40"}`}
-                          >
-                            {uploading === idx ? (
-                              <Loader2 size={20} className="text-white animate-spin" />
-                            ) : (
-                              <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity">
-                                <button type="button" onClick={() => triggerFileInput(idx)} className="p-2 rounded-lg bg-white/90 text-neutral-700 hover:bg-white"><Upload size={14} /></button>
-                                <button type="button" onClick={() => removeImage(idx)} className="p-2 rounded-lg bg-white/90 text-red-500 hover:bg-white"><Trash2 size={14} /></button>
-                                <div className="p-2 rounded-lg bg-white/90 text-neutral-700 cursor-grab"><GripVertical size={14} /></div>
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <button type="button" onClick={() => triggerFileInput(null)} className="w-full h-full flex flex-col items-center justify-center text-neutral-400 hover:text-neutral-500">
-                          <Plus size={20} /><span className="text-xs mt-1">Add</span>
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </>
-            );
-          })()}
-        </div>
-      )}
-
-      {images.length > 5 && (
-        <div className="grid grid-cols-5 gap-2 mb-3">
-          {images.slice(5).map((url, i) => {
-            const idx = i + 5;
-            return (
-              <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/0 hover:bg-black/40 flex items-center justify-center transition-all">
-                  <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity">
-                    <button type="button" onClick={() => triggerFileInput(idx)} className="p-2 rounded-lg bg-white/90 text-neutral-700 hover:bg-white"><Upload size={14} /></button>
-                    <button type="button" onClick={() => removeImage(idx)} className="p-2 rounded-lg bg-white/90 text-red-500 hover:bg-white"><Trash2 size={14} /></button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={() => triggerFileInput(null)}
-        disabled={uploading !== null}
-        className="flex items-center gap-2 px-4 py-2.5 text-sm border border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl text-neutral-500 hover:border-neutral-400 hover:text-neutral-700 transition-colors disabled:opacity-50"
-      >
-        {uploading === "add" ? <><Loader2 size={14} className="animate-spin" /> Uploading...</> : <><Plus size={14} /> Add photos</>}
-      </button>
+    <div
+      className="rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-[10px] font-medium text-neutral-600 dark:text-neutral-300 shrink-0"
+      style={{ width: size, height: size }}
+    >
+      {initial}
     </div>
   );
 }

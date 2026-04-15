@@ -662,7 +662,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               return (
                 <div ref={eventTypesDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                   <div className="relative" style={{ marginLeft: left }}>
-                    <div className="mt-1.5 w-56 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg flex flex-col max-h-72 animate-[fadeSlideDown_150ms_ease-out]">
+                    <div className="mt-1.5 w-56 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-72 animate-[fadeSlideDown_150ms_ease-out]">
                       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-1">
                       {visibleTypes.length === 0 && (
                         <div className="px-4 py-3 text-xs text-neutral-400">No upcoming events</div>
@@ -688,7 +688,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                                 setActiveVibes(new Set());
                               }
                             }}
-                            className={`flex w-full items-center justify-between gap-2.5 px-4 py-2 text-xs transition-colors ${isActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}
+                            className={`group flex w-full items-center justify-between gap-2.5 px-4 py-2 text-xs transition-colors ${isActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-ink-100"}`}
                           >
                             <span className="flex items-center gap-2.5 min-w-0">
                               <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isActive ? "bg-brand-500 border-brand-500" : "border-neutral-300 dark:border-neutral-600"}`}>
@@ -696,7 +696,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                               </span>
                               <span className="truncate">{CATEGORY_LABELS[c]}</span>
                             </span>
-                            <span className="text-neutral-300 dark:text-neutral-600 shrink-0">{count}</span>
+                            <span className="text-neutral-600 dark:text-neutral-300 shrink-0">{count}</span>
                           </button>
                         );
                       })}
@@ -726,20 +726,20 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               return (
                 <div ref={vibesDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                   <div className="relative" style={{ marginLeft: left }}>
-                    <div className="mt-1.5 w-60 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg flex flex-col max-h-72 animate-[fadeSlideDown_150ms_ease-out]">
+                    <div className="mt-1.5 w-60 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-72 animate-[fadeSlideDown_150ms_ease-out]">
                       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-1">
                       {vibes.map((v) => {
                         const isActive = activeVibes.has(v);
                         const count = vibeCount.get(v) ?? 0;
                         return (
-                          <button key={v} onClick={() => { setActiveVibes((prev) => { const next = new Set(prev); isActive ? next.delete(v) : next.add(v); return next; }); }} className={`flex w-full items-center justify-between gap-2.5 px-4 py-2 text-xs transition-colors ${isActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
+                          <button key={v} onClick={() => { setActiveVibes((prev) => { const next = new Set(prev); isActive ? next.delete(v) : next.add(v); return next; }); }} className={`group flex w-full items-center justify-between gap-2.5 px-4 py-2 text-xs transition-colors ${isActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-ink-100"}`}>
                             <span className="flex items-center gap-2.5 min-w-0">
                               <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isActive ? "bg-brand-500 border-brand-500" : "border-neutral-300 dark:border-neutral-600"}`}>
                                 {isActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                               </span>
                               <span className="truncate">{v}</span>
                             </span>
-                            <span className="text-neutral-300 dark:text-neutral-600 shrink-0">{count}</span>
+                            <span className="text-neutral-600 dark:text-neutral-300 shrink-0">{count}</span>
                           </button>
                         );
                       })}
@@ -769,12 +769,12 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               return (
               <div ref={neighborhoodDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                 <div className="relative" style={{ marginLeft: left }}>
-                  <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg flex flex-col max-h-60 animate-[fadeSlideDown_150ms_ease-out]">
+                  <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-60 animate-[fadeSlideDown_150ms_ease-out]">
                     <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-1">
                     {neighborhoods.map((n) => {
                       const count = allSpots.filter((s) => s.neighborhood === n).length;
                       return (
-                        <button key={n} onClick={() => { setActiveNeighborhood(activeNeighborhood === n ? null : n); setNeighborhoodOpen(false); setEventsOnly(false); }} className={`flex w-full items-center justify-between px-4 py-2.5 text-xs transition-colors ${activeNeighborhood === n ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
+                        <button key={n} onClick={() => { setActiveNeighborhood(activeNeighborhood === n ? null : n); setNeighborhoodOpen(false); setEventsOnly(false); }} className={`flex w-full items-center justify-between px-4 py-2.5 text-xs transition-colors ${activeNeighborhood === n ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-ink-100"}`}>
                           {n}
                           <span className="text-neutral-300 dark:text-neutral-600">{count}</span>
                         </button>
@@ -836,21 +836,21 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 const isSubActive = activeSubcategories.has(sub);
                 const count = subCount.get(sub) ?? 0;
                 return (
-                  <button key={sub} onClick={() => { setActiveSubcategories((prev) => { const next = new Set(prev); isSubActive ? next.delete(sub) : next.add(sub); return next; }); }} className={`flex w-full items-center justify-between gap-2.5 px-4 py-2 text-xs transition-colors ${isSubActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
+                  <button key={sub} onClick={() => { setActiveSubcategories((prev) => { const next = new Set(prev); isSubActive ? next.delete(sub) : next.add(sub); return next; }); }} className={`group flex w-full items-center justify-between gap-2.5 px-4 py-2 text-xs transition-colors ${isSubActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-ink-100"}`}>
                     <span className="flex items-center gap-2.5 min-w-0">
                       <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isSubActive ? "bg-brand-500 border-brand-500" : "border-neutral-300 dark:border-neutral-600"}`}>
                         {isSubActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                       </span>
                       <span className="truncate">{sub}</span>
                     </span>
-                    <span className="text-neutral-300 dark:text-neutral-600 shrink-0">{count}</span>
+                    <span className="text-neutral-600 dark:text-neutral-300 shrink-0">{count}</span>
                   </button>
                 );
               };
               return (
                 <div ref={categoryDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                   <div className="relative" style={{ marginLeft: left }}>
-                    <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg flex flex-col max-h-72 animate-[fadeSlideDown_150ms_ease-out]">
+                    <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-72 animate-[fadeSlideDown_150ms_ease-out]">
                       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-1">
                       {renderedGroups
                         ? renderedGroups.map((g) => (

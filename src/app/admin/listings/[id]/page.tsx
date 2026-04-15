@@ -21,6 +21,18 @@ export default async function EditListingPage({
 
   if (error || !spot) notFound();
 
+  // Distinct neighborhoods across all existing spots — admins have been
+  // adding custom values ("Hialeah", "Doral") that aren't in the
+  // hardcoded MIAMI_NEIGHBORHOODS list. Merge them into the picker so
+  // the second listing in a new neighborhood benefits from the first.
+  const { data: nbRows } = await supabase
+    .from("spots")
+    .select("neighborhood")
+    .not("neighborhood", "is", null);
+  const existingNeighborhoods = Array.from(
+    new Set((nbRows ?? []).map((r) => r.neighborhood).filter(Boolean) as string[]),
+  ).sort((a, b) => a.localeCompare(b));
+
   return (
     <div className="h-screen flex flex-col bg-surface">
       <Navbar />
@@ -33,7 +45,7 @@ export default async function EditListingPage({
             </p>
           </div>
 
-          <EditListingForm spot={spot} />
+          <EditListingForm spot={spot} existingNeighborhoods={existingNeighborhoods} />
         </div>
       </div>
     </div>

@@ -37,7 +37,7 @@ export default function ListingsTable({ spots }: { spots: SpotRow[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search listings..."
-          className="w-full pl-10 pr-4 py-2.5 text-sm border border-black/10 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-900 text-black dark:text-white focus:outline-none focus:border-black/30 dark:focus:border-white/30 placeholder:text-black/40 dark:placeholder:text-white/40 transition-colors"
+          className="w-full pl-10 pr-4 py-2.5 text-sm border border-black/10 dark:border-white/10 rounded-lg text-black dark:text-white focus:outline-none focus:border-black/30 dark:focus:border-white/30 placeholder:text-black/40 dark:placeholder:text-white/40 transition-colors"
           style={fontCalibre}
         />
       </div>
@@ -54,7 +54,7 @@ export default function ListingsTable({ spots }: { spots: SpotRow[] }) {
             <Link
               key={spot.id}
               href={`/admin/listings/${spot.id}`}
-              className="flex items-center gap-4 p-3 border border-black/10 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-900 hover:border-black/20 dark:hover:border-white/20 transition-colors"
+              className="flex items-center gap-4 p-3 border border-black/10 dark:border-white/10 rounded-lg hover:border-black/20 dark:hover:border-white/20 transition-colors"
             >
               <div className="w-12 h-12 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 shrink-0">
                 {spot.images?.[0] ? (

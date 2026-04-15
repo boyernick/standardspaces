@@ -117,22 +117,22 @@ function getCompactHours(hours: string): string | null {
 
 function getOpenStatus(hours: string): string | null {
   const ALL_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const ALL_DAYS_FULL = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const now = new Date();
   const today = ALL_DAYS[now.getDay()];
+  const yesterday = ALL_DAYS[(now.getDay() + 6) % 7];
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-  // Parse hours into day map
   const compact = getCompactHours(hours);
-  let todayTimes: string | null = null;
 
-  // Try "Daily X" format
+  // Build day → times map across all supported formats ("Daily X",
+  // "Mon–Fri X", "Mon X, Tue Y, …").
+  const dayMap = new Map<string, string>();
   const dailyMatch = hours.match(/^Daily\s+(.+)$/i);
-  if (dailyMatch) todayTimes = dailyMatch[1].trim();
-
-  // Try range/individual format
-  if (!todayTimes) {
-    const ALL_DAYS_FULL = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const lines: { day: string; times: string }[] = [];
+  if (dailyMatch) {
+    const t = dailyMatch[1].trim();
+    for (const d of ALL_DAYS_FULL) dayMap.set(d, t);
+  } else {
     const rangeMatch = hours.match(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*[-–]\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(.+)$/i);
     if (rangeMatch) {
       const startIdx = ALL_DAYS_FULL.indexOf(rangeMatch[1]);
@@ -141,28 +141,20 @@ function getOpenStatus(hours: string): string | null {
       if (startIdx >= 0 && endIdx >= 0) {
         let i = startIdx;
         while (true) {
-          lines.push({ day: ALL_DAYS_FULL[i], times });
+          dayMap.set(ALL_DAYS_FULL[i], times);
           if (i === endIdx) break;
           i = (i + 1) % 7;
         }
       }
-    }
-    if (lines.length === 0) {
+    } else {
       const dayPattern = /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/g;
       const parts = hours.split(dayPattern).filter(Boolean);
       for (let i = 0; i < parts.length - 1; i += 2) {
         const day = parts[i].trim();
-        let times = parts[i + 1].replace(/^[,\s·]+/, "").replace(/[,\s·]+$/, "").trim();
-        if (day && times) lines.push({ day, times });
+        const times = parts[i + 1].replace(/^[,\s·]+/, "").replace(/[,\s·]+$/, "").trim();
+        if (day && times) dayMap.set(day, times);
       }
     }
-    const dayMap = new Map(lines.map((l) => [l.day, l.times]));
-    todayTimes = dayMap.get(today) ?? null;
-  }
-
-  if (!todayTimes || todayTimes.toLowerCase() === "closed") {
-    // Find next opening
-    return compact ? `Closed · ${compact}` : "Closed";
   }
 
   // Parse time like "6AM–11:30PM" or "6PM-2AM"
@@ -176,32 +168,43 @@ function getOpenStatus(hours: string): string | null {
     if (period === "AM" && h === 12) h = 0;
     return h * 60 + min;
   }
+  function parseRange(timeStr: string): { open: number; close: number; openStr: string; closeStr: string } | null {
+    const p = timeStr.split(/[-–]/);
+    if (p.length !== 2) return null;
+    const open = parseTime(p[0]);
+    const close = parseTime(p[1]);
+    if (open === null || close === null) return null;
+    return { open, close, openStr: p[0].trim(), closeStr: p[1].trim() };
+  }
 
-  const parts = todayTimes.split(/[-–]/);
-  if (parts.length === 2) {
-    const open = parseTime(parts[0]);
-    const close = parseTime(parts[1]);
-    if (open !== null && close !== null) {
-      const closeStr = parts[1].trim();
-      // Handle overnight (e.g., 6PM-2AM)
-      const openStr = parts[0].trim();
-      const isOvernight = close <= open;
-      if (isOvernight) {
-        if (currentMinutes >= open || currentMinutes < close) {
-          return `Open now · Closes at ${closeStr}`;
-        } else {
-          return `Closed · Opens at ${openStr}`;
-        }
-      } else {
-        if (currentMinutes >= open && currentMinutes < close) {
-          return `Open now · Closes at ${closeStr}`;
-        } else if (currentMinutes < open) {
-          return `Closed · Opens at ${openStr}`;
-        } else {
-          return `Closed · Opens at ${openStr}`;
-        }
-      }
+  // Overnight carry-over: if yesterday had an overnight block (e.g. Sat 10PM–2AM)
+  // and we're still inside its tail past midnight, we're still open.
+  const yTimes = dayMap.get(yesterday);
+  if (yTimes && yTimes.toLowerCase() !== "closed") {
+    const y = parseRange(yTimes);
+    if (y && y.close <= y.open && currentMinutes < y.close) {
+      return `Open now · Closes at ${y.closeStr}`;
     }
+  }
+
+  const todayTimes = dayMap.get(today) ?? null;
+  if (!todayTimes || todayTimes.toLowerCase() === "closed") {
+    return compact ? `Closed · ${compact}` : "Closed";
+  }
+
+  const t = parseRange(todayTimes);
+  if (t) {
+    const isOvernight = t.close <= t.open;
+    if (isOvernight) {
+      if (currentMinutes >= t.open || currentMinutes < t.close) {
+        return `Open now · Closes at ${t.closeStr}`;
+      }
+      return `Closed · Opens at ${t.openStr}`;
+    }
+    if (currentMinutes >= t.open && currentMinutes < t.close) {
+      return `Open now · Closes at ${t.closeStr}`;
+    }
+    return `Closed · Opens at ${t.openStr}`;
   }
 
   return compact ?? todayTimes;

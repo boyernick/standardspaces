@@ -317,7 +317,7 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
           </button>
           <button
             onClick={() => router.push("/admin/recommendations")}
-            className="px-4 py-2 text-sm font-medium rounded-xl bg-brand-500 text-white hover:bg-brand-600 transition-colors"
+            className="px-4 py-2 text-sm font-medium rounded-xl bg-black text-white dark:bg-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
           >
             Review more spaces
           </button>
@@ -486,12 +486,12 @@ export default function ReviewForm({ recommendation: rec }: { recommendation: Re
           disabled={publishing || deleting}
           className="text-sm text-red-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-60 transition-colors flex items-center gap-1.5 shrink-0"
         >
-          {deleting ? <><Loader2 size={14} className="animate-spin" /> Deleting...</> : <><Trash2 size={14} /> Delete</>}
+          {deleting ? <><Loader2 size={14} className="animate-spin" /> Deleting...</> : "Delete"}
         </button>
         <button
           onClick={handlePublish}
           disabled={publishing || deleting}
-          className="px-8 py-2.5 text-sm font-medium rounded-xl bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-60 transition-colors flex items-center gap-2 shrink-0"
+          className="px-8 py-2.5 text-sm font-medium rounded-xl bg-black text-white dark:bg-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-60 transition-colors flex items-center gap-2 shrink-0"
         >
           {publishing ? <><Loader2 size={16} className="animate-spin" /> Publishing...</> : "Publish to site"}
         </button>
@@ -638,7 +638,7 @@ function ChipSelect({
               onClick={() => toggle(opt)}
               className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
                 isActive
-                  ? "bg-brand-500 border-brand-500 text-white"
+                  ? "bg-black border-black text-white dark:bg-white dark:border-white dark:text-black"
                   : "bg-surface border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-500"
               }`}
             >

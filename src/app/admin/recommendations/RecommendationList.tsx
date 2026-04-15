@@ -189,7 +189,7 @@ export default function RecommendationList({
                     {(rec.status === "scraped" || rec.status === "published") && (
                       <Link
                         href={`/admin/review/${rec.id}`}
-                        className="px-3 py-1.5 text-xs font-medium text-white bg-brand-500 rounded-full hover:bg-brand-600 transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-black dark:bg-white dark:text-black rounded-full hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
                         style={fontCalibre}
                       >
                         {rec.status === "published" ? "View" : "Review & publish"}

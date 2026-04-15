@@ -393,6 +393,23 @@ export async function searchMembersForInvite(
     .single();
   if (!event || event.host_id !== user.id) return [];
 
+  return runMemberSearch(supabase, query, user.id);
+}
+
+// Event-agnostic variant used by the create/edit form — before the event
+// exists we have no host_id to verify against, but any authenticated member
+// can already browse the directory so this is no new exposure.
+export async function searchMembers(query: string): Promise<MemberSearchResult[]> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+  return runMemberSearch(supabase, query, user.id);
+}
+
+async function runMemberSearch(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  query: string,
+  excludeUserId: string,
+): Promise<MemberSearchResult[]> {
   const q = query.trim();
   if (!q) return [];
 
@@ -401,11 +418,32 @@ export async function searchMembersForInvite(
     .from("profiles")
     .select("id, first_name, last_name, avatar_url, instagram")
     .or(`first_name.ilike.${pattern},last_name.ilike.${pattern},instagram.ilike.${pattern}`)
-    .neq("id", user.id)
+    .neq("id", excludeUserId)
     .not("first_name", "is", null)
     .limit(8);
 
   return (data ?? []) as MemberSearchResult[];
+}
+
+export async function getInvitedMembers(eventId: string): Promise<MemberSearchResult[]> {
+  const user = await requireAuth();
+  const supabase = await createClient();
+
+  const { data: event } = await supabase
+    .from("events")
+    .select("host_id")
+    .eq("id", eventId)
+    .single();
+  if (!event || event.host_id !== user.id) return [];
+
+  const { data } = await supabase
+    .from("event_invites")
+    .select("user_id, profiles:user_id(id, first_name, last_name, avatar_url, instagram)")
+    .eq("event_id", eventId);
+
+  return ((data ?? [])
+    .map((r) => r.profiles)
+    .filter(Boolean) as unknown) as MemberSearchResult[];
 }
 
 export async function inviteMembers(

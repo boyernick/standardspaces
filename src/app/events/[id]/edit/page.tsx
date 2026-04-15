@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth";
 import { getEventById } from "@/lib/events";
 import { getSpotById } from "@/lib/data";
+import { getInvitedMembers } from "@/app/actions/events";
 import Navbar from "@/components/Navbar";
 import NewEventClient from "../../new/NewEventClient";
 
@@ -17,12 +18,15 @@ export default async function EditEventPage({
   if (!event) notFound();
   if (event.host_id !== user.id) redirect(`/events/${id}`);
 
-  const spot = await getSpotById(event.spot_id);
+  const [spot, initialInvitees] = await Promise.all([
+    getSpotById(event.spot_id),
+    getInvitedMembers(id),
+  ]);
 
   return (
     <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--color-surface)" }}>
       <Navbar />
-      <NewEventClient initialSpot={spot} existingEvent={event} />
+      <NewEventClient initialSpot={spot} existingEvent={event} initialInvitees={initialInvitees} />
     </div>
   );
 }
