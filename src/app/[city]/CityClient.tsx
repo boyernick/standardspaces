@@ -110,10 +110,11 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
 
   // Editorial order from CATEGORY_ORDER — categories are 7 items where the
   // intentional left-to-right hierarchy beats data-driven shuffling.
-  // Shops always renders even with zero matches so the row feels complete
-  // across cities that haven't onboarded any retail yet.
+  // Shops and Venues always render even with zero matches so the row feels
+  // complete across cities that haven't onboarded those categories yet.
+  const ALWAYS_SHOWN_CATEGORIES: Category[] = ["shopping", "members"];
   const categories = useMemo(
-    () => CATEGORY_ORDER.filter((c) => c === "shopping" || (categoryCount.get(c) ?? 0) > 0),
+    () => CATEGORY_ORDER.filter((c) => ALWAYS_SHOWN_CATEGORIES.includes(c) || (categoryCount.get(c) ?? 0) > 0),
     [categoryCount],
   );
   const vibes = useMemo(
