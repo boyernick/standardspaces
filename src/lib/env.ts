@@ -38,17 +38,11 @@ function assertEnv(scope: Scope, keys: readonly string[]) {
     `Missing required ${scope} env vars: ${missing.join(", ")}.\n` +
     `Set them in .env.local (dev) or the Vercel project settings (prod). ` +
     `See .env.example for the full list.`;
-  // Only hard-fail at actual runtime on a real deploy. During
-  // `next build` (phase-production-build) and in dev/CI we just warn —
-  // builds don't exercise every secret and blocking them would be more
-  // friction than safety. Vercel runtime gets NODE_ENV=production AND a
-  // non-build phase, so prod deploys still fail fast on missing creds.
-  const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
-  const isRuntimeProd =
-    process.env.NODE_ENV === "production" && !isBuildPhase && !process.env.CI;
-  if (isRuntimeProd) {
-    throw new Error(msg);
-  }
+  // Warn, don't throw. A missing var should 500 the one handler that
+  // actually needs it (e.g. /api/send-otp without Twilio creds), not
+  // brick every page because the root layout imports this module. We
+  // learned this the hard way: a hard throw here crashed the whole site
+  // when one var wasn't set on Vercel.
   console.warn(`[env] ${msg}`);
 }
 
