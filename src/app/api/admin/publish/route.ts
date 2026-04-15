@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { geocodeAddress } from "@/lib/geocode";
 import { createNotification, fanOutNewSpotToCity } from "@/lib/notifications";
 import { embedSpot } from "@/lib/embeddings";
+import { requireAdminApi } from "@/lib/auth";
 
 /**
  * Copy a batch of image URLs into a stable `spots/{spotId}/` subfolder of
@@ -98,6 +99,8 @@ async function persistImagesForSpot(
 }
 
 export async function POST(req: NextRequest) {
+  const deny = await requireAdminApi();
+  if (deny) return deny;
   try {
     const supabase = createAdminClient();
     const { recommendationId, spot } = await req.json();

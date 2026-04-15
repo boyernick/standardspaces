@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { embedSpot, buildSpotCorpus } from "@/lib/embeddings";
+import { requireAdminApi } from "@/lib/auth";
 
 /** Fields that, when changed, require re-embedding. */
 const EMBEDDING_FIELDS = [
@@ -15,6 +16,8 @@ const EMBEDDING_FIELDS = [
 ] as const;
 
 export async function PUT(req: NextRequest) {
+  const deny = await requireAdminApi();
+  if (deny) return deny;
   try {
     const { id, updates } = await req.json();
 
@@ -91,6 +94,8 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const deny = await requireAdminApi();
+  if (deny) return deny;
   try {
     const { id } = await req.json();
 

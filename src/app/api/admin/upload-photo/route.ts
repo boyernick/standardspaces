@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdminApi } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
+  const deny = await requireAdminApi();
+  if (deny) return deny;
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

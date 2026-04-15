@@ -33,3 +33,21 @@ export async function requireAdmin() {
   if (!profile || profile.role !== "admin") forbidden();
   return profile;
 }
+
+/**
+ * API-route variant of requireAdmin: returns `null` if the caller is an
+ * admin, or a JSON Response (401/403) to return directly from the handler.
+ * Pattern:
+ *   const deny = await requireAdminApi();
+ *   if (deny) return deny;
+ */
+export async function requireAdminApi() {
+  const { NextResponse } = await import("next/server");
+  const user = await getSession();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const profile = await getProfile();
+  if (!profile || profile.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return null;
+}

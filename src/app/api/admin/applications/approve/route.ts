@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { approveApplication } from "@/app/actions/applicationDecision";
+import { requireAdminApi } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
+  const deny = await requireAdminApi();
+  if (deny) return deny;
   try {
     const { applicationId } = await req.json();
     if (!applicationId) {

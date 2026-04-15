@@ -3,8 +3,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { scrapeUrl } from "@/lib/scraper";
 import { enrichScrapedData } from "@/lib/enrich";
 import { processPhotos } from "@/lib/photos";
+import { requireAdminApi } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
+  const deny = await requireAdminApi();
+  if (deny) return deny;
   try {
     const supabase = createAdminClient();
     const { recommendationId, url } = await req.json();
