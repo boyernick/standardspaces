@@ -662,10 +662,8 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               return (
                 <div ref={eventTypesDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                   <div className="relative" style={{ marginLeft: left }}>
-                    <div className="mt-1.5 w-56 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-72 overflow-y-auto scrollbar-hide animate-[fadeSlideDown_150ms_ease-out]">
-                      <button onClick={() => setActiveEventTypes(new Set())} className={`block w-full text-left px-4 py-2 text-xs transition-colors ${activeEventTypes.size === 0 ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
-                        All event types
-                      </button>
+                    <div className="mt-1.5 w-56 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg flex flex-col max-h-72 animate-[fadeSlideDown_150ms_ease-out]">
+                      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-1">
                       {visibleTypes.length === 0 && (
                         <div className="px-4 py-3 text-xs text-neutral-400">No upcoming events</div>
                       )}
@@ -702,8 +700,9 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                           </button>
                         );
                       })}
+                      </div>
                       {activeEventTypes.size > 0 && (
-                        <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
+                        <div className="border-t border-neutral-100 dark:border-neutral-800">
                           <button onClick={() => { setActiveEventTypes(new Set()); setEventTypesOpen(false); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear filter</button>
                         </div>
                       )}
@@ -727,10 +726,8 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               return (
                 <div ref={vibesDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                   <div className="relative" style={{ marginLeft: left }}>
-                    <div className="mt-1.5 w-60 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-72 overflow-y-auto scrollbar-hide animate-[fadeSlideDown_150ms_ease-out]">
-                      <button onClick={() => setActiveVibes(new Set())} className={`block w-full text-left px-4 py-2 text-xs transition-colors ${activeVibes.size === 0 ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
-                        All vibes
-                      </button>
+                    <div className="mt-1.5 w-60 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg flex flex-col max-h-72 animate-[fadeSlideDown_150ms_ease-out]">
+                      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-1">
                       {vibes.map((v) => {
                         const isActive = activeVibes.has(v);
                         const count = vibeCount.get(v) ?? 0;
@@ -746,8 +743,9 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                           </button>
                         );
                       })}
+                      </div>
                       {activeVibes.size > 0 && (
-                        <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
+                        <div className="border-t border-neutral-100 dark:border-neutral-800">
                           <button onClick={() => { setActiveVibes(new Set()); setVibesOpen(false); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear filter</button>
                         </div>
                       )}
@@ -771,10 +769,8 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               return (
               <div ref={neighborhoodDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                 <div className="relative" style={{ marginLeft: left }}>
-                  <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-60 overflow-y-auto scrollbar-hide animate-[fadeSlideDown_150ms_ease-out]">
-                    <button onClick={() => { setActiveNeighborhood(null); setNeighborhoodOpen(false); }} className={`block w-full text-left px-4 py-2.5 text-xs transition-colors ${!activeNeighborhood ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
-                      All neighborhoods
-                    </button>
+                  <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg flex flex-col max-h-60 animate-[fadeSlideDown_150ms_ease-out]">
+                    <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-1">
                     {neighborhoods.map((n) => {
                       const count = allSpots.filter((s) => s.neighborhood === n).length;
                       return (
@@ -784,6 +780,12 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                         </button>
                       );
                     })}
+                    </div>
+                    {activeNeighborhood && (
+                      <div className="border-t border-neutral-100 dark:border-neutral-800">
+                        <button onClick={() => { setActiveNeighborhood(null); setNeighborhoodOpen(false); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear filter</button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -821,7 +823,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               const ungroupedSubs = !groups
                 ? [...flatSubs].sort((a, b) => sortByCount(a, b, SUBCATEGORIES[cat]))
                 : null;
-              const activeSubCount = activeCategory === cat ? activeSubcategories.size : 0;
               const btn = categoryRef.current?.querySelector(`[data-category="${cat}"]`) as HTMLElement | null;
               const bar = filterBarRef.current;
               const barWidth = bar?.getBoundingClientRect().width ?? 375;
@@ -849,10 +850,8 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               return (
                 <div ref={categoryDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                   <div className="relative" style={{ marginLeft: left }}>
-                    <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg py-1 max-h-72 overflow-y-auto scrollbar-hide animate-[fadeSlideDown_150ms_ease-out]">
-                      <button onClick={() => { setActiveSubcategories(new Set()); }} className={`block w-full text-left px-4 py-2 text-xs transition-colors ${activeSubCount === 0 ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900"}`}>
-                        All {CATEGORY_LABELS[cat]}
-                      </button>
+                    <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg flex flex-col max-h-72 animate-[fadeSlideDown_150ms_ease-out]">
+                      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-1">
                       {renderedGroups
                         ? renderedGroups.map((g) => (
                             <div key={g.label}>
@@ -863,7 +862,8 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                             </div>
                           ))
                         : ungroupedSubs?.map(renderSub)}
-                      <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
+                      </div>
+                      <div className="border-t border-neutral-100 dark:border-neutral-800">
                         <button onClick={() => { setActiveCategory(null); setActiveSubcategories(new Set()); setCategoryDropdown(null); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear filter</button>
                       </div>
                     </div>
