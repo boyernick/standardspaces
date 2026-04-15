@@ -684,7 +684,7 @@ export default function SpotMap(props: MapProps) {
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
       <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
-        <div className="rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-md flex flex-col items-center overflow-hidden">
+        <div className="w-8 rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-md flex flex-col items-center overflow-hidden">
           <button
             type="button"
             onClick={() => zoomBy(1)}
