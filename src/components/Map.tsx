@@ -702,14 +702,33 @@ export default function SpotMap(props: MapProps) {
     );
   }, [userLocation, spots]);
 
+  // Rapid-click chaining: when the user taps +/− faster than the animation
+  // completes, accumulate against the *target* zoom instead of the current
+  // zoom. Otherwise each click restarts an ease-out from the partially-eased
+  // position and the motion feels stuttery.
+  const zoomTargetRef = useRef<number | null>(null);
   const zoomBy = useCallback((delta: number) => {
     const m = map.current;
     if (!m) return;
+    const base = zoomTargetRef.current ?? m.getZoom();
+    // Clamp to mapbox's supported range so rapid clicks don't push past the
+    // limits and cause the ease to snap.
+    const next = Math.max(m.getMinZoom(), Math.min(m.getMaxZoom(), base + delta));
+    zoomTargetRef.current = next;
     m.easeTo({
-      zoom: m.getZoom() + delta,
-      duration: 250,
+      zoom: next,
+      duration: 400,
+      // Same ease-out curve used elsewhere in the component — quick start,
+      // gentle settle. Feels smoother than mapbox's default ease-in-out at
+      // short durations.
+      easing: (t: number) => 1 - Math.pow(1 - t, 3),
       essential: true,
     });
+    const clear = () => {
+      zoomTargetRef.current = null;
+      m.off("moveend", clear);
+    };
+    m.on("moveend", clear);
   }, []);
 
   return (
