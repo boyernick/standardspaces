@@ -492,7 +492,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               {/* Events — body toggles eventsOnly; chevron opens type dropdown */}
               <div ref={eventTypesRef} className="relative shrink-0">
                 <div
-                  className={`flex items-center gap-1 pl-3.5 pr-2 py-1.5 text-sm rounded-full border whitespace-nowrap transition-colors ${
+                  className={`flex items-center gap-1 px-3.5 py-1.5 text-sm rounded-full border whitespace-nowrap transition-colors ${
                     eventsOnly || activeEventTypes.size > 0
                       ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
                       : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
@@ -522,7 +522,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                   {activeEventTypes.size > 0 ? (
                     <button
                       onClick={() => { setActiveEventTypes(new Set()); setEventTypesOpen(false); }}
-                      className="ml-1 opacity-70 hover:opacity-100 p-0.5 -mr-1"
+                      className="opacity-70 hover:opacity-100"
                       aria-label="Clear event types"
                     >
                       <X size={12} strokeWidth={2} />
@@ -530,7 +530,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                   ) : (
                     <button
                       onClick={() => setEventTypesOpen((o) => !o)}
-                      className="ml-0.5 p-0.5 -mr-1"
                       aria-label="Toggle event type filter"
                     >
                       <ChevronDown
