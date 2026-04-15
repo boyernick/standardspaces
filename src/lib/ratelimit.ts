@@ -58,3 +58,7 @@ export const otpLimit = (phone: string) =>
 /** 5 application submits per IP per hour. */
 export const applyLimit = (ip: string) =>
   checkRateLimit(`apply:${ip}`, 5, 60 * 60 * 1000);
+
+/** 20 phone-lookups per IP per hour. Mitigates enumeration scanning. */
+export const checkPhoneLimit = (ip: string) =>
+  checkRateLimit(`check-phone:${ip}`, 20, 60 * 60 * 1000);

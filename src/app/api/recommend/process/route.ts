@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getSession } from "@/lib/auth";
 import { Resend } from "resend";
 import { scrapeUrl } from "@/lib/scraper";
 import { enrichScrapedData } from "@/lib/enrich";
 import { processPhotos } from "@/lib/photos";
+
+// UUID v4 format — catches malformed IDs before they reach the DB and
+// cheap rejects scan attempts enumerating numeric IDs.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -71,12 +77,20 @@ async function sendNotification(data: {
 
 export async function POST(req: NextRequest) {
   try {
+    // Require a signed-in caller so unauthenticated clients can't kick
+    // off expensive scraping/enrichment jobs or trigger notification
+    // emails by firing recommendation IDs at us.
+    const user = await getSession();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const siteUrl = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/[^/]*$/, "") || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const supabase = createAdminClient();
     const { recommendationId } = await req.json();
 
-    if (!recommendationId) {
-      return NextResponse.json({ error: "Missing recommendationId" }, { status: 400 });
+    if (!recommendationId || typeof recommendationId !== "string" || !UUID_RE.test(recommendationId)) {
+      return NextResponse.json({ error: "Missing or invalid recommendationId" }, { status: 400 });
     }
 
     // Fetch the recommendation
@@ -88,6 +102,20 @@ export async function POST(req: NextRequest) {
 
     if (fetchError || !rec) {
       return NextResponse.json({ error: "Recommendation not found" }, { status: 404 });
+    }
+
+    // Only the user who submitted the recommendation (or an admin) can
+    // trigger processing for it. Admin override is useful for manual
+    // re-processing from the admin panel.
+    if (rec.user_id && rec.user_id !== user.id) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+      if (profile?.role !== "admin") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
 
     if (rec.status !== "pending") {

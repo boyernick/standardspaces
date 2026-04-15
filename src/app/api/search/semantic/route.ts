@@ -105,14 +105,11 @@ export async function GET(req: NextRequest) {
   });
 
   if (error) {
+    // Log the full error server-side for debugging, return only a
+    // generic message to the client. Echoing error.message verbatim
+    // leaked internal DB/function names to callers.
     console.error("match_spots RPC failed:", error);
-    const hint = /match_spots|function|vector|does not exist/i.test(error.message)
-      ? "migration not applied"
-      : "search failed";
-    return NextResponse.json(
-      { error: hint, detail: error.message },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "search failed" }, { status: 500 });
   }
 
   const results = data ?? [];

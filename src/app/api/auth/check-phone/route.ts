@@ -1,10 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkPhoneLimit } from "@/lib/ratelimit";
+
+// E.164: +<country><number>, 7–15 digits. Reject anything else cheaply
+// before touching the DB.
+const PHONE_RE = /^\+?[1-9]\d{6,14}$/;
 
 export async function POST(req: NextRequest) {
+  // Per-IP rate limit to make phone-number enumeration noisy and slow.
+  // In-memory only (see src/lib/ratelimit.ts) — swap to Upstash for
+  // persistence across Vercel cold starts.
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
+  if (!checkPhoneLimit(ip).success) {
+    return NextResponse.json(
+      { error: "Too many attempts. Try again later." },
+      { status: 429 },
+    );
+  }
+
   const { phone } = await req.json();
 
-  if (!phone) {
+  if (!phone || typeof phone !== "string" || !PHONE_RE.test(phone.trim())) {
     return NextResponse.json({ error: "Phone required." }, { status: 400 });
   }
 

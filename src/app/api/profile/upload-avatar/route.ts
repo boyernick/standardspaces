@@ -3,6 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+// Derive the on-disk extension from the validated MIME type, never
+// from the user-supplied filename (which allowed `evil.jpg.svg` to
+// slip through as `.svg`).
+const EXT_FOR_TYPE: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,7 +36,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "File too large. Max 2MB." }, { status: 400 });
     }
 
-    const ext = file.name.split(".").pop() || "jpg";
+    const ext = EXT_FOR_TYPE[file.type];
     const path = `${user.id}/${Date.now()}.${ext}`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
