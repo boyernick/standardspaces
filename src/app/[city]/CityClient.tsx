@@ -521,11 +521,11 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                     Events
                     {activeEventTypes.size > 0 && <span className="text-[10px] opacity-80">({activeEventTypes.size})</span>}
                   </button>
-                  {activeEventTypes.size > 0 ? (
+                  {eventsOnly || activeEventTypes.size > 0 ? (
                     <button
-                      onClick={() => { setActiveEventTypes(new Set()); setEventTypesOpen(false); }}
+                      onClick={() => { setEventsOnly(false); setActiveEventTypes(new Set()); setEventTypesOpen(false); }}
                       className="opacity-70 hover:opacity-100"
-                      aria-label="Clear event types"
+                      aria-label="Clear events filter"
                     >
                       <X size={12} strokeWidth={2} />
                     </button>
@@ -986,19 +986,28 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               </div>
             </div>
           ) : filteredRaw.length === 0 ? (
-            <div className="px-6 py-16 text-center">
-              <p className="text-sm text-neutral-400 dark:text-neutral-500">No spaces match your filters</p>
-              <button onClick={clearAll} className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white mt-2 transition-colors">Clear filters</button>
+            <div className="px-6 py-20 text-center">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-[#eceae2] dark:bg-[#0e0d07]">
+                <MapPin size={20} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
+              </div>
+              <h3 className="text-base font-medium">No spaces match your filters</h3>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
+                Try removing a filter to see more spaces in {cityName}.
+              </p>
+              <button onClick={clearAll} className="inline-block mt-4 text-sm font-medium text-brand-500 hover:underline">
+                Clear filters
+              </button>
             </div>
           ) : filtered.length === 0 ? (
             // Filters match real spots, but none of them are in the current
             // viewport. Show "Nearby" fallback (Airbnb's NEARBY mode).
             <div className="p-4 pt-2">
-              <div className="px-2 py-6 text-center">
-                <h3 className="text-base font-medium" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
-                  No spaces in this area
-                </h3>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
+              <div className="px-6 py-20 text-center">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-[#eceae2] dark:bg-[#0e0d07]">
+                  <MapPin size={20} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
+                </div>
+                <h3 className="text-base font-medium">No spaces in this area</h3>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
                   Pan or zoom the map, or try one of these nearby.
                 </p>
               </div>
