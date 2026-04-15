@@ -229,10 +229,14 @@ export default function CommandMenu() {
       setSemanticError(null);
       return;
     }
+    // Flip loading on immediately when a semantic search is scheduled — not
+    // when the fetch starts — so fast typing (which repeatedly cancels and
+    // reschedules the 250ms timer) keeps the "Searching…" state up instead
+    // of flashing the null state between keystrokes.
+    setSemanticLoading(true);
+    setSemanticError(null);
     const controller = new AbortController();
     const timer = setTimeout(async () => {
-      setSemanticLoading(true);
-      setSemanticError(null);
       try {
         const res = await fetch(
           `/api/search/semantic?q=${encodeURIComponent(q)}`,
@@ -408,6 +412,11 @@ export default function CommandMenu() {
                   </div>
                 </div>
               )}
+            </div>
+          ) : !hasResults && semanticLoading ? (
+            <div className="px-5 py-12 flex items-center justify-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
+              <Loader2 size={14} strokeWidth={2} className="animate-spin" />
+              <span>Searching…</span>
             </div>
           ) : !hasResults ? (
             <div className="px-5 py-12 text-center">
