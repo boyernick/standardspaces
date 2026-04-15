@@ -684,6 +684,14 @@ export default function SpotMap(props: MapProps) {
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
       <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
+        <button
+          type="button"
+          onClick={handleRecenter}
+          aria-label="Center on my location"
+          className="w-8 h-8 rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-sm flex items-center justify-center hover:bg-white/70 dark:hover:bg-neutral-900/70 transition-colors"
+        >
+          <LocateFixed size={14} strokeWidth={1.75} className="text-neutral-900 dark:text-white" />
+        </button>
         <div className="w-8 rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-sm flex flex-col items-center overflow-hidden">
           <button
             type="button"
@@ -703,14 +711,6 @@ export default function SpotMap(props: MapProps) {
             <Minus size={14} strokeWidth={1.75} className="text-neutral-900 dark:text-white" />
           </button>
         </div>
-        <button
-          type="button"
-          onClick={handleRecenter}
-          aria-label="Center on my location"
-          className="w-8 h-8 rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-md flex items-center justify-center hover:bg-white/70 dark:hover:bg-neutral-900/70 transition-colors self-end"
-        >
-          <LocateFixed size={14} strokeWidth={1.75} className="text-neutral-900 dark:text-white" />
-        </button>
       </div>
     </div>
   );
