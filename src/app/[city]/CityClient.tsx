@@ -146,6 +146,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
   const [activeEventTypes, setActiveEventTypes] = useState<Set<Category>>(new Set());
   const [eventTypesOpen, setEventTypesOpen] = useState(false);
   const [activeSpot, setActiveSpot] = useState<Spot | null>(null);
+  const [hoveredSpotId, setHoveredSpotId] = useState<string | null>(null);
   const [neighborhoodOpen, setNeighborhoodOpen] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
 
@@ -1079,8 +1080,8 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.3, delay: i * 0.05, ease: [0.25, 0.1, 0.25, 1] }}
                     className="cursor-pointer group block rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors relative"
-                    onMouseEnter={() => setActiveSpot(spot)}
-                    onMouseLeave={() => setActiveSpot(null)}
+                    onMouseEnter={() => setHoveredSpotId(spot.id)}
+                    onMouseLeave={() => setHoveredSpotId((prev) => (prev === spot.id ? null : prev))}
                   >
                     <Link href={`/${citySlug}/${spot.id}`} className="block">
                       <ImageCarousel
@@ -1124,6 +1125,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               onViewChange={handleViewChange}
               focusSpot={focusSpot}
               focusToken={focusToken}
+              hoverSpotId={hoveredSpotId}
               initialView={
                 initialViewport
                   ? { center: initialViewport.center, zoom: initialViewport.zoom }

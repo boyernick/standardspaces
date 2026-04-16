@@ -3,15 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import type { Spot } from "@/lib/types";
-import { CATEGORY_LABELS } from "@/lib/types";
 import {
   BUCKET_LABELS,
   BUCKETS,
   pickComparisonIndex,
   type Bucket,
 } from "@/lib/ratings";
-import { getBucketPool, submitRating } from "@/app/actions/ratings";
+import {
+  getBucketPool,
+  getSpotForCompare,
+  submitRating,
+} from "@/app/actions/ratings";
 
 type Step = "bucket" | "compare";
 
@@ -31,6 +35,7 @@ export default function RatingSheet({
   const [step, setStep] = useState<Step>("bucket");
   const [bucket, setBucket] = useState<Bucket | null>(null);
   const [pool, setPool] = useState<{ spot: Spot }[]>([]);
+  const [targetSpot, setTargetSpot] = useState<Spot | null>(null);
   const [lo, setLo] = useState(0);
   const [hi, setHi] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -49,9 +54,16 @@ export default function RatingSheet({
     setStep("bucket");
     setBucket(null);
     setPool([]);
+    setTargetSpot(null);
     setLo(0);
     setHi(0);
     setSubmitting(false);
+    // Fetch the target spot so the compare card can show its actual image
+    // and neighborhood/category, matching the challenger card's treatment.
+    (async () => {
+      const s = await getSpotForCompare(spotId);
+      setTargetSpot(s);
+    })();
   }, [open, spotId]);
 
   // Body scroll lock + Esc-to-close, matching ShareButton's sheet chrome.
@@ -203,18 +215,21 @@ export default function RatingSheet({
             </p>
             <div className="grid grid-cols-2 gap-3">
               <SpaceCompareCard
-                label={spotName}
-                subtitle="The new space"
-                imageUrl={null}
+                label={targetSpot?.name ?? spotName}
+                subtitle={[
+                  targetSpot?.neighborhood,
+                  targetSpot?.subcategory?.[0] ?? null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                imageUrl={targetSpot?.images?.[0] ?? null}
                 onClick={onChooseNew}
               />
               <SpaceCompareCard
                 label={challenger.name}
                 subtitle={[
                   challenger.neighborhood,
-                  challenger.category?.[0]
-                    ? CATEGORY_LABELS[challenger.category[0]]
-                    : null,
+                  challenger.subcategory?.[0] ?? null,
                 ]
                   .filter(Boolean)
                   .join(" · ")}
@@ -222,12 +237,24 @@ export default function RatingSheet({
                 onClick={onChooseExisting}
               />
             </div>
-            <button
-              onClick={onTooClose}
-              className="w-full mt-4 px-4 py-2 text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-            >
-              Too close to call
-            </button>
+            <div className="mt-4 flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onTooClose}
+                className="flex-1 !py-3"
+              >
+                Too close to call
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onTooClose}
+                className="flex-1 !py-3"
+              >
+                Too different to compare
+              </Button>
+            </div>
           </div>
         )}
 
@@ -261,11 +288,7 @@ function SpaceCompareCard({
             alt={label}
             className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
           />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-xs text-neutral-400 dark:text-neutral-600">
-            New
-          </div>
-        )}
+        ) : null}
       </div>
       <div className="px-3 py-2">
         <p className="text-sm font-medium truncate">{label}</p>

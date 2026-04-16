@@ -75,10 +75,17 @@ interface MapProps {
    */
   focusSpot?: Spot | null;
   focusToken?: number;
+  /**
+   * When set, force this spot's marker into the image-card style while the
+   * user hovers the matching list row — without triggering a pan or showing
+   * the click-driven overlay. Clearing it returns the marker to whatever the
+   * normal card/dot mix would give it.
+   */
+  hoverSpotId?: string | null;
 }
 
 export default function SpotMap(props: MapProps) {
-  const { spots = [], activeSpot = null, onSpotSelect = () => {}, onViewChange, initialView, focusSpot = null, focusToken } = props ?? {};
+  const { spots = [], activeSpot = null, onSpotSelect = () => {}, onViewChange, initialView, focusSpot = null, focusToken, hoverSpotId = null } = props ?? {};
   const onViewChangeRef = useRef(onViewChange);
   onViewChangeRef.current = onViewChange;
   // Latch the initialView at first render so later prop changes (e.g. after
@@ -98,10 +105,12 @@ export default function SpotMap(props: MapProps) {
   const spotsRef = useRef(spots);
   const onSpotSelectRef = useRef(onSpotSelect);
   const activeIdRef = useRef<string | null>(activeSpot?.id ?? null);
+  const hoverIdRef = useRef<string | null>(hoverSpotId);
   const didInitialFitRef = useRef(false);
   spotsRef.current = spots;
   onSpotSelectRef.current = onSpotSelect;
   activeIdRef.current = activeSpot?.id ?? null;
+  hoverIdRef.current = hoverSpotId;
 
   // Request user location. Cache in sessionStorage so a sign-out/sign-in
   // remount doesn't re-prompt or re-fetch.
@@ -205,6 +214,8 @@ export default function SpotMap(props: MapProps) {
       budget,
       activeIdRef.current,
     );
+    // Hovered list-card spot should always render as an image card too.
+    if (hoverIdRef.current) cardSet.add(hoverIdRef.current);
     markers.current.forEach((entry, id) => {
       const next: MarkerMode = cardSet.has(id) ? "card" : "dot";
       if (entry.mode !== next) applyMarkerMode(id, next);
@@ -537,6 +548,14 @@ export default function SpotMap(props: MapProps) {
     if (!mapReady) return;
     recomputeModes();
   }, [activeSpot, mapReady, recomputeModes]);
+
+  // Upgrade a hovered list-card spot to the image-card marker without panning
+  // the map. Always recompute so the previously-hovered marker reverts to
+  // its natural mode (dot) when the hover moves to a different card.
+  useEffect(() => {
+    if (!mapReady) return;
+    recomputeModes();
+  }, [hoverSpotId, mapReady, recomputeModes]);
 
   // Fit bounds — wait for geolocation to resolve before deciding
   useEffect(() => {

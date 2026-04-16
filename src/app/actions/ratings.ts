@@ -77,6 +77,18 @@ export async function getUserRatingsMap(
 }
 
 /**
+ * Minimal spot card data for the rating sheet's "new space" compare card.
+ * Returns the same shape the challenger card consumes so both sides render
+ * symmetrically (image + neighborhood + category).
+ */
+export async function getSpotForCompare(
+  spotId: string,
+): Promise<Spot | null> {
+  const [spot] = await getSpotsByIds([spotId]);
+  return spot ?? null;
+}
+
+/**
  * The current user's prior ratings in `bucket`, ordered best → worst, joined
  * with hydrated spot rows. Used to drive the pairwise comparison flow.
  *
