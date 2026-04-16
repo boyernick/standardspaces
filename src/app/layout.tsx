@@ -46,13 +46,13 @@ export const metadata: Metadata = {
     description: "A curated guide to the best spaces in Miami.",
     siteName: "Standard Spaces",
     type: "website",
-    images: [{ url: "/og-miami.png", width: 1920, height: 1080, alt: "Standard Spaces" }],
+    images: [{ url: "/og-miami-v2.jpg", width: 1200, height: 788, alt: "Standard Spaces" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Standard Spaces",
     description: "A curated guide to the best spaces in Miami.",
-    images: ["/og-miami.png"],
+    images: ["/og-miami-v2.jpg"],
   },
 };
 
