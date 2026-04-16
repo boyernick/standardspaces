@@ -8,9 +8,12 @@ import { requireAdminApi } from "@/lib/auth";
 export async function POST(req: NextRequest) {
   const deny = await requireAdminApi();
   if (deny) return deny;
+  // Hoisted so the outer catch can mark the row as failed.
+  const supabase = createAdminClient();
+  let recommendationId: string | undefined;
   try {
-    const supabase = createAdminClient();
-    const { recommendationId, url } = await req.json();
+    let url: string | undefined;
+    ({ recommendationId, url } = await req.json());
 
     if (!recommendationId || !url) {
       return NextResponse.json({ error: "Missing recommendationId or url" }, { status: 400 });
@@ -84,6 +87,23 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("Re-scrape error:", err);
-    return NextResponse.json({ error: "Re-scrape failed" }, { status: 500 });
+    const message = err instanceof Error ? err.message : String(err);
+    if (recommendationId) {
+      try {
+        await supabase
+          .from("recommendations")
+          .update({
+            status: "failed",
+            processed_at: new Date().toISOString(),
+          })
+          .eq("id", recommendationId);
+      } catch (updateErr) {
+        console.error("Failed to mark recommendation as failed:", updateErr);
+      }
+    }
+    return NextResponse.json(
+      { error: "Re-scrape failed", detail: message },
+      { status: 500 },
+    );
   }
 }

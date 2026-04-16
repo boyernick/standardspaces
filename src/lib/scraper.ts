@@ -76,6 +76,13 @@ function isBotWall($: cheerio.CheerioAPI): boolean {
  * search query alongside a city bias, so "eatblueribbonmiami" is plenty
  * for Google to find "Blue Ribbon Sushi Bar & Grill Miami".
  */
+// Common venue suffixes that get glued to the name in domain form
+// (panamericanobar.com → "panamericano bar"). When the derived name has no
+// separator, peel a known suffix off so the Places text search stands a
+// chance of matching "Panamericano Bar".
+const VENUE_SUFFIX_RE =
+  /^(.+?)(bar|bistro|brewery|cafe|cantina|club|coffee|deli|diner|eatery|grill|hall|house|kitchen|lounge|market|pizzeria|pub|restaurant|room|steakhouse|taproom|tavern)$/;
+
 function nameFromUrl(url: string): string | undefined {
   try {
     let host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
@@ -85,21 +92,54 @@ function nameFromUrl(url: string): string | undefined {
     host = host.replace(/\.[a-z]{2,}$/, "");
     // Replace hyphens/dots with spaces
     host = host.replace(/[-_.]/g, " ").trim();
+    if (!host) return undefined;
+    // Split concatenated venue suffixes ("panamericanobar" → "panamericano bar").
+    if (!host.includes(" ")) {
+      const m = host.match(VENUE_SUFFIX_RE);
+      if (m && m[1].length >= 3) {
+        host = `${m[1]} ${m[2]}`;
+      }
+    }
     return host || undefined;
   } catch {
     return undefined;
   }
 }
 
-// Follow redirects and get final URL + HTML
+// Follow redirects and get final URL + HTML.
+// Throws on non-2xx so callers can surface the HTTP status instead of parsing
+// an error page as if it were the listing.
+export class FetchPageError extends Error {
+  httpStatus: number;
+  constructor(status: number, url: string) {
+    super(`Fetch failed: HTTP ${status} for ${url}`);
+    this.name = "FetchPageError";
+    this.httpStatus = status;
+  }
+}
+
 async function fetchPage(url: string): Promise<{ html: string; finalUrl: string }> {
   const res = await fetch(url, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Upgrade-Insecure-Requests": "1",
+      "Sec-Fetch-Dest": "document",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Site": "none",
+      "Sec-Fetch-User": "?1",
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
     },
     redirect: "follow",
   });
+  if (!res.ok) {
+    throw new FetchPageError(res.status, res.url || url);
+  }
   const html = await res.text();
   return { html, finalUrl: res.url };
 }
@@ -1684,7 +1724,23 @@ export async function scrapeUrl(
     return scrapeFromUrlHint(urlHint, options);
   }
 
-  const { html, finalUrl } = await fetchPage(url);
+  // If the origin blocks us outright (403 from a WAF, 5xx, etc.), treat it
+  // the same as a bot wall: skip HTML extraction and go straight to Google
+  // Places with the domain-derived name. Beats populating garbage from an
+  // HTML error page.
+  let html: string;
+  let finalUrl: string;
+  try {
+    ({ html, finalUrl } = await fetchPage(url));
+  } catch (err) {
+    if (err instanceof FetchPageError) {
+      console.warn(
+        `fetchPage ${err.httpStatus} for ${url} — falling back to Google Places`,
+      );
+      return scrapeViaBotWallFallback(url, url, options);
+    }
+    throw err;
+  }
   const $ = cheerio.load(html);
 
   // --- Bot-wall fast path ------------------------------------------------

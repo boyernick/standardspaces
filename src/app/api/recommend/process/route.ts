@@ -76,6 +76,9 @@ async function sendNotification(data: {
 }
 
 export async function POST(req: NextRequest) {
+  // Hoisted so the outer catch can mark the row as failed.
+  const supabase = createAdminClient();
+  let recommendationId: string | undefined;
   try {
     // Require a signed-in caller so unauthenticated clients can't kick
     // off expensive scraping/enrichment jobs or trigger notification
@@ -86,8 +89,7 @@ export async function POST(req: NextRequest) {
     }
 
     const siteUrl = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/[^/]*$/, "") || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const supabase = createAdminClient();
-    const { recommendationId } = await req.json();
+    ({ recommendationId } = await req.json());
 
     if (!recommendationId || typeof recommendationId !== "string" || !UUID_RE.test(recommendationId)) {
       return NextResponse.json({ error: "Missing or invalid recommendationId" }, { status: 400 });
@@ -202,6 +204,25 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("Processing error:", err);
-    return NextResponse.json({ error: "Processing failed" }, { status: 500 });
+    // Mark the row as failed so it stops masquerading as "processing"
+    // in the admin queue. The underlying error is in the server logs.
+    const message = err instanceof Error ? err.message : String(err);
+    if (recommendationId) {
+      try {
+        await supabase
+          .from("recommendations")
+          .update({
+            status: "failed",
+            processed_at: new Date().toISOString(),
+          })
+          .eq("id", recommendationId);
+      } catch (updateErr) {
+        console.error("Failed to mark recommendation as failed:", updateErr);
+      }
+    }
+    return NextResponse.json(
+      { error: "Processing failed", detail: message },
+      { status: 500 },
+    );
   }
 }
