@@ -18,7 +18,7 @@ export async function generateMetadata({
   const cityName = cityNameFromSlug(citySlug)!;
   return {
     title: cityName,
-    description: `A curated guide to the finest spaces in ${cityName}.`,
+    description: `A curated guide to the best spaces in ${cityName}.`,
   };
 }
 

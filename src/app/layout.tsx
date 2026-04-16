@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     default: "Standard Spaces",
     template: "%s | Standard Spaces",
   },
-  description: "A curated guide to the finest spaces in every city.",
+  description: "A curated guide to the best spaces in Miami.",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -43,16 +43,16 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Standard Spaces",
-    description: "A curated guide to the finest spaces in every city.",
+    description: "A curated guide to the best spaces in Miami.",
     siteName: "Standard Spaces",
     type: "website",
-    images: [{ url: "/og-cover.jpg", width: 1200, height: 630, alt: "Standard Spaces" }],
+    images: [{ url: "/og-miami.png", width: 1920, height: 1080, alt: "Standard Spaces" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Standard Spaces",
-    description: "A curated guide to the finest spaces in every city.",
-    images: ["/og-cover.jpg"],
+    description: "A curated guide to the best spaces in Miami.",
+    images: ["/og-miami.png"],
   },
 };
 
