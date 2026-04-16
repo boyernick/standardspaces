@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type { Spot } from "@/lib/types";
@@ -13,7 +13,7 @@ import {
 } from "@/lib/ratings";
 import { getBucketPool, submitRating } from "@/app/actions/ratings";
 
-type Step = "bucket" | "compare" | "done";
+type Step = "bucket" | "compare";
 
 export default function RatingSheet({
   spotId,
@@ -34,9 +34,7 @@ export default function RatingSheet({
   const [lo, setLo] = useState(0);
   const [hi, setHi] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [finalScore, setFinalScore] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
-  const autoCloseTimer = useRef<number | null>(null);
 
   // Mark mounted so the portal only renders once `document.body` is
   // guaranteed to exist (avoids hydration-time "target is not a DOM element").
@@ -45,7 +43,7 @@ export default function RatingSheet({
   }, []);
 
   // Reset state every time the sheet is opened so re-rate reuses the flow
-  // cleanly and the old result doesn't flash on the next open.
+  // cleanly on the next open.
   useEffect(() => {
     if (!open) return;
     setStep("bucket");
@@ -53,7 +51,6 @@ export default function RatingSheet({
     setPool([]);
     setLo(0);
     setHi(0);
-    setFinalScore(null);
     setSubmitting(false);
   }, [open, spotId]);
 
@@ -69,29 +66,16 @@ export default function RatingSheet({
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
-      if (autoCloseTimer.current) {
-        window.clearTimeout(autoCloseTimer.current);
-        autoCloseTimer.current = null;
-      }
     };
   }, [open, onClose]);
 
   const finalize = useCallback(
     async (chosenBucket: Bucket, rank: number) => {
       setSubmitting(true);
-      const res = await submitRating(spotId, chosenBucket, rank);
+      await submitRating(spotId, chosenBucket, rank);
       setSubmitting(false);
-      if (res.success && res.score !== undefined) {
-        setFinalScore(res.score);
-        setStep("done");
-        autoCloseTimer.current = window.setTimeout(() => {
-          onClose();
-        }, 1800);
-      } else {
-        // If the server rejected, close the sheet without leaving the user
-        // stuck on a dead step.
-        onClose();
-      }
+      // Close immediately once the server write lands — no score reveal.
+      onClose();
     },
     [spotId, onClose],
   );
@@ -173,7 +157,7 @@ export default function RatingSheet({
       <div className="relative w-full sm:max-w-md bg-surface sm:rounded-2xl rounded-t-2xl shadow-2xl border border-neutral-200 dark:border-neutral-800 pb-[max(1rem,env(safe-area-inset-bottom))] animate-[slideUp_220ms_cubic-bezier(0.22,1,0.36,1)]">
         <div className="relative px-5 pt-5 pb-2">
           <h2 className="text-center text-base font-semibold">
-            {step === "done" ? "Your rating" : `How was ${spotName}?`}
+            {`How was ${spotName}?`}
           </h2>
           <button
             onClick={onClose}
@@ -247,22 +231,6 @@ export default function RatingSheet({
           </div>
         )}
 
-        {step === "done" && finalScore !== null && (
-          <div className="px-5 pb-6 text-center">
-            <p className="text-4xl font-semibold tabular-nums">
-              {finalScore.toFixed(1)}
-            </p>
-            <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-              Saved to your list
-            </p>
-            <button
-              onClick={onClose}
-              className="mt-5 px-6 py-2 text-sm font-medium bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-full hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
-            >
-              Done
-            </button>
-          </div>
-        )}
       </div>
     </div>,
     document.body,

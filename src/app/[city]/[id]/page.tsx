@@ -380,11 +380,7 @@ export default async function SpotPage({
               <p className="text-[15px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
                 {spot.description}
               </p>
-              <SpotRatingInline
-                spotId={spot.id}
-                spotName={spot.name}
-                initialAggregate={ratingAggregate}
-              />
+              <SpotRatingInline initialAggregate={ratingAggregate} />
             </div>
           </FadeIn>
 
