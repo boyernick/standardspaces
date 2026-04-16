@@ -221,7 +221,12 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
       {/* Nearby */}
       {nearby.length > 0 && (
         <div className="mt-10">
-          <h3 className="text-sm font-medium text-neutral-900 dark:text-white mb-4">More spaces nearby</h3>
+          <h3
+            className="text-lg font-medium text-neutral-900 dark:text-white mb-4"
+            style={{ fontFamily: "var(--font-martina), Georgia, serif" }}
+          >
+            More spaces nearby
+          </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {nearby.slice(0, 3).map((s) => (
               <div
