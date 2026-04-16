@@ -60,6 +60,11 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|logo.svg|fonts|landing-bg\\.mp4|api/).*)",
+    // Exclude Next internals, API routes, and anything with a file extension
+    // (e.g. /og-cover.jpg, /favicon.png, /apple-touch-icon.png, fonts, svgs).
+    // The previous allowlist missed several public/ assets, causing link
+    // unfurlers (iMessage, Slack, etc.) to receive a 307 → / instead of the
+    // OG image, silently dropping the preview thumbnail.
+    "/((?!_next/static|_next/image|api/|.*\\.[a-zA-Z0-9]+$).*)",
   ],
 };

@@ -199,11 +199,11 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
         {hoveredFromMap && (
           <Link
             href={`/${citySlug}/${hoveredFromMap.id}`}
-            className="absolute bottom-3 left-3 right-3 md:left-auto md:right-3 md:w-72 z-10 bg-surface rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
+            className="absolute bottom-3 left-3 right-3 md:left-auto md:right-3 md:w-72 z-10 bg-surface rounded-3xl shadow-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
           >
             <div className="flex gap-3 p-3">
               {hoveredFromMap.images.length > 0 && (
-                <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
                   <img src={hoveredFromMap.images[0]} alt={hoveredFromMap.name} className="w-full h-full object-cover spot-img" />
                 </div>
               )}

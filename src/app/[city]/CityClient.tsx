@@ -1121,7 +1121,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
             {activeSpot && (
               <div className="absolute bottom-3 left-3 right-3 md:left-auto md:right-3 md:w-80 z-10">
                 <div
-                  className="bg-surface rounded-2xl shadow-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
+                  className="bg-surface rounded-3xl shadow-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
                   style={{ animation: "map-card-in 0.2s ease-out" }}
                 >
                   <div className="flex gap-3 p-3">
