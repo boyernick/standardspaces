@@ -91,15 +91,20 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
         actorName: name,
       };
 
-    case "follower_checkin":
+    case "follower_checkin": {
+      const score = typeof row.metadata?.score === "number"
+        ? (row.metadata.score as number)
+        : null;
+      const base = `${name} checked in at ${row.spot?.name ?? "a space"}`;
       return {
         icon: "pin",
-        title: `${name} checked in at ${row.spot?.name ?? "a space"}`,
+        title: score !== null ? `${base} · ${score.toFixed(1)}` : base,
         body: "See where they've been",
         href: spotHref(row),
         actorAvatar: avatar,
         actorName: name,
       };
+    }
 
     case "follower_rsvp_same_event":
       return {

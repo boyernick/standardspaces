@@ -11,7 +11,7 @@ import { CircleCheck, Search, X, ChevronLeft, ChevronRight } from "lucide-react"
 const PER_PAGE_SM = 8;
 const PER_PAGE_LG = 9;
 
-export default function CheckinsClient({ spots, citySlug }: { spots: Spot[]; citySlug: string }) {
+export default function CheckinsClient({ spots, citySlug, ratings = {} }: { spots: Spot[]; citySlug: string; ratings?: Record<string, number> }) {
   const [activeCategory, setActiveCategory] = useState<Category | null>(null);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -108,6 +108,11 @@ export default function CheckinsClient({ spots, citySlug }: { spots: Spot[]; cit
                       <div className="flex items-center gap-2 min-w-0">
                         <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
                         <NewBadge spot={spot} />
+                        {ratings[spot.id] !== undefined && (
+                          <span className="ml-auto text-xs font-semibold tabular-nums text-neutral-700 dark:text-neutral-200 px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800">
+                            {ratings[spot.id].toFixed(1)}
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">
                         {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}

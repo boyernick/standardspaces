@@ -41,6 +41,7 @@ export default function ProfileClient({
   wishlistSpots,
   checkinSpots = [],
   attendedEvents = [],
+  ratings = {},
 }: {
   profile: Profile;
   stats: Stats;
@@ -51,6 +52,7 @@ export default function ProfileClient({
   checkinSpots?: Spot[];
   checkinCounts?: Record<string, number>;
   attendedEvents?: EventRecord[];
+  ratings?: Record<string, number>;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -458,6 +460,13 @@ export default function ProfileClient({
               <div className="absolute top-1.5 left-1.5">
                 <NewBadge spot={spot} compact />
               </div>
+              {activeTab === "checkins" && ratings[spot.id] !== undefined && (
+                <div className="absolute top-1.5 right-1.5">
+                  <span className="text-[11px] font-semibold tabular-nums text-white bg-black/55 backdrop-blur-sm px-1.5 py-0.5 rounded-md" style={fontCalibre}>
+                    {ratings[spot.id].toFixed(1)}
+                  </span>
+                </div>
+              )}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-2 pt-16">
                 <h4 className="text-sm font-medium text-white truncate" style={fontCalibre}>{spot.name}</h4>
                 <p className="text-xs text-white/70 truncate" style={fontCalibre}>

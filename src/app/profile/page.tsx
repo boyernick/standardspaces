@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 export const metadata: Metadata = { title: "Profile" };
 import { getSpotsByIds } from "@/lib/data";
 import { getProfileStats } from "@/app/actions/profile";
+import { getUserRatingsMap } from "@/app/actions/ratings";
 import { getPastAttendedEvents } from "@/lib/events";
 import PageShell from "@/components/ui/PageShell";
 import ProfileClient from "./ProfileClient";
@@ -42,12 +43,20 @@ export default async function ProfilePage() {
 
   // Fetch all unique spots in one batch
   const allIds = [...new Set([...favIds, ...wishIds, ...checkinIds])];
-  const allSpots = await getSpotsByIds(allIds);
+  const [allSpots, ratingsMap] = await Promise.all([
+    getSpotsByIds(allIds),
+    getUserRatingsMap(checkinIds),
+  ]);
   const spotMap = new Map(allSpots.map((s) => [s.id, s]));
 
   const favoriteSpots = favIds.map((id) => spotMap.get(id)).filter(Boolean);
   const wishlistSpots = wishIds.map((id) => spotMap.get(id)).filter(Boolean);
   const checkinSpots = checkinIds.map((id) => spotMap.get(id)).filter(Boolean);
+
+  const ratings: Record<string, number> = {};
+  for (const [id, r] of Object.entries(ratingsMap)) {
+    ratings[id] = r.score;
+  }
 
   return (
     <PageShell maxWidth="md">
@@ -59,6 +68,7 @@ export default async function ProfilePage() {
         wishlistSpots={wishlistSpots as typeof allSpots}
         checkinSpots={checkinSpots as typeof allSpots}
         attendedEvents={attendedEvents}
+        ratings={ratings}
       />
     </PageShell>
   );

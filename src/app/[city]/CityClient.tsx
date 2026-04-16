@@ -1168,6 +1168,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                         />
                         <CheckInButton
                           spotId={activeSpot.id}
+                          spotName={activeSpot.name}
                           variant="icon"
                           initialChecked={checkedInSet.has(activeSpot.id)}
                           initialWishlisted={wishlistedSet.has(activeSpot.id)}

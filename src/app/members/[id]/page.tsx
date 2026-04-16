@@ -18,7 +18,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
 
   const supabase = await createClient();
 
-  const [{ data: profile }, stats, isFollowing, { data: favRows }, { data: checkinRows }, attendedEvents] = await Promise.all([
+  const [{ data: profile }, stats, isFollowing, { data: favRows }, { data: checkinRows }, { data: ratingRows }, attendedEvents] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", id).single(),
     getProfileStats(id),
     getFollowStatus(id),
@@ -32,6 +32,10 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
       .select("spot_id")
       .eq("user_id", id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("spot_ratings")
+      .select("spot_id, score")
+      .eq("user_id", id),
     getPastAttendedEvents(id),
   ]);
 
@@ -50,6 +54,11 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
   const favoriteSpots = favIds.map((id) => spotMap.get(id)).filter(Boolean);
   const checkinSpots = checkinIds.map((id) => spotMap.get(id)).filter(Boolean);
 
+  const ratings: Record<string, number> = {};
+  for (const r of ratingRows ?? []) {
+    ratings[r.spot_id as string] = Number(r.score);
+  }
+
   return (
     <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--color-surface)" }}>
       <Navbar />
@@ -61,6 +70,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
         favoriteSpots={favoriteSpots as typeof allSpots}
         checkinSpots={checkinSpots as typeof allSpots}
         attendedEvents={attendedEvents}
+        ratings={ratings}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireAuth } from "@/lib/auth";
 import { getSpotsByIds } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
+import { getUserRatingsMap } from "@/app/actions/ratings";
 import Navbar from "@/components/Navbar";
 import PageEnter from "@/components/PageEnter";
 
@@ -24,13 +25,20 @@ export default async function CheckinsPage({
     .order("created_at", { ascending: false });
 
   const spotIds = (data ?? []).map((r) => r.spot_id);
-  const spots = await getSpotsByIds(spotIds);
+  const [spots, ratingsMap] = await Promise.all([
+    getSpotsByIds(spotIds),
+    getUserRatingsMap(spotIds),
+  ]);
+  const ratings: Record<string, number> = {};
+  for (const [id, r] of Object.entries(ratingsMap)) {
+    ratings[id] = r.score;
+  }
 
   return (
     <div className="h-screen flex flex-col bg-surface">
       <Navbar />
       <PageEnter>
-        <CheckinsClient spots={spots} citySlug={citySlug} />
+        <CheckinsClient spots={spots} citySlug={citySlug} ratings={ratings} />
       </PageEnter>
     </div>
   );

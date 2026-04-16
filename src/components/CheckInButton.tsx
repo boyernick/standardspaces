@@ -4,14 +4,17 @@ import { useState, useEffect, useTransition } from "react";
 import { CircleCheck, Heart } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { checkIn, uncheckIn, moveWishlistToFavorite } from "@/app/actions/saves";
+import RatingSheet from "@/components/RatingSheet";
 
 export default function CheckInButton({
   spotId,
+  spotName,
   variant,
   initialChecked,
   initialWishlisted,
 }: {
   spotId: string;
+  spotName?: string;
   variant?: "icon";
   initialChecked?: boolean;
   initialWishlisted?: boolean;
@@ -22,6 +25,8 @@ export default function CheckInButton({
   const [isPending, startTransition] = useTransition();
   const [isWishlisted, setIsWishlisted] = useState(initialWishlisted ?? false);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [rateOpen, setRateOpen] = useState(false);
+  const [resolvedName, setResolvedName] = useState(spotName ?? "");
 
   useEffect(() => {
     if (hasInitial) {
@@ -42,6 +47,21 @@ export default function CheckInButton({
     })();
   }, [spotId, hasInitial, initialChecked, initialWishlisted]);
 
+  // Best-effort fill of spot name for the rating sheet header when the
+  // parent didn't pass it (e.g. older callers). Runs only when needed.
+  useEffect(() => {
+    if (resolvedName || !rateOpen) return;
+    const supabase = createClient();
+    (async () => {
+      const { data } = await supabase
+        .from("spots")
+        .select("name")
+        .eq("id", spotId)
+        .single();
+      if (data?.name) setResolvedName(data.name as string);
+    })();
+  }, [rateOpen, resolvedName, spotId]);
+
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
@@ -53,12 +73,20 @@ export default function CheckInButton({
       setIsChecked(true);
       setJustCheckedIn(true);
       startTransition(async () => { await checkIn(spotId); });
-      // Show wishlist→favorite prompt if wishlisted
-      if (isWishlisted) {
-        setTimeout(() => setShowPrompt(true), 500);
-      } else {
-        setTimeout(() => setJustCheckedIn(false), 2000);
-      }
+      // Open the rating sheet immediately after the optimistic check-in.
+      setRateOpen(true);
+    }
+  }
+
+  function handleRateClose() {
+    setRateOpen(false);
+    // After the rating sheet closes, offer the wishlist → favorite prompt
+    // when applicable. This keeps the sheet single-purpose and preserves the
+    // existing post-check-in hint without showing both at once.
+    if (isWishlisted) {
+      setShowPrompt(true);
+    } else {
+      setJustCheckedIn(false);
     }
   }
 
@@ -114,18 +142,33 @@ export default function CheckInButton({
             </div>
           </div>
         )}
+
+        <RatingSheet
+          spotId={spotId}
+          spotName={resolvedName || "this space"}
+          open={rateOpen}
+          onClose={handleRateClose}
+        />
       </div>
     );
   }
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={isPending}
-      className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors underline underline-offset-2 decoration-neutral-300 dark:decoration-neutral-600"
-    >
-      <CircleCheck size={14} strokeWidth={2} className={isChecked ? "text-green-600" : ""} />
-      {justCheckedIn ? "Marked visited!" : isChecked ? "Visited" : "Visited"}
-    </button>
+    <>
+      <button
+        onClick={handleClick}
+        disabled={isPending}
+        className="flex items-center gap-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors underline underline-offset-2 decoration-neutral-300 dark:decoration-neutral-600"
+      >
+        <CircleCheck size={14} strokeWidth={2} className={isChecked ? "text-green-600" : ""} />
+        {justCheckedIn ? "Marked visited!" : isChecked ? "Visited" : "Visited"}
+      </button>
+      <RatingSheet
+        spotId={spotId}
+        spotName={resolvedName || "this space"}
+        open={rateOpen}
+        onClose={handleRateClose}
+      />
+    </>
   );
 }

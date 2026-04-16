@@ -11,6 +11,8 @@ import ShareButton from "@/components/ShareButton";
 import FavoriteButtonClient from "@/components/FavoriteButtonClient";
 import WishlistButtonClient from "@/components/WishlistButtonClient";
 import CheckInButton from "@/components/CheckInButton";
+import SpotRatingInline from "@/components/SpotRatingInline";
+import { getSpotAggregate } from "@/app/actions/ratings";
 import { Clock, Shirt, Car, MapPin, Newspaper, Smartphone, Globe, AtSign, CalendarCheck } from "lucide-react";
 import { FadeIn, GalleryReveal, SectionReveal } from "@/components/ListingAnimations";
 import { NewBadge } from "@/lib/new-badge";
@@ -309,9 +311,10 @@ export default async function SpotPage({
     notFound();
   }
 
-  const [allCitySpots, spotEvents] = await Promise.all([
+  const [allCitySpots, spotEvents, ratingAggregate] = await Promise.all([
     getSpotsByCity(spot.city),
     getVisibleEventsForSpot(spot.id),
+    getSpotAggregate(spot.id),
   ]);
   const nearby = allCitySpots
     .filter((s) => s.neighborhood === spot.neighborhood && s.id !== spot.id)
@@ -377,6 +380,11 @@ export default async function SpotPage({
               <p className="text-[15px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
                 {spot.description}
               </p>
+              <SpotRatingInline
+                spotId={spot.id}
+                spotName={spot.name}
+                initialAggregate={ratingAggregate}
+              />
             </div>
           </FadeIn>
 
@@ -492,7 +500,7 @@ export default async function SpotPage({
               variant="icon"
             />
             <FavoriteButtonClient spotId={spot.id} size="icon" />
-            <CheckInButton spotId={spot.id} variant="icon" />
+            <CheckInButton spotId={spot.id} spotName={spot.name} variant="icon" />
             <WishlistButtonClient spotId={spot.id} size="icon" />
           </div>
           {primaryAction && (
