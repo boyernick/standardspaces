@@ -61,7 +61,7 @@ export default function ReferralsPage() {
   const resolved = referrals.filter((r) => r.status === "approved" || r.status === "denied");
 
   return (
-    <PageShell maxWidth="sm">
+    <PageShell maxWidth="md">
       <PageHeader
         title="Referrals"
         action={<ButtonLink href="/refer">Refer a friend</ButtonLink>}

@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Recommend a space" };
 export default async function RecommendPage() {
   await requireAuth();
   return (
-    <PageShell maxWidth="sm">
+    <PageShell maxWidth="md">
       <RecommendForm />
     </PageShell>
   );

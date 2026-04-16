@@ -38,7 +38,7 @@ export default async function EventsHubPage() {
     .sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime());
 
   return (
-    <PageShell maxWidth="lg">
+    <PageShell maxWidth="md">
       <PageHeader
         title="Events"
         action={<ButtonLink href="/events/new">Host an event</ButtonLink>}

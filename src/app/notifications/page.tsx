@@ -38,7 +38,7 @@ export default async function NotificationsPage({
   }
 
   return (
-    <PageShell maxWidth="sm">
+    <PageShell maxWidth="md">
       <NotificationsClient initialRows={rows} mock={isMock} />
     </PageShell>
   );

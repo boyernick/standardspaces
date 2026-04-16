@@ -362,8 +362,23 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     }
     // Strict viewport scoping — the panel should mirror exactly what's
     // visible on the map, no padding, no fudge factor.
+    //
+    // Category priority: food & drink at the top (tier 0), members /
+    // wellness / shopping at the bottom (tier 2), everything else in the
+    // middle (tier 1). Priority outranks the `is_new` pin so a new
+    // wellness spot doesn't shove dining down the feed.
+    const PRIORITY_CATS = new Set<Category>(["dining", "drinks"]);
+    const DEPRIORITY_CATS = new Set<Category>(["members", "wellness", "shopping"]);
+    const categoryTier = (cats: Category[]): number => {
+      if (cats.some((c) => PRIORITY_CATS.has(c))) return 0;
+      if (cats.length > 0 && cats.every((c) => DEPRIORITY_CATS.has(c))) return 2;
+      return 1;
+    };
     const sortFn = (a: Spot, b: Spot): number => {
-      // is_new pinned, then distance from map center.
+      const at = categoryTier(a.category);
+      const bt = categoryTier(b.category);
+      if (at !== bt) return at - bt;
+      // is_new pinned within tier, then distance from map center.
       const an = isSpotNew(a) ? 1 : 0;
       const bn = isSpotNew(b) ? 1 : 0;
       if (an !== bn) return bn - an;
@@ -442,13 +457,13 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-        className="flex-1 min-h-0 flex flex-col md:flex-row"
+        className="flex-1 min-h-0 flex flex-col split:flex-row"
       >
         {/* Panel — left */}
-        <div className={`w-full md:w-[55%] lg:w-1/2 md:min-w-[420px] md:flex md:flex-col md:shrink-0 ${mobileView === "list" ? "flex flex-col flex-1 min-h-0" : "flex flex-col md:flex"}`}>
+        <div className={`w-full split:w-[55%] lg:w-1/2 split:min-w-[420px] split:flex split:flex-col split:shrink-0 ${mobileView === "list" ? "flex flex-col flex-1 min-h-0" : "flex flex-col split:flex"}`}>
           {/* Filters bar */}
-          {allSpots.length > 0 && <div ref={filterBarRef} className="relative z-20 bg-surface py-2.5 shrink-0 md:overflow-x-clip">
-            <div ref={filterScrollRef} className="flex items-center gap-2 overflow-x-auto scrollbar-hide px-4">
+          {allSpots.length > 0 && <div ref={filterBarRef} className="relative z-20 bg-surface py-2.5 shrink-0">
+            <div ref={filterScrollRef} className="flex items-center gap-2 overflow-x-hidden px-4">
               {/* City — hidden until more cities exist. Keep component intact. */}
               {false && (
                 <>
@@ -545,8 +560,8 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 </div>
               </div>
 
-              {/* Category pills — scrollable, dropdowns rendered outside */}
-              <div ref={categoryRef} className="flex gap-1.5 md:overflow-x-auto scrollbar-hide shrink-0">
+              {/* Category pills — scroll on mobile, wrap on sm+ so nothing is clipped in the split-view panel */}
+              <div ref={categoryRef} className="flex gap-1.5 shrink-0">
                 {categories.map((cat) => {
                   const isActive = activeCategory === cat;
                   const isDropdownOpen = categoryDropdown === cat;
@@ -874,7 +889,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
           </div>}
 
           {/* Scrollable content — hidden on mobile map view */}
-          <div ref={panelRef} className={`flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-36 md:pb-0 ${mobileView === "map" ? "hidden md:block" : ""}`}>
+          <div ref={panelRef} className={`flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-36 split:pb-0 ${mobileView === "map" ? "hidden split:block" : ""}`}>
           {eventsOnly ? (() => {
             const matchesType = (e: typeof upcomingEvents[number]) => {
               if (activeEventTypes.size === 0) return true;
@@ -979,7 +994,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
             // Pre-commit window: map hasn't emitted its first viewport yet.
             // Render a skeleton grid so we never flash alphabetical content.
             <div className="p-4 pt-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6 md:gap-x-3 md:gap-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 split:grid-cols-1 lg:grid-cols-2 gap-x-5 gap-y-6 split:gap-x-3 split:gap-y-4">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div
                     key={i}
@@ -1025,7 +1040,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                   <h4 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 px-2 mb-2">
                     Nearby spaces
                   </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6 md:gap-x-3 md:gap-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 split:grid-cols-1 lg:grid-cols-2 gap-x-5 gap-y-6 split:gap-x-3 split:gap-y-4">
                     {nearby.map((spot) => (
                       <Link
                         key={spot.id}
@@ -1054,7 +1069,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
             </div>
           ) : (
             <div className="p-4 pt-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6 md:gap-x-3 md:gap-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 split:grid-cols-1 lg:grid-cols-2 gap-x-5 gap-y-6 split:gap-x-3 split:gap-y-4">
                 <AnimatePresence mode="popLayout">
                 {visibleSpots.map((spot, i) => (
                   <motion.div
@@ -1097,9 +1112,9 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
         </div>
 
         {/* Map — right */}
-        <div className={`md:flex-1 md:min-w-0 md:block relative px-4 md:pl-0 md:pr-4 md:pt-1.5 md:pb-4 ${mobileView === "map" ? "pb-2.5" : "hidden"}`}>
+        <div className={`split:flex-1 split:min-w-0 split:block relative px-4 split:pl-0 split:pr-4 split:pt-1.5 split:pb-4 ${mobileView === "map" ? "pb-2.5" : "hidden"}`}>
           <div
-            className="w-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative md:h-full"
+            className="w-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative split:h-full"
             style={mapHeight && mobileView === "map" ? { height: mapHeight } : undefined}
           >
             <SpotMap
@@ -1119,7 +1134,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
 
             {/* Map card */}
             {activeSpot && (
-              <div className="absolute bottom-3 left-3 right-3 md:left-auto md:right-3 md:w-80 z-10">
+              <div className="absolute bottom-3 left-3 right-3 split:left-auto split:right-3 split:w-80 z-10">
                 <div
                   className="bg-surface rounded-3xl shadow-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden"
                   style={{ animation: "map-card-in 0.2s ease-out" }}
@@ -1186,7 +1201,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
       </motion.div>
 
       {/* Mobile bottom bar */}
-      <div ref={bottomBarRef} className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-surface border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div ref={bottomBarRef} className="split:hidden fixed bottom-0 inset-x-0 z-30 bg-surface border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-2">
           <button
             onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}

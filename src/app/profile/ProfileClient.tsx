@@ -179,7 +179,7 @@ export default function ProfileClient({
   ];
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8">
+    <>
       {/* Profile header */}
       {editing ? (
         <div className="mb-6">
@@ -470,6 +470,6 @@ export default function ProfileClient({
       )}
       </div>
       )}
-    </div>
+    </>
   );
 }

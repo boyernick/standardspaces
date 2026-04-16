@@ -11,6 +11,7 @@ import {
 } from "@/app/actions/profile";
 import { CITIES } from "@/lib/cities";
 import { citySlugFromName } from "@/lib/cities";
+import PageHeader from "@/components/ui/PageHeader";
 
 type Props = {
   phone: string;
@@ -93,30 +94,25 @@ export default function SettingsClient({ phone, city, smsNotifications, notifica
     router.push("/");
   }
 
-  const fontCalibre = { fontFamily: "var(--font-calibre), system-ui, sans-serif" };
-  const fontMartina = { fontFamily: "var(--font-martina), Georgia, serif" };
-
   return (
-    <div className="max-w-lg mx-auto px-6 py-10">
-      <h1 className="text-xl font-medium mb-8" style={fontMartina}>Settings</h1>
+    <>
+      <PageHeader title="Settings" />
 
       {/* Notifications */}
       <section className="mb-8">
-        <h2 className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tracking-wider mb-3" style={fontCalibre}>
-          Notifications
-        </h2>
+        <h2 className="eyebrow mb-3">Notifications</h2>
         <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl divide-y divide-neutral-200 dark:divide-neutral-800">
           {[
             { label: "SMS notifications", sub: "Referral requests and updates", value: sms, onToggle: handleSmsToggle },
             { label: "Social", sub: "Follows, check-ins, and shared RSVPs", value: prefs.social, onToggle: () => togglePref("social") },
             { label: "Events", sub: "Invites, reminders, and host updates", value: prefs.events, onToggle: () => togglePref("events") },
-            { label: "Recommendations", sub: "Updates on spots you submitted", value: prefs.recommendations, onToggle: () => togglePref("recommendations") },
+            { label: "Recommendations", sub: "Updates on spaces you submitted", value: prefs.recommendations, onToggle: () => togglePref("recommendations") },
             { label: "Discovery", sub: "New spaces and events in your city", value: prefs.curation, onToggle: () => togglePref("curation") },
           ].map((row) => (
             <div key={row.label} className="flex items-center justify-between p-4">
               <div>
-                <p className="text-sm text-neutral-900 dark:text-white" style={fontCalibre}>{row.label}</p>
-                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5" style={fontCalibre}>
+                <p className="text-sm text-neutral-900 dark:text-white">{row.label}</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
                   {row.sub}
                 </p>
               </div>
@@ -137,15 +133,12 @@ export default function SettingsClient({ phone, city, smsNotifications, notifica
 
       {/* City */}
       <section className="mb-8">
-        <h2 className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tracking-wider mb-3" style={fontCalibre}>
-          City
-        </h2>
+        <h2 className="eyebrow mb-3">City</h2>
         <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-4">
           <select
             value={currentCity}
             onChange={(e) => handleCityChange(e.target.value)}
             className="w-full text-sm bg-transparent text-neutral-900 dark:text-white focus:outline-none cursor-pointer"
-            style={fontCalibre}
           >
             {CITIES.map((c) => (
               <option key={c.slug} value={c.name}>{c.name}</option>
@@ -156,14 +149,11 @@ export default function SettingsClient({ phone, city, smsNotifications, notifica
 
       {/* Appearance */}
       <section className="mb-8">
-        <h2 className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tracking-wider mb-3" style={fontCalibre}>
-          Appearance
-        </h2>
+        <h2 className="eyebrow mb-3">Appearance</h2>
         <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-4">
           <button
             onClick={handleThemeChange}
             className="flex w-full items-center justify-between text-sm text-neutral-900 dark:text-white"
-            style={fontCalibre}
           >
             Theme
             <span className="text-xs text-neutral-400 dark:text-neutral-500 capitalize">
@@ -175,31 +165,26 @@ export default function SettingsClient({ phone, city, smsNotifications, notifica
 
       {/* Account */}
       <section className="mb-8">
-        <h2 className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tracking-wider mb-3" style={fontCalibre}>
-          Account
-        </h2>
+        <h2 className="eyebrow mb-3">Account</h2>
         <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-4">
-          <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5" style={fontCalibre}>Phone</p>
-          <p className="text-sm text-neutral-900 dark:text-white" style={fontCalibre}>{formatPhone(phone)}</p>
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Phone</p>
+          <p className="text-sm text-neutral-900 dark:text-white">{formatPhone(phone)}</p>
         </div>
       </section>
 
       {/* Delete account */}
       <section className="mb-8">
-        <h2 className="text-xs font-medium text-neutral-400 dark:text-neutral-500 tracking-wider mb-3" style={fontCalibre}>
-          Delete account
-        </h2>
+        <h2 className="eyebrow mb-3">Delete account</h2>
         <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-4">
           {showDeleteConfirm ? (
             <div>
-              <p className="text-sm text-red-600 mb-3" style={fontCalibre}>
+              <p className="text-sm text-red-600 mb-3">
                 Are you sure? This cannot be undone.
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
                   className="flex-1 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors"
-                  style={fontCalibre}
                 >
                   Cancel
                 </button>
@@ -207,7 +192,6 @@ export default function SettingsClient({ phone, city, smsNotifications, notifica
                   onClick={handleDeleteAccount}
                   disabled={deleting}
                   className="flex-1 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                  style={fontCalibre}
                 >
                   {deleting ? "Deleting..." : "Delete account"}
                 </button>
@@ -217,13 +201,12 @@ export default function SettingsClient({ phone, city, smsNotifications, notifica
             <button
               onClick={() => setShowDeleteConfirm(true)}
               className="text-sm text-red-500 hover:text-red-600 transition-colors"
-              style={fontCalibre}
             >
               Delete account
             </button>
           )}
         </div>
       </section>
-    </div>
+    </>
   );
 }

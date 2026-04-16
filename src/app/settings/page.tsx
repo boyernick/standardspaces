@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { requireAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import Navbar from "@/components/Navbar";
+import PageShell from "@/components/ui/PageShell";
+import SettingsClient from "./SettingsClient";
 
 export const metadata: Metadata = { title: "Settings" };
-import SettingsClient from "./SettingsClient";
 
 export default async function SettingsPage() {
   const user = await requireAuth();
@@ -20,14 +20,13 @@ export default async function SettingsPage() {
   const notificationPrefs = { ...defaultPrefs, ...(profile?.notification_prefs ?? {}) };
 
   return (
-    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--color-surface)" }}>
-      <Navbar />
+    <PageShell maxWidth="md">
       <SettingsClient
         phone={profile?.phone || ""}
         city={profile?.city || "Miami"}
         smsNotifications={profile?.sms_notifications ?? true}
         notificationPrefs={notificationPrefs}
       />
-    </div>
+    </PageShell>
   );
 }

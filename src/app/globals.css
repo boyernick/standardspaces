@@ -4,6 +4,11 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
+  /* Custom breakpoint: the viewport width at which the city page's split
+     view (list panel + map side-by-side) engages. Below this the map is
+     hidden and users toggle via the bottom bar. */
+  --breakpoint-split: 56rem; /* 896px */
+
   /* Surface colors — change these to retheme the entire app */
   --color-surface: #F7F7F3;
   --color-surface-dark: #13120A;

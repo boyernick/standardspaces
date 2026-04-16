@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Profile" };
 import { getSpotsByIds } from "@/lib/data";
 import { getProfileStats } from "@/app/actions/profile";
 import { getPastAttendedEvents } from "@/lib/events";
-import Navbar from "@/components/Navbar";
+import PageShell from "@/components/ui/PageShell";
 import ProfileClient from "./ProfileClient";
 
 export default async function ProfilePage() {
@@ -50,8 +50,7 @@ export default async function ProfilePage() {
   const checkinSpots = checkinIds.map((id) => spotMap.get(id)).filter(Boolean);
 
   return (
-    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--color-surface)" }}>
-      <Navbar />
+    <PageShell maxWidth="md">
       <ProfileClient
         profile={profile}
         stats={stats}
@@ -61,6 +60,6 @@ export default async function ProfilePage() {
         checkinSpots={checkinSpots as typeof allSpots}
         attendedEvents={attendedEvents}
       />
-    </div>
+    </PageShell>
   );
 }
