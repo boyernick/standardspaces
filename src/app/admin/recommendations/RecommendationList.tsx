@@ -118,7 +118,7 @@ export default function RecommendationList({
             return (
               <div
                 key={rec.id}
-                className="border border-black/10 dark:border-white/10 rounded-lg p-4 bg-white dark:bg-neutral-900 flex items-start gap-4"
+                className="border border-black/10 dark:border-white/10 rounded-lg p-4 flex items-start gap-4"
               >
                 <div
                   className="w-14 h-14 rounded-md shrink-0 bg-neutral-100 dark:bg-neutral-800 bg-cover bg-center"

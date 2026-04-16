@@ -45,12 +45,6 @@ export default async function AdminReviewPage({
       <Navbar />
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-4 py-12">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-semibold tracking-tight">Review recommendation</h1>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-              Edit the details below, then publish to make it live.
-            </p>
-          </div>
           <ReviewForm recommendation={rec} existingNeighborhoods={existingNeighborhoods} />
         </div>
       </div>

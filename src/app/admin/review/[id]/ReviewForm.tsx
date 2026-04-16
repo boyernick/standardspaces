@@ -4,10 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, VIBES, Category } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
+import { NEW_WINDOW_MS } from "@/lib/new-badge";
 import { CheckCircle, Loader2 } from "lucide-react";
 import {
   ChipSelect,
   CITIES,
+  CuratePhotosModal,
   DRESS_CODES,
   Field,
   HoursEditor,
@@ -84,12 +86,17 @@ export default function ReviewForm({
     Array.isArray(scraped.vibes) ? scraped.vibes : []
   );
 
+  // "Mark as new" toggle — defaults off; the admin opts in when they want
+  // the <NewBadge /> to surface on this space for 7 days after publishing.
+  const [markedNew, setMarkedNew] = useState(false);
+
   const [sourceUrl, setSourceUrl] = useState(rec.url);
   const [rescraping, setRescraping] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  const [curateOpen, setCurateOpen] = useState(false);
 
   async function handleRescrape() {
     if (!sourceUrl.trim()) return;
@@ -176,6 +183,7 @@ export default function ReviewForm({
           lng: lng ? parseFloat(lng) : -80.19,
           lat: lat ? parseFloat(lat) : 25.77,
           images,
+          marked_new_at: markedNew ? new Date().toISOString() : null,
         },
       }),
     });
@@ -209,25 +217,52 @@ export default function ReviewForm({
   }
 
   if (published) {
+    const spotId = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const citySlug = citySlugFromName(city);
+    const hero = images[0];
+    const categoryLabel = category
+      .map((c) => CATEGORY_LABELS[c as Category] ?? c)
+      .join(" · ");
     return (
-      <div className="text-center py-12">
-        <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
-          <CheckCircle size={24} className="text-green-600 dark:text-green-400" />
-        </div>
-        <h2 className="text-xl font-semibold">Published</h2>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
-          {name} is now live on the map.
-        </p>
-        <div className="mt-5 flex items-center justify-center gap-3">
+      <div className="py-16 sm:py-20 text-center">
+        {/* Hero image of the published space with a confirmation chip. Falls
+            back to a standalone checkmark badge if the admin published
+            without any photos. */}
+        {hero ? (
+          <div className="relative mx-auto aspect-[16/10] max-w-xl overflow-hidden rounded-2xl bg-neutral-100 dark:bg-neutral-900">
+            <img
+              src={hero}
+              alt={name}
+              className="h-full w-full object-cover"
+            />
+            <div className="absolute top-4 left-4 flex items-center gap-1.5 rounded-full bg-white/95 dark:bg-neutral-950/90 px-3 py-1.5 text-xs font-medium text-neutral-900 dark:text-white shadow-sm backdrop-blur">
+              <CheckCircle size={14} className="text-green-600 dark:text-green-400" />
+              Live on the map
+            </div>
+          </div>
+        ) : (
+          <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+            <CheckCircle size={28} className="text-green-600 dark:text-green-400" />
+          </div>
+        )}
+
+        <h2 className="mt-8">{name}</h2>
+        {(neighborhood || categoryLabel) && (
+          <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+            {[neighborhood, categoryLabel].filter(Boolean).join(" · ")}
+          </p>
+        )}
+
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <button
-            onClick={() => router.push(`/${citySlugFromName(city)}`)}
-            className="px-4 py-2 text-sm font-medium rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors"
+            onClick={() => router.push(`/${citySlug}/${spotId}`)}
+            className="px-5 py-2.5 text-sm font-medium rounded-full bg-black text-white dark:bg-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
           >
-            View on map
+            View space
           </button>
           <button
             onClick={() => router.push("/admin/recommendations")}
-            className="px-4 py-2 text-sm font-medium rounded-xl bg-black text-white dark:bg-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
+            className="px-5 py-2.5 text-sm font-medium rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
           >
             Review more spaces
           </button>
@@ -264,7 +299,43 @@ export default function ReviewForm({
       </Field>
 
       {/* Photos */}
-      <PhotoManager images={images} onChange={setImages} spotId={rec.id} />
+      <PhotoManager
+        images={images}
+        onChange={setImages}
+        spotId={rec.id}
+        onCurate={() => setCurateOpen(true)}
+      />
+      <CuratePhotosModal
+        recommendationId={rec.id}
+        open={curateOpen}
+        onClose={() => setCurateOpen(false)}
+        onReplace={(urls) => setImages(urls)}
+      />
+
+      {/* Mark as new — curation toggle, drives the <NewBadge /> on every card surface */}
+      <div className="flex items-center justify-between gap-4 px-4 py-3 border border-neutral-200 dark:border-neutral-800 rounded-xl">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">Mark as new</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+            Shows a badge on this space for 7 days after publishing.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={markedNew}
+          onClick={() => setMarkedNew((v) => !v)}
+          className={`relative shrink-0 w-10 h-6 rounded-full transition-colors ${
+            markedNew ? "bg-brand-500" : "bg-neutral-200 dark:bg-neutral-700"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+              markedNew ? "translate-x-4" : "translate-x-0"
+            }`}
+          />
+        </button>
+      </div>
 
       {/* === Basic info === */}
       <SectionHeader>Basic info</SectionHeader>

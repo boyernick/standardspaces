@@ -14,6 +14,7 @@ export function PhotoManager({
   onChange,
   spotId,
   uploadFn,
+  onCurate,
 }: {
   images: string[];
   onChange: (images: string[]) => void;
@@ -22,6 +23,10 @@ export function PhotoManager({
   // spot forms use /api/admin/upload-photo. When provided, replaces the
   // default admin upload path entirely.
   uploadFn?: (file: File) => Promise<string | null>;
+  // Optional "Curate photos" action. When provided, renders a button next
+  // to "Add photos" that delegates to the parent (which typically opens
+  // the CuratePhotosModal). Only the review form uses this today.
+  onCurate?: () => void;
 }) {
   const [uploading, setUploading] = useState<number | "add" | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -166,22 +171,35 @@ export function PhotoManager({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => triggerFileInput(null)}
-        disabled={uploading !== null}
-        className="flex items-center gap-2 px-4 py-2.5 text-sm border border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors disabled:opacity-50"
-      >
-        {uploading === "add" ? (
-          <>
-            <Loader2 size={14} className="animate-spin" /> Uploading...
-          </>
-        ) : (
-          <>
-            <Plus size={14} /> Add photos
-          </>
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => triggerFileInput(null)}
+          disabled={uploading !== null}
+          className="flex items-center gap-2 px-4 py-2.5 text-sm border border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors disabled:opacity-50"
+        >
+          {uploading === "add" ? (
+            <>
+              <Loader2 size={14} className="animate-spin" /> Uploading...
+            </>
+          ) : (
+            <>
+              <Plus size={14} /> Add photos
+            </>
+          )}
+        </button>
+        {onCurate && (
+          <button
+            type="button"
+            onClick={onCurate}
+            disabled={uploading !== null || images.length === 0}
+            className="flex items-center gap-2 px-4 py-2.5 text-sm border border-neutral-300 dark:border-neutral-700 rounded-xl text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors disabled:opacity-50"
+            title={images.length === 0 ? "Add or re-scrape photos first" : "Score and auto-select the best representative photos"}
+          >
+            Curate photos
+          </button>
         )}
-      </button>
+      </div>
 
       {lightboxIndex !== null && images.length > 0 && (
         <Lightbox

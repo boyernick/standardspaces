@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/auth";
 import { Resend } from "resend";
-import { scrapeUrl } from "@/lib/scraper";
-import { enrichScrapedData } from "@/lib/enrich";
+import { researchVenue } from "@/lib/research";
+import { extractImagesFromUrl } from "@/lib/image-scraper";
+import { fetchGooglePlacesPhotos } from "@/lib/google-places";
 import { processPhotos } from "@/lib/photos";
 
 // UUID v4 format — catches malformed IDs before they reach the DB and
@@ -130,20 +131,47 @@ export async function POST(req: NextRequest) {
       .update({ status: "processing" })
       .eq("id", recommendationId);
 
-    // Scrape the URL. Pass the user-selected city (if any) so the Google
-    // Places text search can bias to that city center when the HTML scrape
-    // hasn't yet produced coordinates.
-    const initialScrape = await scrapeUrl(rec.url, {
-      city: rec.city || "Miami",
-    });
+    // Run Perplexity research (all text fields) and Cheerio image extraction
+    // in parallel. Research is the hot path — a Perplexity failure fails the
+    // whole submission. Image extraction is best-effort; `extractImagesFromUrl`
+    // already swallows its own errors and returns [] on bot walls / 403s.
+    const [research, imageUrls] = await Promise.all([
+      researchVenue(rec.url, { city: rec.city || "Miami", knownName: rec.name || undefined }),
+      extractImagesFromUrl(rec.url),
+    ]);
+    const scraped = research.data;
 
-    // Enrich with Google Places, Yelp, and Instagram data
-    const scraped = await enrichScrapedData(initialScrape);
+    // Now that Perplexity has given us the venue name/address, query Google
+    // Places for the best photo library. Places is our strongest image
+    // source — HTML scrape misses JS-hydrated sites entirely, and
+    // Perplexity's image URLs are hit-or-miss. Runs sequentially after
+    // research because the query is only as good as the name+address.
+    const placesQuery = [
+      scraped.name || rec.name,
+      scraped.address,
+      rec.city || "Miami",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const places = placesQuery
+      ? await fetchGooglePlacesPhotos(placesQuery).catch(() => null)
+      : null;
+
+    // Combine all three image sources. Order matters — Places first because
+    // it's typically the highest quality, then the site's own HTML, then
+    // Perplexity's third-party fallbacks. Dedupe preserves order.
+    const combinedImageUrls = Array.from(
+      new Set([
+        ...(places?.imageUrls ?? []),
+        ...imageUrls,
+        ...(scraped.imageUrls ?? []),
+      ]),
+    );
 
     // Download and upload photos to Supabase Storage
-    const uploadedPhotos = await processPhotos(scraped.imageUrls, recommendationId);
+    const uploadedPhotos = await processPhotos(combinedImageUrls, recommendationId);
 
-    // Merge user-provided data with scraped data (user input takes priority)
+    // Merge user-provided data with researched data (user input takes priority)
     const mergedData = {
       name: rec.name || scraped.name || "Unknown",
       description: scraped.description || null,
@@ -164,7 +192,11 @@ export async function POST(req: NextRequest) {
       subcategory: scraped.subcategory || null,
       vibes: scraped.vibes || null,
       neighborhood: rec.neighborhood || scraped.neighborhood || null,
-      googlePlaceId: scraped.googlePlaceId || null,
+      // Google Place ID threads through to publish → `spots.google_place_id`
+      // so the public page can deep-link to the Maps listing.
+      googlePlaceId: places?.placeId ?? null,
+      // Provenance — admin can audit which pages Perplexity synthesized from.
+      sources: research.sources,
     };
 
     // Update the recommendation with scraped data

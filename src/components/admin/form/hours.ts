@@ -15,21 +15,113 @@ export interface DayHours {
   blocks: TimeBlock[];
 }
 
+// Matches any day label Perplexity or admins might emit: "Monday",
+// "Mon", "Daily", or a range like "Mon–Fri" / "Monday–Friday".
+const DAY_LABEL_PAT =
+  "(?:Daily|Mon(?:day)?|Tue(?:sday)?|Wed(?:nesday)?|Thu(?:rsday)?|Fri(?:day)?|Sat(?:urday)?|Sun(?:day)?)";
+const DAY_LABEL_RANGE_PAT = `${DAY_LABEL_PAT}(?:\\s*[-–]\\s*${DAY_LABEL_PAT})?`;
+
+const DAY_KEY: Record<string, typeof DAYS[number]> = {
+  monday: "Mon", mon: "Mon",
+  tuesday: "Tue", tue: "Tue",
+  wednesday: "Wed", wed: "Wed",
+  thursday: "Thu", thu: "Thu",
+  friday: "Fri", fri: "Fri",
+  saturday: "Sat", sat: "Sat",
+  sunday: "Sun", sun: "Sun",
+};
+
+function expandDayRange(from: typeof DAYS[number], to: typeof DAYS[number]): typeof DAYS[number][] {
+  const i = DAYS.indexOf(from);
+  const j = DAYS.indexOf(to);
+  if (i < 0 || j < 0) return [];
+  // Handles forward ranges and Fri–Mon style wraparounds alike.
+  if (i <= j) return DAYS.slice(i, j + 1) as unknown as typeof DAYS[number][];
+  return [...DAYS.slice(i), ...DAYS.slice(0, j + 1)] as unknown as typeof DAYS[number][];
+}
+
 export function parseHoursString(str: string): Record<string, DayHours> {
-  const defaults: Record<string, DayHours> = {};
+  const result: Record<string, DayHours> = {};
   for (const d of DAYS) {
-    defaults[d] = { closed: false, blocks: [{ open: "11:00", close: "23:00" }] };
+    result[d] = { closed: false, blocks: [{ open: "11:00", close: "23:00" }] };
   }
-  if (str && str.trim()) {
-    const timeMatch = str.match(/(\d{1,2}(?::\d{2})?\s*(?:AM|PM)?)\s*[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM)?)/i);
+  if (!str || !str.trim()) return result;
+
+  // Split input into per-day entries. We have to handle two joiners:
+  //   • Newlines (Perplexity's natural format: one day per line).
+  //   • Commas — but only commas that sit between groups, not commas
+  //     separating multiple time blocks on the same day. The lookahead
+  //     `, <DayLabel>` tells them apart so we don't shred
+  //     "Mon 11:30AM–3PM, 5PM–10:30PM" into two fragments.
+  const groupSplit = new RegExp(`,\\s*(?=${DAY_LABEL_PAT}\\b)`, "i");
+  const entries = str
+    .split(/\r?\n/)
+    .flatMap((line) => line.split(groupSplit))
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const dayHead = new RegExp(`^(${DAY_LABEL_RANGE_PAT})\\s*(.*)$`, "i");
+  const blockRe =
+    /(\d{1,2}(?::\d{2})?\s*(?:AM|PM)?)\s*[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM)?)/gi;
+
+  let anyMatched = false;
+  for (const entry of entries) {
+    const headMatch = entry.match(dayHead);
+    if (!headMatch) continue;
+    const daySeg = headMatch[1].trim();
+    const rest = headMatch[2].trim();
+
+    let days: typeof DAYS[number][] = [];
+    if (/^daily$/i.test(daySeg)) {
+      days = [...DAYS];
+    } else {
+      const rangeMatch = daySeg.match(
+        new RegExp(`^(${DAY_LABEL_PAT})\\s*[-–]\\s*(${DAY_LABEL_PAT})$`, "i"),
+      );
+      if (rangeMatch) {
+        const from = DAY_KEY[rangeMatch[1].toLowerCase()];
+        const to = DAY_KEY[rangeMatch[2].toLowerCase()];
+        if (from && to) days = expandDayRange(from, to);
+      } else {
+        const d = DAY_KEY[daySeg.toLowerCase()];
+        if (d) days = [d];
+      }
+    }
+    if (days.length === 0) continue;
+
+    if (/^closed$/i.test(rest) || /\bclosed\b/i.test(rest) && !/\d/.test(rest)) {
+      for (const d of days) result[d] = { closed: true, blocks: [] };
+      anyMatched = true;
+      continue;
+    }
+
+    blockRe.lastIndex = 0;
+    const blocks: TimeBlock[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = blockRe.exec(rest)) !== null) {
+      blocks.push({ open: to24(m[1]), close: to24(m[2]) });
+    }
+    if (blocks.length === 0) continue;
+    for (const d of days) result[d] = { closed: false, blocks };
+    anyMatched = true;
+  }
+
+  // Back-compat fallback: if nothing matched a structured entry but the
+  // string still looks like a time range ("11AM–10PM" alone), apply it to
+  // every day. Preserves old behavior for legacy scraped_data.
+  if (!anyMatched) {
+    const timeMatch = str.match(
+      /(\d{1,2}(?::\d{2})?\s*(?:AM|PM)?)\s*[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM)?)/i,
+    );
     if (timeMatch) {
       const block = { open: to24(timeMatch[1]), close: to24(timeMatch[2]) };
       for (const d of DAYS) {
-        defaults[d] = { closed: false, blocks: [block] };
+        result[d] = { closed: false, blocks: [block] };
       }
     }
   }
-  return defaults;
+
+  return result;
 }
 
 function to24(t: string): string {

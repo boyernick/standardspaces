@@ -16,3 +16,4 @@ export type { DayHours, TimeBlock } from "./hours";
 export { ChipSelect, Field, SectionHeader, SelectInput, inputClass } from "./controls";
 export { HoursEditor } from "./HoursEditor";
 export { PhotoManager } from "./PhotoManager";
+export { CuratePhotosModal } from "./CuratePhotosModal";

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { scrapeUrl } from "@/lib/scraper";
-import { enrichScrapedData } from "@/lib/enrich";
+import { researchVenue } from "@/lib/research";
+import { extractImagesFromUrl } from "@/lib/image-scraper";
+import { fetchGooglePlacesPhotos } from "@/lib/google-places";
 import { processPhotos } from "@/lib/photos";
 import { requireAdminApi } from "@/lib/auth";
 
@@ -19,30 +20,53 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing recommendationId or url" }, { status: 400 });
     }
 
-    // Look up the previous scrape so we can reuse the cached Google place ID
-    // (skips the text-search call on re-scrape) and the user's original city
-    // hint (for locationBias when HTML has no coords yet).
+    // Look up the previous scrape for the city hint (used to anchor
+    // Perplexity's neighborhood/address inference when the URL alone isn't
+    // geographic enough).
     const { data: prevRec } = await supabase
       .from("recommendations")
-      .select("scraped_data, city")
+      .select("scraped_data, city, name")
       .eq("id", recommendationId)
       .single();
     const prevScraped = (prevRec?.scraped_data ?? {}) as Record<string, unknown>;
-    const knownPlaceId =
-      typeof prevScraped.googlePlaceId === "string" ? prevScraped.googlePlaceId : undefined;
     const cityHint =
       typeof prevRec?.city === "string"
         ? prevRec.city
         : typeof prevScraped.city === "string"
           ? (prevScraped.city as string)
           : "Miami";
+    const knownName =
+      typeof prevRec?.name === "string" && prevRec.name.length > 0 ? prevRec.name : undefined;
 
-    // Scrape the new URL
-    const initialScrape = await scrapeUrl(url, { city: cityHint, knownPlaceId });
-    const scraped = await enrichScrapedData(initialScrape);
+    // Research + image extraction in parallel. See process route for rationale.
+    const [research, imageUrls] = await Promise.all([
+      researchVenue(url, { city: cityHint, knownName }),
+      extractImagesFromUrl(url),
+    ]);
+    const scraped = research.data;
+
+    // Google Places photos — sequential, after research, so we have the
+    // name+address to build a strong text query. See process route for the
+    // rationale on Places being our best image source.
+    const placesQuery = [scraped.name || knownName, scraped.address, cityHint]
+      .filter(Boolean)
+      .join(" ");
+    const places = placesQuery
+      ? await fetchGooglePlacesPhotos(placesQuery).catch(() => null)
+      : null;
+
+    // Places first (highest quality), then on-site HTML, then Perplexity
+    // fallbacks. Dedupe preserves order.
+    const combinedImageUrls = Array.from(
+      new Set([
+        ...(places?.imageUrls ?? []),
+        ...imageUrls,
+        ...(scraped.imageUrls ?? []),
+      ]),
+    );
 
     // Download and upload photos
-    const uploadedPhotos = await processPhotos(scraped.imageUrls, recommendationId);
+    const uploadedPhotos = await processPhotos(combinedImageUrls, recommendationId);
 
     const mergedData = {
       name: scraped.name || "Unknown",
@@ -64,7 +88,8 @@ export async function POST(req: NextRequest) {
       subcategory: scraped.subcategory || null,
       vibes: scraped.vibes || null,
       neighborhood: scraped.neighborhood || null,
-      googlePlaceId: scraped.googlePlaceId || knownPlaceId || null,
+      googlePlaceId: places?.placeId ?? null,
+      sources: research.sources,
     };
 
     // Update the recommendation with new scraped data

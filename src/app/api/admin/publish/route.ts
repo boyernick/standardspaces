@@ -191,6 +191,7 @@ export async function POST(req: NextRequest) {
         menu_url: spot.menu_url,
         vibes: spot.vibes,
         google_place_id: googlePlaceId,
+        marked_new_at: typeof spot.marked_new_at === "string" ? spot.marked_new_at : null,
       });
 
     if (insertError) {
