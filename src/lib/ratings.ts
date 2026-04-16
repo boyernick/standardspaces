@@ -9,19 +9,32 @@
  * items are inserted.
  */
 
-export type Bucket = "liked" | "okay" | "disliked";
+export type Bucket = "loved" | "liked" | "okay" | "disliked" | "hated";
+
+/** Ordered best → worst. The RatingSheet renders buttons in this order. */
+export const BUCKETS: Bucket[] = [
+  "loved",
+  "liked",
+  "okay",
+  "disliked",
+  "hated",
+];
 
 /** Lower (inclusive) / upper (inclusive) score bounds per bucket. */
 export const BUCKET_RANGES: Record<Bucket, { min: number; max: number }> = {
-  liked: { min: 3.5, max: 5.0 },
-  okay: { min: 2.5, max: 3.5 },
-  disliked: { min: 1.0, max: 2.5 },
+  loved: { min: 4.2, max: 5.0 },
+  liked: { min: 3.4, max: 4.2 },
+  okay: { min: 2.6, max: 3.4 },
+  disliked: { min: 1.8, max: 2.6 },
+  hated: { min: 1.0, max: 1.8 },
 };
 
 export const BUCKET_LABELS: Record<Bucket, string> = {
-  liked: "I liked it",
+  loved: "Loved it",
+  liked: "Liked it",
   okay: "It was okay",
-  disliked: "I didn't like it",
+  disliked: "Not for me",
+  hated: "Never again",
 };
 
 /**

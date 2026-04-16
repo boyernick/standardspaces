@@ -6,7 +6,7 @@ import { getSpotsByIds } from "@/lib/data";
 import type { Spot } from "@/lib/types";
 import { scoreForRank, type Bucket } from "@/lib/ratings";
 
-const ALL_BUCKETS: Bucket[] = ["liked", "okay", "disliked"];
+const ALL_BUCKETS: Bucket[] = ["loved", "liked", "okay", "disliked", "hated"];
 
 export type UserRating = {
   spot_id: string;

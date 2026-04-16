@@ -7,6 +7,7 @@ import type { Spot } from "@/lib/types";
 import { CATEGORY_LABELS } from "@/lib/types";
 import {
   BUCKET_LABELS,
+  BUCKETS,
   pickComparisonIndex,
   type Bucket,
 } from "@/lib/ratings";
@@ -185,7 +186,7 @@ export default function RatingSheet({
 
         {step === "bucket" && (
           <div className="px-5 pb-5 space-y-2">
-            {(["liked", "okay", "disliked"] as Bucket[]).map((b) => {
+            {BUCKETS.map((b) => {
               const active = initialBucket === b;
               return (
                 <button
