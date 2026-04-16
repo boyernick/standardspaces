@@ -14,6 +14,12 @@ mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 const MIAMI_CENTER: [number, number] = [-80.1918, 25.7817];
 const MIAMI_ZOOM = 12;
 
+// Shared easing for every easeTo/fitBounds call so pan and zoom feel like one
+// motion system. easeOutQuart starts a touch gentler than the old easeOutCubic
+// (`1 - (1-t)^3`) and settles more softly — the difference is subtle at short
+// durations but removes the "whip" feeling at longer (>=900ms) ones.
+const EASE_OUT_QUART = (t: number) => 1 - Math.pow(1 - t, 4);
+
 type MarkerMode = "card" | "dot";
 
 function computeBudget(zoom: number): number {
@@ -568,13 +574,15 @@ export default function SpotMap(props: MapProps) {
       const isNarrow =
         typeof window !== "undefined" && window.innerWidth < 640;
       const fitPad = isNarrow ? 32 : 80;
-      // First-time centering: prefer user location, otherwise fit all spots
+      // First-time centering: prefer user location, otherwise fit all spots.
+      // A bit longer than subsequent fits so the page-load motion reads as a
+      // graceful settle rather than a snap.
       if (userLocation) {
         map.current.easeTo({
           center: userLocation,
           zoom: 15,
-          duration: 1200,
-          easing: (t: number) => 1 - Math.pow(1 - t, 3),
+          duration: 1500,
+          easing: EASE_OUT_QUART,
           essential: true,
         });
       } else if (spots.length > 0) {
@@ -583,15 +591,16 @@ export default function SpotMap(props: MapProps) {
         map.current.fitBounds(bounds, {
           padding: { top: fitPad, bottom: fitPad, left: fitPad, right: fitPad },
           maxZoom: 15,
-          duration: 1200,
+          duration: 1500,
+          easing: EASE_OUT_QUART,
           essential: true,
         });
       } else {
         map.current.easeTo({
           center: MIAMI_CENTER,
           zoom: MIAMI_ZOOM,
-          duration: 1200,
-          easing: (t: number) => 1 - Math.pow(1 - t, 3),
+          duration: 1500,
+          easing: EASE_OUT_QUART,
           essential: true,
         });
       }
@@ -608,7 +617,8 @@ export default function SpotMap(props: MapProps) {
     map.current.fitBounds(bounds, {
       padding: { top: fitPad, bottom: fitPad, left: fitPad, right: fitPad },
       maxZoom: 15,
-      duration: 800,
+      duration: 900,
+      easing: EASE_OUT_QUART,
       essential: true,
     });
   }, [spots, mapReady, geoResolved, userLocation]);
@@ -633,7 +643,7 @@ export default function SpotMap(props: MapProps) {
         center: [activeSpot.lng, activeSpot.lat],
         zoom: Math.max(m.getZoom(), 13),
         duration: 1000,
-        easing: (t) => 1 - Math.pow(1 - t, 3),
+        easing: EASE_OUT_QUART,
         essential: true,
       });
     }
@@ -648,7 +658,7 @@ export default function SpotMap(props: MapProps) {
       center: [focusSpot.lng, focusSpot.lat],
       zoom: Math.max(map.current.getZoom(), 14),
       duration: 900,
-      easing: (t) => 1 - Math.pow(1 - t, 3),
+      easing: EASE_OUT_QUART,
       essential: true,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -663,7 +673,7 @@ export default function SpotMap(props: MapProps) {
         center: [lng, lat],
         zoom: Math.max(m.getZoom(), 15),
         duration: 900,
-        easing: (t: number) => 1 - Math.pow(1 - t, 3),
+        easing: EASE_OUT_QUART,
         essential: true,
       });
     };
@@ -681,6 +691,7 @@ export default function SpotMap(props: MapProps) {
           padding: { top: fitPad, bottom: fitPad, left: fitPad, right: fitPad },
           maxZoom: 15,
           duration: 900,
+          easing: EASE_OUT_QUART,
           essential: true,
         });
       } else {
@@ -688,7 +699,7 @@ export default function SpotMap(props: MapProps) {
           center: MIAMI_CENTER,
           zoom: MIAMI_ZOOM,
           duration: 900,
-          easing: (t: number) => 1 - Math.pow(1 - t, 3),
+          easing: EASE_OUT_QUART,
           essential: true,
         });
       }
@@ -736,11 +747,11 @@ export default function SpotMap(props: MapProps) {
     zoomTargetRef.current = next;
     m.easeTo({
       zoom: next,
-      duration: 400,
-      // Same ease-out curve used elsewhere in the component — quick start,
-      // gentle settle. Feels smoother than mapbox's default ease-in-out at
-      // short durations.
-      easing: (t: number) => 1 - Math.pow(1 - t, 3),
+      duration: 520,
+      // Slightly longer than the old 400ms so discrete taps don't feel like
+      // a jump — the extra ~120ms gives the settle room to read without
+      // feeling laggy on rapid presses (zoomTargetRef still accumulates).
+      easing: EASE_OUT_QUART,
       essential: true,
     });
     const clear = () => {
@@ -752,7 +763,19 @@ export default function SpotMap(props: MapProps) {
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
+      {/* Fade the canvas in once the Mapbox instance fires `load`, so tiles
+          aren't visible to the user while the initial fitBounds/easeTo is
+          still flying them into place. Without this the map pops in at the
+          default zoom and snaps to the target, which reads as a stutter. */}
+      <div
+        ref={mapContainer}
+        style={{
+          width: "100%",
+          height: "100%",
+          opacity: mapReady ? 1 : 0,
+          transition: "opacity 500ms cubic-bezier(0.22, 1, 0.36, 1)",
+        }}
+      />
       <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
         <button
           type="button"

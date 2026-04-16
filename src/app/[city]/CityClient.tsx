@@ -1075,10 +1075,13 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 {visibleSpots.map((spot, i) => (
                   <motion.div
                     key={spot.id}
-                    initial={{ opacity: 0, y: 12 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.3, delay: Math.min(i, 5) * 0.04, ease: [0.25, 0.1, 0.25, 1] }}
+                    exit={{ opacity: 0, y: -6 }}
+                    // Softer entrance: smaller y-travel and the "polished settle"
+                    // curve (easeOutQuart-ish) — lands smoothly instead of snapping
+                    // into place. Stagger capped so the last card isn't waiting.
+                    transition={{ duration: 0.45, delay: Math.min(i, 5) * 0.05, ease: [0.22, 1, 0.36, 1] }}
                     className="cursor-pointer group block rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors relative"
                     onMouseEnter={() => setHoveredSpotId(spot.id)}
                     onMouseLeave={() => setHoveredSpotId((prev) => (prev === spot.id ? null : prev))}
