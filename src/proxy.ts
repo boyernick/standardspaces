@@ -4,9 +4,28 @@ import { createServerClient } from "@supabase/ssr";
 
 const publicPaths = ["/", "/apply", "/login", "/auth/callback"];
 
+// Link-preview / unfurler user agents. These have no user session, so
+// without a bypass they'd be redirected to `/` on every protected path and
+// shared space URLs would always unfurl with the landing watercolor instead
+// of the per-space `generateMetadata` image. Covers iMessage (Applebot +
+// facebookexternalhit), Messages on macOS, WhatsApp, Twitter/X, LinkedIn,
+// Slack, Discord, Telegram, Skype, Reddit, Pinterest, and Embedly.
+const LINK_PREVIEW_BOT_UA =
+  /facebookexternalhit|facebot|twitterbot|linkedinbot|slackbot|discordbot|telegrambot|whatsapp|applebot|skypeuripreview|redditbot|pinterest\/|embedly|mastodon/i;
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublic = publicPaths.some((p) => pathname === p);
+  const isLinkPreviewBot = LINK_PREVIEW_BOT_UA.test(
+    request.headers.get("user-agent") || ""
+  );
+
+  // Short-circuit link-preview bots: they need to reach the page so the
+  // per-route `generateMetadata` can emit the correct og:image. Skipping the
+  // Supabase call here also saves an edge roundtrip per crawl.
+  if (isLinkPreviewBot) {
+    return NextResponse.next({ request });
+  }
 
   // Refresh Supabase session on every request (including public paths)
   let response = NextResponse.next({ request });

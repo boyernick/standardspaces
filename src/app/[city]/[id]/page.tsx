@@ -490,7 +490,6 @@ export default async function SpotPage({
               spotImage={spot.images[0]}
               spotSubtitle={[spot.neighborhood, spot.city].filter(Boolean).join(" · ")}
               variant="icon"
-              spotInstagram={spot.instagram}
             />
             <FavoriteButtonClient spotId={spot.id} size="icon" />
             <CheckInButton spotId={spot.id} variant="icon" />

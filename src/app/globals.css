@@ -14,8 +14,12 @@
   --color-surface-dark: #13120A;
 
   /* Ink — the warm neutral used for empty-state circles, hover washes,
-     and anywhere we want a "one notch darker than surface" feel.
-     Also aliased as --color-ocean (matches the Mapbox water color). */
+     and anywhere we want a subtle "one notch off surface" container.
+     In light mode it sits a notch darker than surface and happens to
+     match the Mapbox water color (aliased as --color-ocean). In dark
+     mode ink flips lighter (so containers still read as elevated)
+     while ocean stays darker to match the dark-style map, so the two
+     diverge below. */
   --color-ink-100: #eceae2;
   --color-ocean: #eceae2;
 
@@ -68,9 +72,16 @@ html, body {
   font-family: var(--font-calibre), system-ui, sans-serif;
 }
 
-/* Ensure safe area background matches on iOS */
+/* Ensure safe area background matches on iOS. color-scheme is required
+   alongside the explicit background — without it iOS Safari paints the
+   top/bottom safe areas using the UA default (white) and ignores the html
+   background, so dark mode leaks a white strip at the home indicator. */
 html {
   background-color: var(--color-surface);
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
 }
 
 .dark {
@@ -78,8 +89,10 @@ html {
   --color-neutral-800: #3F3E37;
   --color-neutral-700: #4A493F;
   --color-neutral-100: #2A2922;
-  /* Ink flips to the dark ocean color (Mapbox dark-style water). */
-  --color-ink-100: #0e0d07;
+  /* Ink flips LIGHTER than surface in dark mode so empty-state circles,
+     hover washes, and subtle containers still read as elevated. Ocean
+     stays darker to match Mapbox's dark-style water — they diverge. */
+  --color-ink-100: #2A2922;
   --color-ocean: #0e0d07;
   /* Warmer blacks in dark mode so shadows don't read as gray smears. */
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
