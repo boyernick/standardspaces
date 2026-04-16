@@ -389,7 +389,7 @@ export default function ReviewForm({
             disabled={publishing || deleting}
             className="px-8 py-2.5 text-sm font-medium rounded-xl bg-black text-white dark:bg-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-60 transition-colors flex items-center gap-2 shrink-0"
           >
-            {publishing ? <><Loader2 size={16} className="animate-spin" /> Publishing...</> : "Publish to site"}
+            {publishing ? <><Loader2 size={16} className="animate-spin" /> Publishing...</> : "Publish"}
           </button>
         </div>
       </div>

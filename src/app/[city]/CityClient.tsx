@@ -1078,7 +1078,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.3, delay: i * 0.05, ease: [0.25, 0.1, 0.25, 1] }}
+                    transition={{ duration: 0.3, delay: Math.min(i, 5) * 0.04, ease: [0.25, 0.1, 0.25, 1] }}
                     className="cursor-pointer group block rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors relative"
                     onMouseEnter={() => setHoveredSpotId(spot.id)}
                     onMouseLeave={() => setHoveredSpotId((prev) => (prev === spot.id ? null : prev))}
@@ -1089,6 +1089,8 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                         alt={spot.name}
                         aspectClassName="aspect-[16/10]"
                         roundedClassName="rounded-2xl"
+                        priority={i < 6}
+                        sizes="(min-width: 1024px) 40vw, (min-width: 640px) 50vw, 100vw"
                       />
                       <div className="p-3 rounded-b-2xl bg-surface">
                         <div className="flex items-center justify-between gap-2">

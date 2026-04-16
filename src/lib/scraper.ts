@@ -1733,9 +1733,13 @@ export async function scrapeUrl(
   try {
     ({ html, finalUrl } = await fetchPage(url));
   } catch (err) {
-    if (err instanceof FetchPageError) {
+    // Check by name rather than instanceof — under Turbopack HMR the module
+    // can be loaded twice, which gives us two distinct class identities and
+    // a false-negative instanceof.
+    if (err instanceof Error && err.name === "FetchPageError") {
+      const status = (err as FetchPageError).httpStatus;
       console.warn(
-        `fetchPage ${err.httpStatus} for ${url} — falling back to Google Places`,
+        `fetchPage ${status} for ${url} — falling back to Google Places`,
       );
       return scrapeViaBotWallFallback(url, url, options);
     }

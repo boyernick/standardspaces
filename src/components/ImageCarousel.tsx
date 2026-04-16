@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ImageCarouselProps {
@@ -8,6 +9,18 @@ interface ImageCarouselProps {
   alt: string;
   aspectClassName?: string;
   roundedClassName?: string;
+  /**
+   * When true, the first image of the carousel is treated as high-priority
+   * (eager load, fetchPriority=high, responsive sizes). Use for cards that
+   * render above the fold on initial page load.
+   */
+  priority?: boolean;
+  /**
+   * next/image `sizes` attribute for the first slide. Defaults to a full-width
+   * fallback; callers that know the grid layout should pass a better hint so
+   * the browser can pick a smaller candidate.
+   */
+  sizes?: string;
 }
 
 export default function ImageCarousel({
@@ -15,6 +28,8 @@ export default function ImageCarousel({
   alt,
   aspectClassName = "aspect-[4/3]",
   roundedClassName = "rounded-xl",
+  priority = false,
+  sizes = "(min-width: 1024px) 40vw, (min-width: 640px) 50vw, 100vw",
 }: ImageCarouselProps) {
   const [current, setCurrent] = useState(0);
   const touchStartX = useRef<number | null>(null);
@@ -98,22 +113,35 @@ export default function ImageCarousel({
         className="flex h-full transition-transform duration-300 ease-out"
         style={{ transform: `translateX(-${current * 100}%)` }}
       >
-        {images.map((src, i) => (
-          <div
-            key={i}
-            className="relative w-full h-full shrink-0 bg-neutral-100 dark:bg-neutral-800"
-            aria-label={`${alt} image ${i + 1}`}
-          >
-            {src !== "/placeholder.jpg" && (
-              <img
-                src={src}
-                alt={`${alt} ${i + 1}`}
-                loading={i === 0 ? "eager" : "lazy"}
-                className="w-full h-full object-cover spot-img"
-              />
-            )}
-          </div>
-        ))}
+        {images.map((src, i) => {
+          const isFirst = i === 0;
+          const isPriority = isFirst && priority;
+          return (
+            <div
+              key={i}
+              className="relative w-full h-full shrink-0 bg-neutral-100 dark:bg-neutral-800"
+              aria-label={`${alt} image ${i + 1}`}
+            >
+              {src !== "/placeholder.jpg" && (
+                <Image
+                  src={src}
+                  alt={`${alt} ${i + 1}`}
+                  fill
+                  sizes={sizes}
+                  // Only the first slide of an above-the-fold card gets priority.
+                  // Everything else uses next/image's default lazy loading — the
+                  // browser's IntersectionObserver picks them up as the user scrolls.
+                  priority={isPriority}
+                  // Next.js 16's Image doesn't always emit fetchpriority on the <img>
+                  // itself; set it explicitly so the browser's resource scheduler
+                  // gives the visible hero images their rightful priority lane.
+                  fetchPriority={isPriority ? "high" : undefined}
+                  className="object-cover spot-img"
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Arrows */}
