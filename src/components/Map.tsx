@@ -113,6 +113,9 @@ export default function SpotMap(props: MapProps) {
   const activeIdRef = useRef<string | null>(activeSpot?.id ?? null);
   const hoverIdRef = useRef<string | null>(hoverSpotId);
   const didInitialFitRef = useRef(false);
+  // Flipped on the first user drag / zoom gesture. Late-arriving
+  // geolocation respects this so we never yank a deliberate pan.
+  const userInteractedRef = useRef(false);
   spotsRef.current = spots;
   onSpotSelectRef.current = onSpotSelect;
   activeIdRef.current = activeSpot?.id ?? null;
@@ -282,6 +285,18 @@ export default function SpotMap(props: MapProps) {
           onSpotSelectRef.current(null);
         });
 
+        // Track manual pan/zoom so late-arriving geolocation doesn't
+        // override a deliberate view. `dragstart` / `zoomstart` fire for
+        // both user gestures and programmatic `easeTo` calls, so we
+        // filter for `originalEvent` — only user-initiated events carry
+        // a DOM event; our own animations don't.
+        const markInteracted = (e: unknown) => {
+          const originalEvent = (e as { originalEvent?: Event } | undefined)?.originalEvent;
+          if (originalEvent) userInteractedRef.current = true;
+        };
+        m.on("dragstart", markInteracted);
+        m.on("zoomstart", markInteracted);
+
         // Build a {center, bounds, zoom} snapshot from the current map state.
         // `getBounds()` can return null mid-init in mapbox 3.x — bail in that
         // case so consumers never see a half-formed view.
@@ -336,7 +351,13 @@ export default function SpotMap(props: MapProps) {
       map.current = null;
       setMapReady(false);
     };
-  }, [dark, userLocation]);
+    // Intentionally excludes `userLocation`: the map no longer re-inits
+    // when location arrives — a dedicated `easeTo` effect (below) pans
+    // to it instead. Tearing the map down on every location update was
+    // wiping the in-progress initial fit and leaving prod users stranded
+    // on the city-wide view even after they granted the permission.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dark]);
 
   // Add/update user location marker
   useEffect(() => {
@@ -621,7 +642,31 @@ export default function SpotMap(props: MapProps) {
       easing: EASE_OUT_QUART,
       essential: true,
     });
-  }, [spots, mapReady, geoResolved, userLocation]);
+    // userLocation is deliberately omitted from the dep array: the initial
+    // fit branch reads it once (gated by `!didInitialFitRef`); the
+    // subsequent-update branch only cares about spots. Including it would
+    // cause late-arriving geolocation (see below) to fire this effect and
+    // refit to spots instead of centering on the user.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spots, mapReady, geoResolved]);
+
+  // Late-arriving geolocation. In production the permission prompt
+  // frequently resolves AFTER the 6s `geoResolved` fallback, at which
+  // point the initial fit has already flown to a city-wide `fitBounds`.
+  // When userLocation finally populates, pan to it — but only if the
+  // member hasn't manually panned/zoomed in the meantime.
+  useEffect(() => {
+    if (!map.current || !mapReady || !userLocation) return;
+    if (!didInitialFitRef.current) return;
+    if (userInteractedRef.current) return;
+    map.current.easeTo({
+      center: userLocation,
+      zoom: 15,
+      duration: 1200,
+      easing: EASE_OUT_QUART,
+      essential: true,
+    });
+  }, [userLocation, mapReady]);
 
   // Pan to active spot if off-screen
   useEffect(() => {

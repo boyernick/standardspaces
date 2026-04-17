@@ -344,7 +344,7 @@ export default function CommandMenu() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search spaces and members..."
+            placeholder="Search spaces and members"
             className="w-full pl-7 pr-8 py-3 text-base bg-transparent outline-none placeholder-neutral-400 dark:placeholder-neutral-500 border-b border-neutral-100 dark:border-neutral-800"
           />
           <button

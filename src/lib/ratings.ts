@@ -33,7 +33,7 @@ export const BUCKET_LABELS: Record<Bucket, string> = {
   loved: "Loved it",
   liked: "Liked it",
   okay: "It was okay",
-  disliked: "Not for me",
+  disliked: "Didn't like it",
   hated: "Never again",
 };
 
@@ -65,6 +65,25 @@ export function scoreForRank(
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
+}
+
+/**
+ * Reverse `scoreForRank`: given a persisted score, return the bucket it
+ * belongs to. Used by surfaces that only have the numeric score (e.g. the
+ * profile check-ins list) but want to render the sentiment label.
+ *
+ * Bucket ranges share boundary values (4.2 is both `liked.max` and
+ * `loved.min`); we walk best → worst so ties resolve to the higher
+ * sentiment. Scores outside all ranges clamp to the nearest extreme —
+ * defensive against any stored rows that drifted before the bucket
+ * ranges were locked down.
+ */
+export function bucketForScore(score: number): Bucket {
+  for (const b of BUCKETS) {
+    const { min, max } = BUCKET_RANGES[b];
+    if (score >= min && score <= max) return b;
+  }
+  return score > BUCKET_RANGES.loved.max ? "loved" : "hated";
 }
 
 /**

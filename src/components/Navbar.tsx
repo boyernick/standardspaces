@@ -166,9 +166,6 @@ export default function Navbar() {
                 Profile
               </Link>
               <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
-              <Link href="/events" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
-                Events
-              </Link>
               <Link href="/notifications" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors">
                 Notifications
                 {(unreadNotifs > 0 || mockJewel) && (
@@ -186,6 +183,9 @@ export default function Navbar() {
                   </span>
                 )}
               </Link>
+              <Link href="/events" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
+                Events
+              </Link>
               {isAdmin && (
                 <Link href="/admin" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors">
                   Admin
@@ -195,9 +195,6 @@ export default function Navbar() {
                 </Link>
               )}
               <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
-              <Link href="/settings" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
-                Settings
-              </Link>
               <button
                 onClick={async () => {
                   setMenuOpen(false);
@@ -205,7 +202,7 @@ export default function Navbar() {
                   await supabase.auth.signOut();
                   window.location.href = "/";
                 }}
-                className="block w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                className="block w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
               >
                 Sign out
               </button>

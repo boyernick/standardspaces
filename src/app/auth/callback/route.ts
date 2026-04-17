@@ -72,6 +72,22 @@ export async function GET(request: NextRequest) {
       city: userCity,
     });
 
+    // Seed a follow of the house account (MySpace-Tom style) so every
+    // new member lands with at least one connection in their feed.
+    // Opt-in: only runs when `DEFAULT_FOLLOW_USER_ID` is set. Guarded
+    // against self-follow so the default account itself can sign up
+    // without tripping the insert. Best-effort — we don't fail signup
+    // if the follow insert hits a race or constraint.
+    const defaultFollow = process.env.DEFAULT_FOLLOW_USER_ID;
+    if (defaultFollow && defaultFollow !== data.user.id) {
+      await admin
+        .from("user_follows")
+        .insert({
+          follower_id: data.user.id,
+          following_id: defaultFollow,
+        });
+    }
+
     // First-time profile row insert == signup completion. `city` is the
     // value we just resolved from their application row (or the default),
     // i.e. the city they'll land on after the redirect.
