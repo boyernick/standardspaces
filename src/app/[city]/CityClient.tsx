@@ -426,7 +426,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
         <div className={`w-full split:w-[55%] lg:w-1/2 split:min-w-[420px] split:flex split:flex-col split:shrink-0 ${mobileView === "list" ? "flex flex-col flex-1 min-h-0" : "flex flex-col split:flex"}`}>
           {/* Filters bar */}
           {allSpots.length > 0 && <div ref={filterBarRef} className="relative z-20 bg-surface py-2.5 shrink-0">
-            <div ref={filterScrollRef} className="flex items-center gap-2 overflow-x-hidden px-4">
+            <div ref={filterScrollRef} className="flex items-center gap-2 overflow-x-auto scrollbar-hide px-4">
               {/* City — hidden until more cities exist. Keep component intact. */}
               {false && (
                 <>
