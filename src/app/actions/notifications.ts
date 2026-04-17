@@ -52,19 +52,71 @@ export async function getNotifications(limit = 50): Promise<NotificationRow[]> {
           .in("id", actorIds)
       : Promise.resolve({ data: [] as Array<{ id: string; first_name: string | null; last_name: string | null; avatar_url: string | null }> }),
     spotIds.length
-      ? admin.from("spots").select("id, name, city, neighborhood").in("id", spotIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; name: string; city: string; neighborhood: string | null }> }),
+      ? admin
+          .from("spots")
+          .select("id, name, city, neighborhood, images, category, subcategory")
+          .in("id", spotIds)
+      : Promise.resolve({
+          data: [] as Array<{
+            id: string;
+            name: string;
+            city: string;
+            neighborhood: string | null;
+            images: string[] | null;
+            category: string[] | null;
+            subcategory: string[] | null;
+          }>,
+        }),
     eventIds.length
-      ? admin.from("events").select("id, title, city").in("id", eventIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; title: string; city: string }> }),
+      ? admin
+          .from("events")
+          .select("id, title, city, cover_image_url, images")
+          .in("id", eventIds)
+      : Promise.resolve({
+          data: [] as Array<{
+            id: string;
+            title: string;
+            city: string;
+            cover_image_url: string | null;
+            images: string[] | null;
+          }>,
+        }),
     recIds.length
       ? admin.from("recommendations").select("id, name").in("id", recIds)
       : Promise.resolve({ data: [] as Array<{ id: string; name: string | null }> }),
   ]);
 
   const actors = new Map((actorsRes.data ?? []).map((a) => [a.id, a]));
-  const spots = new Map((spotsRes.data ?? []).map((s) => [s.id, s]));
-  const events = new Map((eventsRes.data ?? []).map((e) => [e.id, e]));
+  const spots = new Map(
+    (spotsRes.data ?? []).map((s) => [
+      s.id,
+      {
+        id: s.id,
+        name: s.name,
+        city: s.city,
+        neighborhood: s.neighborhood,
+        // NotificationItem renders `image` as a rounded tile. The spots row
+        // stores an ordered array — first entry is the hero, so that's what
+        // we surface.
+        image: s.images?.[0] ?? null,
+        category: s.category ?? null,
+        subcategory: s.subcategory ?? null,
+      },
+    ]),
+  );
+  const events = new Map(
+    (eventsRes.data ?? []).map((e) => [
+      e.id,
+      {
+        id: e.id,
+        title: e.title,
+        city: e.city,
+        // Prefer the explicit cover; fall back to first entry in images[] so
+        // older rows without a cover still get a visual.
+        image: e.cover_image_url ?? e.images?.[0] ?? null,
+      },
+    ]),
+  );
   const recs = new Map((recsRes.data ?? []).map((r) => [r.id, r]));
 
   return rows.map((r) => ({

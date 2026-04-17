@@ -56,6 +56,10 @@ const spotSunset = {
   name: "Sunset Harbor Club",
   city: "Miami",
   neighborhood: "Sunset Harbor",
+  image:
+    "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=240&h=240&fit=crop",
+  category: ["drinks"],
+  subcategory: ["speakeasy"],
 };
 
 const eventRooftop = {
@@ -63,6 +67,8 @@ const eventRooftop = {
   title: "Rooftop listening session",
   city: "Miami",
   neighborhood: "Brickell",
+  image:
+    "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=240&h=240&fit=crop",
 };
 
 const eventGallery = {
@@ -70,6 +76,8 @@ const eventGallery = {
   title: "Wynwood gallery walk",
   city: "Miami",
   neighborhood: "Wynwood",
+  image:
+    "https://images.unsplash.com/photo-1531058020387-3be344556be6?w=240&h=240&fit=crop",
 };
 
 const eventDinner = {
@@ -77,6 +85,8 @@ const eventDinner = {
   title: "Friday supper club",
   city: "Miami",
   neighborhood: "Design District",
+  image:
+    "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=240&h=240&fit=crop",
 };
 
 function base(

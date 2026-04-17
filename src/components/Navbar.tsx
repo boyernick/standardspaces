@@ -133,7 +133,7 @@ export default function Navbar() {
           >
             {(unreadNotifs > 0 || adminPending > 0 || mockJewel) && (
               <span
-                className="absolute w-1.5 h-1.5 rounded-full bg-red-500"
+                className="absolute w-1.5 h-1.5 rounded-full bg-brand-500"
                 style={{
                   // Pill button: right cap is a semicircle of r = height/2.
                   // These offsets place the 6px dot's center on that arc at
@@ -172,7 +172,7 @@ export default function Navbar() {
               <Link href="/notifications" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors">
                 Notifications
                 {(unreadNotifs > 0 || mockJewel) && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" aria-label={`${unreadNotifs} unread`} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-500" aria-label={`${unreadNotifs} unread`} />
                 )}
               </Link>
               <Link href="/recommend" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
@@ -190,7 +190,7 @@ export default function Navbar() {
                 <Link href="/admin" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors">
                   Admin
                   {adminPending > 0 && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" aria-label={`${adminPending} pending`} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-500" aria-label={`${adminPending} pending`} />
                   )}
                 </Link>
               )}

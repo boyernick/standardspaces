@@ -11,7 +11,6 @@ import {
   type NotificationRow,
 } from "@/lib/notifications-render";
 import EmptyState from "@/components/ui/EmptyState";
-import { SectionHeader } from "@/components/admin/form";
 
 interface Props {
   initialRows: NotificationRow[];
@@ -36,7 +35,7 @@ function IconFor({ kind }: { kind: "user" | "calendar" | "pin" | "star" | "bell"
     case "award":
       return <Award size={size} strokeWidth={sw} className={cls} />;
     case "compass":
-      return <Compass size={size} strokeWidth={sw} className={cls} />;
+      return <MapPin size={size} strokeWidth={sw} className="text-white" />;
     case "bell":
     default:
       return <Bell size={size} strokeWidth={sw} className={cls} />;
@@ -58,19 +57,25 @@ function relative(ts: string): string {
   return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-type Bucket = "Today" | "This week";
+type Bucket = "Today" | "This week" | "Earlier";
 function bucketFor(ts: string): Bucket {
   const delta = Date.now() - new Date(ts).getTime();
   const day = 24 * 60 * 60 * 1000;
   if (delta < day) return "Today";
-  return "This week";
+  if (delta < 7 * day) return "This week";
+  return "Earlier";
 }
-
-type Filter = "all" | "unread";
 
 export default function NotificationsClient({ initialRows, mock = false }: Props) {
   const [rows, setRows] = useState(initialRows);
-  const [filter, setFilter] = useState<Filter>("all");
+
+  // Snapshot of which rows were unread when the page loaded. We auto-mark
+  // everything as read on mount, so the row's own read_at stops being a
+  // reliable signal. This set lets the UI keep showing "new since last visit"
+  // — the orange jewel on each row — even after the server mark-as-read lands.
+  const [unreadOnMount] = useState<Set<string>>(
+    () => new Set(initialRows.filter((r) => r.read_at === null).map((r) => r.id)),
+  );
 
   // Auto-mark as read on mount. Optimistic: clear locally first, then call
   // the server. Navbar badge uses its own cached value and will update on
@@ -96,23 +101,17 @@ export default function NotificationsClient({ initialRows, mock = false }: Props
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const unreadCount = useMemo(() => rows.filter((r) => r.read_at === null).length, [rows]);
-  const visibleRows = useMemo(
-    () => (filter === "unread" ? rows.filter((r) => r.read_at === null) : rows),
-    [rows, filter],
-  );
-
   const grouped = useMemo(() => {
     const out: Record<Bucket, NotificationRow[]> = {
       Today: [],
       "This week": [],
+      Earlier: [],
     };
-    for (const r of visibleRows) out[bucketFor(r.created_at)].push(r);
+    for (const r of rows) out[bucketFor(r.created_at)].push(r);
     return out;
-  }, [visibleRows]);
+  }, [rows]);
 
   const isEmpty = rows.length === 0;
-  const isFilteredEmpty = !isEmpty && visibleRows.length === 0;
 
   return (
     <>
@@ -125,40 +124,25 @@ export default function NotificationsClient({ initialRows, mock = false }: Props
         )}
       </div>
 
-      {/* Filter tabs — only rendered when there's something to filter */}
-      {!isEmpty && (
-        <div className="flex items-center gap-1 mb-6 border-b border-neutral-200 dark:border-neutral-800">
-          <FilterTab active={filter === "all"} onClick={() => setFilter("all")}>
-            All
-            <span className="ml-1.5 text-neutral-400 dark:text-neutral-500">{rows.length}</span>
-          </FilterTab>
-          <FilterTab active={filter === "unread"} onClick={() => setFilter("unread")} disabled={unreadCount === 0}>
-            Unread
-            {unreadCount > 0 && (
-              <span className="ml-1.5 text-neutral-400 dark:text-neutral-500">{unreadCount}</span>
-            )}
-          </FilterTab>
-        </div>
-      )}
-
       {isEmpty ? (
         <EmptyState icon={Bell} title="You're all caught up" body="No new notifications right now." />
-      ) : isFilteredEmpty ? (
-        <div className="py-16 text-center text-sm text-neutral-500 dark:text-neutral-400">
-          No unread notifications.
-        </div>
       ) : (
-        (["Today", "This week"] as const).map((bucket) => {
+        (["Today", "This week", "Earlier"] as const).map((bucket) => {
           const items = grouped[bucket];
           if (items.length === 0) return null;
           return (
             <section key={bucket} className="mb-10">
-              <div className="mb-3">
-                <SectionHeader>{bucket}</SectionHeader>
+              <div className="mb-3 pt-2">
+                <h3
+                  className="text-xl font-medium text-neutral-900 dark:text-white"
+                  style={{ fontFamily: "var(--font-martina), Georgia, serif" }}
+                >
+                  {bucket}
+                </h3>
               </div>
-              <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
+              <ul>
                 {items.map((row) => (
-                  <NotificationItem key={row.id} row={row} />
+                  <NotificationItem key={row.id} row={row} unread={unreadOnMount.has(row.id)} />
                 ))}
               </ul>
             </section>
@@ -169,52 +153,28 @@ export default function NotificationsClient({ initialRows, mock = false }: Props
   );
 }
 
-function FilterTab({
-  active,
-  onClick,
-  disabled,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  disabled?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`relative px-3 py-2 text-sm transition-colors -mb-px ${
-        active
-          ? "text-neutral-900 dark:text-white font-medium"
-          : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
-      } disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-neutral-500`}
-    >
-      {children}
-      {active && (
-        <span className="absolute left-0 right-0 -bottom-px h-px bg-neutral-900 dark:bg-white" />
-      )}
-    </button>
-  );
-}
-
-function NotificationItem({ row }: { row: NotificationRow }) {
+function NotificationItem({ row, unread }: { row: NotificationRow; unread: boolean }) {
   const r = renderNotification(row);
-  const unread = row.read_at === null;
   return (
     <li>
       <Link
         href={r.href}
-        className="group flex items-start gap-3 pl-2 pr-3 py-3 transition-colors hover:bg-ink-100"
+        className="group relative flex items-start gap-3 px-3 py-3 rounded-xl transition-colors hover:bg-ink-100/40 dark:hover:bg-neutral-100/[0.04]"
       >
-        <span
-          aria-label={unread ? "Unread" : undefined}
-          className={`w-1.5 h-1.5 rounded-full shrink-0 mt-5 ${
-            unread ? "bg-brand-500" : "bg-transparent"
-          }`}
-        />
-        {r.actorAvatar ? (
+        {r.coverImage ? (
+          // Notifications about a specific space or event lead with its own
+          // hero/cover image in a rounded-square tile — more recognizable
+          // than a generic icon, distinct from the circular person avatar.
+          // Sized larger than the avatar / icon variants (48 vs 40) so the
+          // photo has room to read; `rounded-lg` is a deliberate step softer
+          // than the actor avatar's full circle without going too boxy.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={r.coverImage}
+            alt=""
+            className="w-12 h-12 rounded-lg object-cover shrink-0 bg-ink-100 dark:bg-neutral-800 border border-neutral-400 dark:border-neutral-500"
+          />
+        ) : r.actorAvatar ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={r.actorAvatar}
@@ -250,10 +210,14 @@ function NotificationItem({ row }: { row: NotificationRow }) {
             </p>
           )}
         </div>
-        <div className="shrink-0 pt-0.5">
+        <div className="shrink-0 pt-0.5 flex items-center gap-2">
           <span className="text-[11px] text-neutral-400 dark:text-neutral-500 tabular-nums">
             {relative(row.created_at)}
           </span>
+          <span
+            aria-label={unread ? "Unread" : undefined}
+            className={`w-1.5 h-1.5 rounded-full ${unread ? "bg-brand-500" : "bg-transparent"}`}
+          />
         </div>
       </Link>
     </li>
