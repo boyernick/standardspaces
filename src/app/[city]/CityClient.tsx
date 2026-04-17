@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, SUBCATEGORY_GROUPS, VIBES, Category, Spot, EventRecord } from "@/lib/types";
+import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, SUBCATEGORY_GROUPS, Category, Spot, EventRecord } from "@/lib/types";
 import { isSpotNew } from "@/lib/new-badge";
 import UpcomingEventsStrip from "@/components/UpcomingEventsStrip";
 import dynamic from "next/dynamic";
@@ -97,11 +97,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     for (const s of allSpots) for (const c of s.category) m.set(c, (m.get(c) ?? 0) + 1);
     return m;
   }, [allSpots]);
-  const vibeCount = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const s of allSpots) for (const v of s.vibes ?? []) m.set(v, (m.get(v) ?? 0) + 1);
-    return m;
-  }, [allSpots]);
   const neighborhoodCount = useMemo(() => {
     const m = new Map<string, number>();
     for (const s of allSpots) m.set(s.neighborhood, (m.get(s.neighborhood) ?? 0) + 1);
@@ -117,16 +112,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     () => CATEGORY_ORDER.filter((c) => ALWAYS_SHOWN_CATEGORIES.includes(c) || (categoryCount.get(c) ?? 0) > 0),
     [categoryCount],
   );
-  const vibes = useMemo(
-    () =>
-      VIBES
-        .filter((v) => (vibeCount.get(v) ?? 0) > 0)
-        .sort((a, b) => {
-          const diff = (vibeCount.get(b) ?? 0) - (vibeCount.get(a) ?? 0);
-          return diff !== 0 ? diff : VIBES.indexOf(a) - VIBES.indexOf(b);
-        }),
-    [vibeCount],
-  );
   const neighborhoods = useMemo(
     () =>
       [...neighborhoodCount.keys()].sort((a, b) => {
@@ -141,8 +126,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
   const [activeSubcategories, setActiveSubcategories] = useState<Set<string>>(new Set());
   const [categoryDropdown, setCategoryDropdown] = useState<Category | null>(null);
   const [activeNeighborhood, setActiveNeighborhood] = useState<string | null>(null);
-  const [activeVibes, setActiveVibes] = useState<Set<string>>(new Set());
-  const [vibesOpen, setVibesOpen] = useState(false);
   const [activeEventTypes, setActiveEventTypes] = useState<Set<Category>>(new Set());
   const [eventTypesOpen, setEventTypesOpen] = useState(false);
   const [activeSpot, setActiveSpot] = useState<Spot | null>(null);
@@ -242,8 +225,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
 
   const neighborhoodRef = useRef<HTMLDivElement>(null);
   const neighborhoodDropdownRef = useRef<HTMLDivElement>(null);
-  const vibesRef = useRef<HTMLDivElement>(null);
-  const vibesDropdownRef = useRef<HTMLDivElement>(null);
   const eventTypesRef = useRef<HTMLDivElement>(null);
   const eventTypesDropdownRef = useRef<HTMLDivElement>(null);
   const categoryRef = useRef<HTMLDivElement>(null);
@@ -268,21 +249,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [neighborhoodOpen]);
-
-  useEffect(() => {
-    if (!vibesOpen) return;
-    function handleClick(e: MouseEvent) {
-      const target = e.target as Node;
-      if (
-        vibesRef.current && !vibesRef.current.contains(target) &&
-        vibesDropdownRef.current && !vibesDropdownRef.current.contains(target)
-      ) {
-        setVibesOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [vibesOpen]);
 
   useEffect(() => {
     if (!eventTypesOpen) return;
@@ -343,11 +309,8 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     if (activeNeighborhood) {
       result = result.filter((s) => s.neighborhood === activeNeighborhood);
     }
-    if (activeVibes.size > 0) {
-      result = result.filter((s) => s.vibes?.some((v) => activeVibes.has(v)));
-    }
     return result;
-  }, [eventsOnly, upcomingEvents, activeCategory, activeSubcategories, activeVibes, activeNeighborhood, allSpots]);
+  }, [eventsOnly, upcomingEvents, activeCategory, activeSubcategories, activeNeighborhood, allSpots]);
 
   // Viewport-scoped list. Spots inside the committed bounds, ranked nearest
   // to map center first. When the viewport is empty, fall back to the 5
@@ -445,7 +408,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     setActiveSubcategories(new Set());
     setCategoryDropdown(null);
     setActiveNeighborhood(null);
-    setActiveVibes(new Set());
     setActiveSpot(null);
   };
 
@@ -483,24 +445,23 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 </>
               )}
 
-              {/* Vibes — first; cross-category mood/experience filter */}
-              {vibes.length > 0 && (
+              {/* Neighborhood — first; spatial filter keeps the panel in sync with where the admin is browsing */}
+              {neighborhoods.length > 0 && (
                 <>
-                  <div ref={vibesRef} className="relative shrink-0">
+                  <div ref={neighborhoodRef} className="relative shrink-0">
                     <button
-                      onClick={() => setVibesOpen((v) => !v)}
+                      onClick={() => setNeighborhoodOpen(!neighborhoodOpen)}
                       className={`flex items-center justify-between gap-1.5 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${
-                        activeVibes.size > 0
+                        activeNeighborhood
                           ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
                           : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
                       }`}
                     >
-                      Vibe
-                      {activeVibes.size > 0 && <span className="text-[10px] opacity-80">({activeVibes.size})</span>}
-                      {activeVibes.size > 0 ? (
-                        <X size={12} strokeWidth={2} className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setActiveVibes(new Set()); setVibesOpen(false); }} />
+                      {activeNeighborhood ?? "Neighborhood"}
+                      {activeNeighborhood ? (
+                        <X size={12} strokeWidth={2} className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setActiveNeighborhood(null); setNeighborhoodOpen(false); }} />
                       ) : (
-                        <ChevronDown size={10} strokeWidth={1.5} className={`transition-transform ${vibesOpen ? "rotate-180" : ""}`} />
+                        <ChevronDown size={10} strokeWidth={1.5} className={`transition-transform ${neighborhoodOpen ? "rotate-180" : ""}`} />
                       )}
                     </button>
                   </div>
@@ -526,7 +487,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                           setActiveSubcategories(new Set());
                           setCategoryDropdown(null);
                           setActiveNeighborhood(null);
-                          setActiveVibes(new Set());
                         } else {
                           setActiveEventTypes(new Set());
                         }
@@ -633,26 +593,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 })}
               </div>
 
-              <div className="w-px h-5 bg-neutral-200 dark:bg-neutral-700 shrink-0" />
-
-              {/* Neighborhood — last; map already does spatial filtering */}
-              <div ref={neighborhoodRef} className="relative shrink-0">
-                <button
-                  onClick={() => setNeighborhoodOpen(!neighborhoodOpen)}
-                  className={`flex items-center justify-between gap-1.5 px-3.5 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${
-                    activeNeighborhood
-                      ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
-                      : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
-                  }`}
-                >
-                  {activeNeighborhood ?? cityName}
-                  {activeNeighborhood ? (
-                    <X size={12} strokeWidth={2} className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setActiveNeighborhood(null); setNeighborhoodOpen(false); }} />
-                  ) : (
-                    <ChevronDown size={10} strokeWidth={1.5} className={`transition-transform ${neighborhoodOpen ? "rotate-180" : ""}`} />
-                  )}
-                </button>
-              </div>
             </div>
 
             {/* Event types dropdown — rendered outside scrollable container so it isn't clipped */}
@@ -701,7 +641,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                                 setActiveSubcategories(new Set());
                                 setCategoryDropdown(null);
                                 setActiveNeighborhood(null);
-                                setActiveVibes(new Set());
                               }
                             }}
                             className={`group flex w-full items-center justify-between gap-2.5 px-4 py-2 text-xs transition-colors ${isActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-ink-100"}`}
@@ -720,49 +659,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                       {activeEventTypes.size > 0 && (
                         <div className="border-t border-neutral-100 dark:border-neutral-800">
                           <button onClick={() => { setActiveEventTypes(new Set()); setEventTypesOpen(false); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear filter</button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Vibes dropdown — rendered outside scrollable container so it isn't clipped */}
-            {vibesOpen && (() => {
-              const btn = vibesRef.current;
-              const bar = filterBarRef.current;
-              const barWidth = bar?.getBoundingClientRect().width ?? 375;
-              const dropdownWidth = 240; // w-60
-              let left = btn && bar ? btn.getBoundingClientRect().left - bar.getBoundingClientRect().left : 16;
-              if (left + dropdownWidth > barWidth - 8) {
-                left = btn && bar ? btn.getBoundingClientRect().right - bar.getBoundingClientRect().left - dropdownWidth : left;
-              }
-              left = Math.max(8, left);
-              return (
-                <div ref={vibesDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
-                  <div className="relative" style={{ marginLeft: left }}>
-                    <div className="mt-1.5 w-60 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-72 animate-[fadeSlideDown_150ms_ease-out]">
-                      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-1">
-                      {vibes.map((v) => {
-                        const isActive = activeVibes.has(v);
-                        const count = vibeCount.get(v) ?? 0;
-                        return (
-                          <button key={v} onClick={() => { setActiveVibes((prev) => { const next = new Set(prev); isActive ? next.delete(v) : next.add(v); return next; }); }} className={`group flex w-full items-center justify-between gap-2.5 px-4 py-2 text-xs transition-colors ${isActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-ink-100"}`}>
-                            <span className="flex items-center gap-2.5 min-w-0">
-                              <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isActive ? "bg-brand-500 border-brand-500" : "border-neutral-300 dark:border-neutral-600"}`}>
-                                {isActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                              </span>
-                              <span className="truncate">{v}</span>
-                            </span>
-                            <span className="text-neutral-600 dark:text-neutral-300 shrink-0">{count}</span>
-                          </button>
-                        );
-                      })}
-                      </div>
-                      {activeVibes.size > 0 && (
-                        <div className="border-t border-neutral-100 dark:border-neutral-800">
-                          <button onClick={() => { setActiveVibes(new Set()); setVibesOpen(false); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear filter</button>
                         </div>
                       )}
                     </div>

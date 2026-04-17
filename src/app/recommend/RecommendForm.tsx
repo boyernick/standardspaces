@@ -76,22 +76,44 @@ export default function RecommendForm() {
   }
 
   if (step === "success") {
+    const submittedLinks = [url.trim(), ...additionalUrls.map((u) => u.trim()).filter(Boolean)];
     return (
-      <div className="mt-12 text-center">
-        <div className="w-12 h-12 rounded-full bg-ink-100 flex items-center justify-center mx-auto mb-4">
-          <CheckCircle size={24} className="text-neutral-900 dark:text-white" />
+      <div className="py-16 sm:py-20 text-center">
+        <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-ink-100">
+          <CheckCircle size={24} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
         </div>
-        <h2>Thanks for the recommendation</h2>
+        <h2>Recommendation received</h2>
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2 max-w-sm mx-auto">
-          We'll review this space and add it to the guide if it meets our standards.
+          We&apos;ll review this space and add it to the guide if it meets our standards.
         </p>
-        <div className="mt-6">
+
+        {submittedLinks.length > 0 && (
+          <div className="mt-8 mx-auto max-w-sm rounded-xl border border-neutral-200 dark:border-neutral-800 bg-surface overflow-hidden text-left">
+            {submittedLinks.map((link, i) => {
+              const type = detectUrlType(link) ?? "Link";
+              let host = link;
+              try { host = new URL(link).hostname.replace(/^www\./, ""); } catch {}
+              return (
+                <div
+                  key={i}
+                  className={`flex items-center gap-3 px-4 py-3 text-xs ${i > 0 ? "border-t border-neutral-100 dark:border-neutral-900" : ""}`}
+                >
+                  <Globe size={14} strokeWidth={1.5} className="text-neutral-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-neutral-900 dark:text-white truncate">{host}</div>
+                    <div className="text-neutral-400 dark:text-neutral-500 mt-0.5">{type}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <ButtonLink href="/" variant="primary">Back to guide</ButtonLink>
-        </div>
-        <div className="mt-3">
           <button
             onClick={() => { setStep("form"); setUrl(""); setAdditionalUrls([]); }}
-            className="text-sm text-neutral-900 dark:text-white hover:underline"
+            className="px-4 py-2 text-sm font-medium rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
           >
             Recommend another
           </button>
