@@ -28,8 +28,9 @@ export interface ResearchedData {
   bookingPlatform?: string;
   menuUrl?: string;
   instagram?: string;
-  lat?: number;
-  lng?: number;
+  // No lat/lng: Perplexity (as an LLM) can't geocode reliably — it produces
+  // plausible-looking but often wrong coordinates. Authoritative geocoding
+  // happens at publish time via `geocodeAddress` (Google → Mapbox).
   category?: string[];
   subcategory?: string[];
   vibes?: string[];
@@ -95,7 +96,7 @@ function buildSystemPrompt(): string {
     "- `phone` is digits with formatting like `(305) 555-1234` — US-style when in the US.",
     "- `instagram` is the handle only — just the username, no @ prefix, no URL, no `instagram.com/`. Search the venue's site footer, Linktree, Contact page, and social profiles to find it. If the venue has both a main and a location-specific handle (e.g. a group with a Miami outpost), prefer the location-specific one.",
     "- `imageUrls` is an array of 4–8 **direct** image URLs (strings ending in .jpg/.jpeg/.png/.webp) showing the venue's interior, food/drinks, exterior, or ambiance. Source these from the venue's Instagram posts, Yelp gallery, Resy/OpenTable listings, Google Maps photos, or editorial coverage (Eater/Timeout/Infatuation). Do NOT return page URLs — return the image file URL itself. Prefer landscape orientation and professional/editorial photos over user snapshots when both are available. Skip logos, headshots, and staff photos.",
-    "- `lat`/`lng` are decimal degrees with at least 4 decimal places of precision.",
+    // Do not ask for lat/lng — geocoding happens downstream from `address`.
     "- `bookingPlatform` is one of: Resy, OpenTable, Tock, SevenRooms, Yelp, or the venue's name if in-house.",
     "- `website` is the venue's canonical homepage URL.",
     "- Arrays: return between 1 and 4 items where the schema allows multiple. Prefer the most specific label.",
@@ -147,8 +148,6 @@ function buildResponseSchema() {
       bookingPlatform: { type: "string" },
       menuUrl: { type: "string" },
       instagram: { type: "string" },
-      lat: { type: "number" },
-      lng: { type: "number" },
       category: {
         type: "array",
         items: { type: "string", enum: CATEGORY_ORDER },
@@ -301,8 +300,6 @@ function sanitize(data: ResearchedData): ResearchedData {
       if (trimmed) (out as Record<string, unknown>)[k] = trimmed;
     }
   }
-  if (typeof data.lat === "number" && Number.isFinite(data.lat)) out.lat = data.lat;
-  if (typeof data.lng === "number" && Number.isFinite(data.lng)) out.lng = data.lng;
   if (Array.isArray(data.category)) {
     out.category = data.category.filter((s): s is string => typeof s === "string" && s.length > 0);
   }

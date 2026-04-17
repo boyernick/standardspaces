@@ -186,8 +186,8 @@ export async function POST(req: NextRequest) {
       bookingPlatform: scraped.bookingPlatform || null,
       menuUrl: scraped.menuUrl || null,
       instagram: scraped.instagram || null,
-      lat: scraped.lat || null,
-      lng: scraped.lng || null,
+      // lat/lng intentionally omitted — research no longer produces
+      // coordinates; publish geocodes from address.
       category: rec.category || scraped.category || null,
       subcategory: scraped.subcategory || null,
       vibes: scraped.vibes || null,

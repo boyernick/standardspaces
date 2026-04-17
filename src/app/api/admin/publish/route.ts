@@ -109,28 +109,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing data" }, { status: 400 });
     }
 
-    // Always try to geocode from address when coordinates are missing, zero,
-    // or look like the placeholder default. Falling back to a neighborhood
-    // query ("Brickell, Miami") ensures we never publish a spot at 0,0.
-    let lng: number | null = typeof spot.lng === "number" ? spot.lng : null;
-    let lat: number | null = typeof spot.lat === "number" ? spot.lat : null;
-    const looksInvalid =
-      lng === null ||
-      lat === null ||
-      lng === 0 ||
-      lat === 0 ||
-      lng === -80.19 ||
-      lat === 25.77;
-    if (looksInvalid) {
-      const query =
-        spot.address?.trim() ||
-        [spot.neighborhood, spot.city].filter(Boolean).join(", ");
-      if (query) {
-        const geo = await geocodeAddress(query);
-        if (geo) {
-          lng = geo.lng;
-          lat = geo.lat;
-        }
+    // Always resolve coordinates from the address via Google (Mapbox fallback).
+    // Previously we'd trust `spot.lat/lng` from the form if they "looked
+    // valid", but Perplexity's research pass hallucinates plausible-but-wrong
+    // coordinates (e.g. `25.7667, -80.1938` for a space actually three blocks
+    // north), which slipped straight past a sentinel-only check. Geocoding
+    // on every publish is the authoritative fix — the form's lat/lng only
+    // survive as a last-resort fallback below.
+    const addressQuery =
+      spot.address?.trim() ||
+      [spot.neighborhood, spot.city].filter(Boolean).join(", ");
+    let lng: number | null = null;
+    let lat: number | null = null;
+    if (addressQuery) {
+      const geo = await geocodeAddress(addressQuery);
+      if (geo) {
+        lng = geo.lng;
+        lat = geo.lat;
+      }
+    }
+    // Fallback path: if both geocoders failed (transient outage, etc.) but
+    // the form sent non-sentinel coords, accept them rather than block the
+    // publish. Still reject obvious placeholders.
+    if (lng === null || lat === null) {
+      const formLng = typeof spot.lng === "number" ? spot.lng : null;
+      const formLat = typeof spot.lat === "number" ? spot.lat : null;
+      const isSentinel =
+        formLng === null ||
+        formLat === null ||
+        formLng === 0 ||
+        formLat === 0 ||
+        (formLng === -80.19 && formLat === 25.77);
+      if (!isSentinel) {
+        lng = formLng;
+        lat = formLat;
       }
     }
     if (lng === 0 || lat === 0 || lng === null || lat === null) {
