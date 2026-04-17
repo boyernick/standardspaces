@@ -14,7 +14,7 @@ import CheckInButton from "@/components/CheckInButton";
 import FavoriteButton from "@/components/FavoriteButton";
 import WishlistButton from "@/components/WishlistButton";
 import { NewBadge } from "@/lib/new-badge";
-import { ChevronDown, Map as MapIcon, List, X, MapPin, Search, Calendar, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, Map as MapIcon, List, X, MapPin, Search, Calendar, SlidersHorizontal, Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -133,6 +133,11 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
   const [hoveredSpotId, setHoveredSpotId] = useState<string | null>(null);
   const [neighborhoodOpen, setNeighborhoodOpen] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
+  // Desktop-only: hide the side panel cards and give the map the full width,
+  // with the filter pills overlaid at the top. Mobile has its own map/list
+  // toggle (`mobileView`) so this flag only takes effect at the `split:`
+  // breakpoint — the expand button below is hidden under `split:` as well.
+  const [mapExpanded, setMapExpanded] = useState(false);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -421,12 +426,12 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-        className="flex-1 min-h-0 flex flex-col split:flex-row"
+        className="flex-1 min-h-0 flex flex-col split:flex-row relative"
       >
         {/* Panel — left */}
-        <div className={`w-full split:w-[55%] lg:w-1/2 split:min-w-[420px] split:flex split:flex-col split:shrink-0 ${mobileView === "list" ? "flex flex-col flex-1 min-h-0" : "flex flex-col split:flex"}`}>
+        <div className={`w-full ${mapExpanded ? "split:w-0 split:min-w-0 split:grow-0 split:basis-0" : "split:w-[55%] lg:w-1/2 split:min-w-[420px]"} split:flex split:flex-col split:shrink-0 ${mobileView === "list" ? "flex flex-col flex-1 min-h-0" : "flex flex-col split:flex"}`}>
           {/* Filters bar */}
-          {allSpots.length > 0 && <div ref={filterBarRef} className="relative z-20 bg-surface py-2.5 shrink-0">
+          {allSpots.length > 0 && <motion.div ref={filterBarRef} layout="position" transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }} className={`relative z-20 py-2.5 shrink-0 bg-surface ${mapExpanded ? "split:absolute split:top-3 split:left-4 split:right-[4.5rem] split:z-40 split:bg-transparent" : ""}`}>
             <div ref={filterScrollRef} className="flex items-center gap-2 overflow-x-auto scrollbar-hide px-4">
               {/* City — hidden until more cities exist. Keep component intact. */}
               {false && (
@@ -784,10 +789,10 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 </div>
               );
             })()}
-          </div>}
+          </motion.div>}
 
           {/* Scrollable content — hidden on mobile map view */}
-          <div ref={panelRef} className={`flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-36 split:pb-0 ${mobileView === "map" ? "hidden split:block" : ""}`}>
+          <div ref={panelRef} className={`flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-36 split:pb-0 ${mapExpanded ? "split:hidden" : ""} ${mobileView === "map" ? "hidden split:block" : ""}`}>
           {eventsOnly ? (() => {
             const matchesType = (e: typeof upcomingEvents[number]) => {
               if (activeEventTypes.size === 0) return true;
@@ -1012,7 +1017,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
         </div>
 
         {/* Map — right */}
-        <div className={`split:flex-1 split:min-w-0 split:block relative px-4 split:pl-0 split:pr-4 split:pt-1.5 split:pb-4 ${mobileView === "map" ? "pb-2.5" : "hidden"}`}>
+        <div className={`split:flex-1 split:min-w-0 split:block relative px-4 ${mapExpanded ? "" : "split:pl-0"} split:pr-4 split:pt-1.5 split:pb-4 ${mobileView === "map" ? "pb-2.5" : "hidden"}`}>
           <div
             className="w-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative split:h-full"
             style={mapHeight && mobileView === "map" ? { height: mapHeight } : undefined}
@@ -1031,6 +1036,21 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                   : undefined
               }
             />
+
+            {/* Expand / collapse side panel — desktop only. Shares the center
+                button's translucent pill style. */}
+            <button
+              type="button"
+              onClick={() => setMapExpanded((v) => !v)}
+              aria-label={mapExpanded ? "Show list" : "Hide list"}
+              className="hidden split:flex absolute top-3 right-3 z-20 w-8 h-8 rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-sm items-center justify-center hover:bg-white/70 dark:hover:bg-neutral-900/70 transition-colors"
+            >
+              {mapExpanded ? (
+                <Minimize2 size={14} strokeWidth={1.75} className="text-neutral-900 dark:text-white" />
+              ) : (
+                <Maximize2 size={14} strokeWidth={1.75} className="text-neutral-900 dark:text-white" />
+              )}
+            </button>
 
 
             {/* Map card */}
