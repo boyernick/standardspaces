@@ -18,22 +18,22 @@ export default function EmptyState({
   cta?: { label: string; href: string };
 }) {
   return (
-    <div className="px-6 py-20 text-center">
-      <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-ink-100">
+    <div className="px-6 py-24 text-center">
+      <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-5 bg-ink-100">
         <Icon
-          size={20}
+          size={22}
           strokeWidth={1.5}
           className="text-neutral-500 dark:text-neutral-400"
         />
       </div>
-      <h3>{title}</h3>
+      <h3 className="text-base font-medium">{title}</h3>
       {body && (
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
           {body}
         </p>
       )}
       {cta && (
-        <div className="mt-4">
+        <div className="mt-6">
           <ButtonLink href={cta.href}>{cta.label}</ButtonLink>
         </div>
       )}

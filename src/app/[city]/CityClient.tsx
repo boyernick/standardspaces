@@ -14,7 +14,8 @@ import CheckInButton from "@/components/CheckInButton";
 import FavoriteButton from "@/components/FavoriteButton";
 import WishlistButton from "@/components/WishlistButton";
 import { NewBadge } from "@/lib/new-badge";
-import { ChevronDown, Map as MapIcon, List, X, MapPin, Search, Calendar } from "lucide-react";
+import { ChevronDown, Map as MapIcon, List, X, MapPin, Search, Calendar, SlidersHorizontal } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   squaredDistance,
@@ -854,22 +855,19 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                   </div>
                 </div>
               ) : (
-                <div className="px-6 py-20 text-center">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-[#eceae2] dark:bg-[#0e0d07]">
-                    <Calendar size={20} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
+                <div className="px-6 py-24 text-center">
+                  <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-5 bg-ink-100">
+                    <Calendar size={22} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
                   </div>
                   <h3 className="text-base font-medium">No upcoming events</h3>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
                     {activeEventTypes.size > 0
                       ? `No events match the selected types in ${cityName}.`
-                      : `Nothing on the calendar in ${cityName} yet. Check back soon.`}
+                      : `Nothing on the calendar in ${cityName} yet.`}
                   </p>
-                  <button
-                    onClick={() => { setEventsOnly(false); setActiveEventTypes(new Set()); setEventTypesOpen(false); }}
-                    className="inline-block mt-4 text-sm font-medium text-brand-500 hover:underline"
-                  >
-                    Clear filter
-                  </button>
+                  <div className="mt-6">
+                    <Button onClick={() => { setEventsOnly(false); setActiveEventTypes(new Set()); setEventTypesOpen(false); }}>Clear all filters</Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -907,17 +905,17 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               </div>
             </div>
           ) : filteredRaw.length === 0 ? (
-            <div className="px-6 py-20 text-center">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-[#eceae2] dark:bg-[#0e0d07]">
-                <MapPin size={20} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
+            <div className="px-6 py-24 text-center">
+              <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-5 bg-ink-100">
+                <SlidersHorizontal size={22} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
               </div>
-              <h3 className="text-base font-medium">No spaces match your filters</h3>
+              <h3 className="text-base font-medium">No spaces match</h3>
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
-                Try removing a filter to see more spaces in {cityName}.
+                Nothing in {cityName} fits this combination.
               </p>
-              <button onClick={clearAll} className="inline-block mt-4 text-sm font-medium text-brand-500 hover:underline">
-                Clear filter
-              </button>
+              <div className="mt-6">
+                <Button onClick={clearAll}>Clear all filters</Button>
+              </div>
             </div>
           ) : filtered.length === 0 ? (
             // Filters match real spots, but none of them are in the current

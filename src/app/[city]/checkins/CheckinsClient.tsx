@@ -6,7 +6,8 @@ import { CATEGORY_LABELS, CATEGORY_ORDER, Category, Spot } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
 import ImageCarousel from "@/components/ImageCarousel";
 import { NewBadge } from "@/lib/new-badge";
-import { CircleCheck, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { CircleCheck, Search, X, ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 const PER_PAGE_SM = 8;
 const PER_PAGE_LG = 9;
@@ -77,24 +78,31 @@ export default function CheckinsClient({ spots, citySlug, ratings = {} }: { spot
             </div>
           )}
 
-          {filtered.length === 0 ? (
+          {filtered.length === 0 && spots.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-12 h-12 rounded-full bg-ink-100 flex items-center justify-center mx-auto mb-4">
                 <CircleCheck size={20} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500" />
               </div>
-              <h3 className="text-base font-medium">
-                {spots.length === 0 ? "No check-ins yet" : "No matches"}
-              </h3>
+              <h3 className="text-base font-medium">No check-ins yet</h3>
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
-                {spots.length === 0
-                  ? "Check in when you visit a space to track where you've been."
-                  : "Try a different filter or search term."}
+                Check in when you visit a space to track where you&apos;ve been.
               </p>
-              {spots.length === 0 && (
-                <Link href={`/${citySlug}`} className="inline-block mt-4 text-sm font-medium text-neutral-900 dark:text-white hover:underline">
-                  Browse spaces
-                </Link>
-              )}
+              <Link href={`/${citySlug}`} className="inline-block mt-4 text-sm font-medium text-neutral-900 dark:text-white hover:underline">
+                Browse spaces
+              </Link>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="px-6 py-24 text-center">
+              <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-5 bg-ink-100">
+                <SlidersHorizontal size={22} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
+              </div>
+              <h3 className="text-base font-medium">No spaces match</h3>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
+                Nothing in your check-ins fits this combination.
+              </p>
+              <div className="mt-6">
+                <Button onClick={() => { setActiveCategory(null); setQuery(""); setPage(1); }}>Clear all filters</Button>
+              </div>
             </div>
           ) : (
             <>
