@@ -94,7 +94,7 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const menuLinkClass = "block px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors";
+  const menuLinkClass = "block px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors";
 
   return (
     <header className="bg-surface shrink-0" style={{ position: "relative", zIndex: 40 }}>
@@ -161,12 +161,12 @@ export default function Navbar() {
           </button>
 
           {menuOpen && (
-            <div className="absolute top-full right-0 mt-2 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-lg py-1.5 z-50 overflow-hidden">
+            <div className="absolute top-full right-0 mt-2 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-lg z-50 overflow-hidden">
               <Link href="/profile" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
                 Profile
               </Link>
-              <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
-              <Link href="/notifications" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors">
+              <div className="border-t border-neutral-200 dark:border-neutral-700" />
+              <Link href="/notifications" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors">
                 Notifications
                 {(unreadNotifs > 0 || mockJewel) && (
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-500" aria-label={`${unreadNotifs} unread`} />
@@ -175,7 +175,7 @@ export default function Navbar() {
               <Link href="/recommend" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
                 Recommendations
               </Link>
-              <Link href="/referrals" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors">
+              <Link href="/referrals" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors">
                 Referrals
                 {pendingReferrals > 0 && (
                   <span className="ml-2 px-1.5 py-0.5 text-[10px] font-medium bg-brand-500 text-white rounded-full min-w-[18px] text-center">
@@ -187,14 +187,14 @@ export default function Navbar() {
                 Events
               </Link>
               {isAdmin && (
-                <Link href="/admin" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors">
+                <Link href="/admin" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors">
                   Admin
                   {adminPending > 0 && (
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-500" aria-label={`${adminPending} pending`} />
                   )}
                 </Link>
               )}
-              <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
+              <div className="border-t border-neutral-200 dark:border-neutral-700" />
               <button
                 onClick={async () => {
                   setMenuOpen(false);
@@ -202,7 +202,7 @@ export default function Navbar() {
                   await supabase.auth.signOut();
                   window.location.href = "/";
                 }}
-                className="block w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
+                className="block w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
               >
                 Sign out
               </button>
