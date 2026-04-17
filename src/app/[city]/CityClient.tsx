@@ -457,7 +457,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                           : "bg-surface text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
                       }`}
                     >
-                      {activeNeighborhood ?? "Neighborhood"}
+                      {activeNeighborhood ?? cityName}
                       {activeNeighborhood ? (
                         <X size={12} strokeWidth={2} className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setActiveNeighborhood(null); setNeighborhoodOpen(false); }} />
                       ) : (
