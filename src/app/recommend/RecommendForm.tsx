@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { track } from "@/lib/analytics";
 import { Globe, CheckCircle, Loader2, Plus, X } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 
@@ -66,6 +67,14 @@ export default function RecommendForm() {
     }
 
     setStep("success");
+
+    // Conversion event. Fires only on confirmed insert — the guard above
+    // rejects failures. `url_type` captures source provenance (Google
+    // Maps vs. Instagram vs. a bare website URL) for funnel segmentation.
+    track("recommend_submit", {
+      url_type: urlType ?? "unknown",
+      extras_count: cleanedExtras.length,
+    });
 
     // Trigger background processing (don't await — let it run async)
     fetch("/api/recommend/process", {

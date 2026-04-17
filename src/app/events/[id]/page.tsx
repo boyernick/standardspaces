@@ -5,6 +5,7 @@ import { getEventById, getRsvpsForEvent } from "@/lib/events";
 import { getSpotById } from "@/lib/data";
 import Navbar from "@/components/Navbar";
 import EventClient from "./EventClient";
+import TrackView from "@/components/TrackView";
 
 export async function generateMetadata({
   params,
@@ -78,6 +79,7 @@ export default async function EventPage({
 
   return (
     <div className="h-[100dvh] flex flex-col bg-surface">
+      <TrackView kind="event" eventId={event.id} />
       <Navbar />
       <EventClient
         event={event}

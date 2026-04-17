@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { citySlugFromName } from "@/lib/cities";
+import { trackServer } from "@/lib/analytics";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
@@ -49,6 +50,10 @@ export async function GET(request: NextRequest) {
 
   if (existing) {
     userCity = existing.city || "Miami";
+    // Returning user — signin event. The callback fires for every OTP /
+    // magic-link exchange, so this represents one authenticated session
+    // hand-off per login.
+    await trackServer("signin", {}, data.user.id);
   } else {
     // Look up city from application by phone
     const phone = data.user.phone;
@@ -66,6 +71,11 @@ export async function GET(request: NextRequest) {
       email: data.user.email,
       city: userCity,
     });
+
+    // First-time profile row insert == signup completion. `city` is the
+    // value we just resolved from their application row (or the default),
+    // i.e. the city they'll land on after the redirect.
+    await trackServer("signup_complete", { city: userCity }, data.user.id);
   }
 
   // Rebuild response with correct city redirect, preserving cookies

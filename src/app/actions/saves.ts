@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { notifyFollowersOfCheckIn } from "@/lib/notifications";
+import { trackServer } from "@/lib/analytics";
 
 // --- Favorites (heart) ---
 
@@ -107,6 +108,12 @@ export async function checkIn(spotId: string): Promise<{ success: boolean }> {
   // Fan-out to followers. Dedupe key is spot-scoped so a user re-checking
   // in at the same spot won't re-notify their followers.
   await notifyFollowersOfCheckIn(user.id, spotId);
+
+  // Conversion event. The upsert above is idempotent (re-check-ins dedupe
+  // on the unique user/spot pair), so repeat events here are harmless —
+  // they reflect real re-engagement signals.
+  await trackServer("checkin_create", { spot_id: spotId }, user.id);
+
   return { success: true };
 }
 

@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth, requireAdmin } from "@/lib/auth";
 import { getSpotById, searchSpots } from "@/lib/data";
 import { EventRecord, Spot } from "@/lib/types";
+import { trackServer } from "@/lib/analytics";
 import {
   createNotification,
   fanOutNewEventToCity,
@@ -268,6 +269,15 @@ export async function rsvpEvent(
     await notifyFollowersOfRsvp(user.id, eventId);
   }
 
+  // Conversion event after DB confirm. `status` distinguishes a live RSVP
+  // from an auto-waitlist so funnel math (capacity hits, conversion to
+  // attending) stays honest.
+  await trackServer(
+    "rsvp_create",
+    { event_id: eventId, status: nextStatus },
+    user.id,
+  );
+
   revalidatePath(`/events/${eventId}`);
   return { ok: true, status: nextStatus };
 }
@@ -335,6 +345,15 @@ export async function cancelRsvp(
       });
     }
   }
+
+  // `was_going` preserves whether the cancellation freed a seat (vs.
+  // withdrawing from the waitlist) — the two behave very differently in
+  // capacity analytics.
+  await trackServer(
+    "rsvp_cancel",
+    { event_id: eventId, was_going: wasGoing },
+    user.id,
+  );
 
   revalidatePath(`/events/${eventId}`);
   return { ok: true };

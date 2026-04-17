@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createNotification } from "@/lib/notifications";
+import { trackServer } from "@/lib/analytics";
 
 export async function toggleFollow(targetUserId: string): Promise<{ following: boolean }> {
   const supabase = await createClient();
@@ -17,6 +18,7 @@ export async function toggleFollow(targetUserId: string): Promise<{ following: b
 
   if (existing) {
     await supabase.from("user_follows").delete().eq("follower_id", user.id).eq("following_id", targetUserId);
+    await trackServer("unfollow_user", { target_id: targetUserId }, user.id);
     return { following: false };
   }
 
@@ -28,6 +30,7 @@ export async function toggleFollow(targetUserId: string): Promise<{ following: b
     actorId: user.id,
     dedupeKey: `follow:${user.id}`,
   });
+  await trackServer("follow_user", { target_id: targetUserId }, user.id);
   return { following: true };
 }
 

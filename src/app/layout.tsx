@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import AnalyticsIdentity from "@/components/AnalyticsIdentity";
 import CommandMenu from "@/components/CommandMenu";
 import ThemeSync from "@/components/ThemeSync";
 import "@/lib/env"; // fail fast at boot if required env vars are missing
@@ -98,6 +99,7 @@ export default function RootLayout({
         {children}
         <Analytics />
         <SpeedInsights />
+        <AnalyticsIdentity />
       </body>
     </html>
   );

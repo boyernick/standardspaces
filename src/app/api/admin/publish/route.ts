@@ -3,7 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { geocodeAddress } from "@/lib/geocode";
 import { createNotification, fanOutNewSpotToCity } from "@/lib/notifications";
 import { embedSpot } from "@/lib/embeddings";
-import { requireAdminApi } from "@/lib/auth";
+import { requireAdminApi, getSession } from "@/lib/auth";
+import { trackServer } from "@/lib/analytics";
 
 /**
  * Copy a batch of image URLs into a stable `spots/{spotId}/` subfolder of
@@ -215,6 +216,16 @@ export async function POST(req: NextRequest) {
       .from("recommendations")
       .update({ status: "published" })
       .eq("id", recommendationId);
+
+    // Fire the conversion event on the admin (the actor). Embedding and
+    // notification fan-out below are best-effort and not counted here —
+    // publish is already the authoritative moment.
+    const adminUser = await getSession();
+    await trackServer(
+      "publish_spot",
+      { spot_id: spot.id, city: spot.city ?? "" },
+      adminUser?.id ?? null,
+    );
 
     // Best-effort semantic embedding. Never block publish if OpenAI is down
     // or the key is missing — the spot is searchable by substring regardless.

@@ -16,6 +16,7 @@ import { getSpotAggregate } from "@/app/actions/ratings";
 import { Clock, Shirt, Car, MapPin, Newspaper, Smartphone, Globe, AtSign, CalendarCheck } from "lucide-react";
 import { FadeIn, GalleryReveal, SectionReveal } from "@/components/ListingAnimations";
 import { NewBadge } from "@/lib/new-badge";
+import TrackView from "@/components/TrackView";
 
 export async function generateStaticParams() {
   const ids = await getAllSpotIds();
@@ -354,6 +355,7 @@ export default async function SpotPage({
 
   return (
     <div className="h-[100dvh] flex flex-col bg-surface">
+      <TrackView kind="spot" spotId={spot.id} city={spot.city} />
       <Navbar />
       <div className="flex-1 overflow-y-auto relative">
         <GalleryReveal>
