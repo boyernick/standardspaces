@@ -28,7 +28,7 @@ export function NewBadge({ spot, compact = false, className = "" }: NewBadgeProp
     <span
       className={`shrink-0 ${
         compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]"
-      } font-semibold rounded-full border border-brand-500 text-brand-500 ${className}`}
+      } font-semibold rounded-full border border-neutral-200 dark:border-neutral-800 bg-surface text-neutral-900 dark:text-white shadow-[0_1px_5px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_8px_rgba(0,0,0,0.4)] ${className}`}
     >
       New
     </span>

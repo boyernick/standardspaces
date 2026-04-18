@@ -13,6 +13,8 @@ import Navbar from "@/components/Navbar";
 import CheckInButton from "@/components/CheckInButton";
 import FavoriteButton from "@/components/FavoriteButton";
 import WishlistButton from "@/components/WishlistButton";
+import ItineraryTray from "@/components/itinerary/ItineraryTray";
+import AddToPlanButton from "@/components/itinerary/AddToPlanButton";
 import { NewBadge } from "@/lib/new-badge";
 import { ChevronDown, Map as MapIcon, List, X, MapPin, Search, Calendar, SlidersHorizontal, Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -994,16 +996,28 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                         priority={i < 6}
                         sizes="(min-width: 1024px) 40vw, (min-width: 640px) 50vw, 100vw"
                       />
-                      <div className="p-3 rounded-b-2xl bg-surface">
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="text-sm font-semibold line-clamp-1">{spot.name}</h3>
-                          <NewBadge spot={spot} />
-                        </div>
+                      <div className="p-3 pr-12 rounded-b-2xl bg-surface">
+                        <h3 className="text-sm font-semibold line-clamp-1">{spot.name}</h3>
                         <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">
                           {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
                         </p>
                       </div>
                     </Link>
+                    {/* Top-left badge overlay on the image. pointer-events-none
+                        so it doesn't steal the card's Link click. */}
+                    <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                      <NewBadge spot={spot} />
+                    </div>
+                    {/* Bottom-right "Add to plan" floating over the card's
+                        text area. The button stops propagation internally,
+                        so a click here won't navigate the card. */}
+                    <div className="absolute bottom-3 right-3 z-10">
+                      <AddToPlanButton
+                        spotId={spot.id}
+                        citySlug={citySlug}
+                        variant="card"
+                      />
+                    </div>
                   </motion.div>
                 ))}
                 </AnimatePresence>
@@ -1121,6 +1135,16 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
           `}</style>
         </div>
       </motion.div>
+
+      {/* Itinerary tray — floats above the mobile view-toggle bar on
+          narrow viewports (bottomOffset=80 ≈ toggle bar height + gap).
+          On split view the toggle bar is hidden, so the tray can sit
+          lower (bottomOffset=16). */}
+      <ItineraryTray
+        citySlug={citySlug}
+        spots={allSpots}
+        bottomOffset={80}
+      />
 
       {/* Mobile bottom bar */}
       <div ref={bottomBarRef} className="split:hidden fixed bottom-0 inset-x-0 z-30 bg-surface border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">

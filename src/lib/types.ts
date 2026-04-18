@@ -187,6 +187,65 @@ export const TOP_VIBES: string[] = [
   "Power lunch",
 ];
 
+// --- Activities (itinerary planner v2) ------------------------------------
+//
+// An "activity" is the user's answer to "what are we doing?" (dinner,
+// brunch, cocktails, date night…). It's a separate dimension from
+// `vibes`, which answers "how should it feel?" (rooftop, intimate,
+// romantic…). In the planner UI the two live in separate chip rows so
+// the criteria feel principled rather than arbitrary.
+//
+// Under the hood each activity maps to a *required* category filter and
+// an optional set of vibe bonuses that boost matching spots during
+// ranking. Spot data is untouched — we're just layering a labeled
+// dimension on top of the existing `Category[]` + `vibes[]` fields.
+//
+// The `id` is stable (stored in the DB and URL), so we can freely edit
+// `label` or re-order entries without breaking saved plans.
+export type Activity = {
+  id: string;
+  label: string;
+  categories: Category[];
+  vibes: string[];
+};
+
+export const ACTIVITIES: Activity[] = [
+  { id: "dinner",   label: "Dinner",           categories: ["dining"],          vibes: [] },
+  { id: "brunch",   label: "Brunch",           categories: ["dining"],          vibes: ["Brunch"] },
+  { id: "lunch",    label: "Lunch",            categories: ["dining"],          vibes: ["Power lunch"] },
+  { id: "drinks",   label: "Drinks",           categories: ["drinks"],          vibes: [] },
+  { id: "coffee",   label: "Coffee",           categories: ["coffee"],          vibes: [] },
+  { id: "date",     label: "Date night",       categories: ["dining", "drinks"], vibes: ["Date night", "Romantic"] },
+  { id: "late",     label: "Late night",       categories: ["drinks"],          vibes: ["Late night"] },
+  { id: "special",  label: "Special occasion", categories: ["dining"],          vibes: ["Special occasion"] },
+  { id: "party",    label: "After party",      categories: ["drinks"],          vibes: ["After party", "Sceney"] },
+  { id: "wellness", label: "Wellness",         categories: ["wellness"],        vibes: [] },
+  { id: "shop",     label: "Shopping",         categories: ["shopping"],        vibes: [] },
+];
+
+// Lookup map for O(1) access by id — useful in the planner's renderers.
+export const ACTIVITIES_BY_ID: Record<string, Activity> = Object.fromEntries(
+  ACTIVITIES.map((a) => [a.id, a]),
+);
+
+// Vibes the step-3 "Feel" picker surfaces. The occasion-shaped entries
+// (Date night, Brunch, Late night…) are now promoted to ACTIVITIES, so
+// we filter them out here to keep the vibe picker strictly about
+// sensory / audience mood and avoid double-exposing the same concept.
+export const VIBE_MOODS: string[] = VIBES.filter(
+  (v) =>
+    ![
+      "Date night",
+      "Brunch",
+      "Late night",
+      "After party",
+      "Special occasion",
+      "Business dinner",
+      "Power lunch",
+      "Sunday funday",
+    ].includes(v),
+);
+
 // Editorial order — drives the city-page filter pill row left-to-right.
 export const CATEGORY_ORDER: Category[] = [
   "dining",
@@ -276,4 +335,70 @@ export interface EventInvite {
   user_id: string;
   invited_by: string;
   created_at: string;
+}
+
+// --- Itineraries -----------------------------------------------------------
+
+/**
+ * Hard cap per plan. Keeps the share URL under ~200 chars, the numbered
+ * pins legible on mobile, and is enforced both in the DB (CHECK on
+ * `position < 8`) and in `useItineraryDraft`. Bumping this requires
+ * a matching DB migration.
+ */
+export const ITINERARY_MAX_STOPS = 8;
+
+/** One stop in a draft itinerary — lives in localStorage. The time is
+ *  stored as `HHMM` (24-hour, e.g. "1900") for a stable URL format;
+ *  display formatting is done via `formatTime`. */
+export interface ItineraryDraftItem {
+  spotId: string;
+  /** "HHMM" or undefined — no label set. */
+  timeLabel?: string;
+}
+
+/** The whole draft. `city` scopes the plan to a single city page; we
+ *  prompt on cross-city replacement rather than merging.
+ *
+ *  v2: carries the planner's criteria state so reload / cross-tab sync
+ *  restores the full authoring context, not just the chosen stops.
+ *  `date` is ISO yyyy-mm-dd (no time component). `activities` stores
+ *  stable `Activity.id` values, not labels. All four are defaulted so
+ *  older v1 drafts load cleanly. */
+export interface ItineraryDraft {
+  city: string;
+  name: string;
+  items: ItineraryDraftItem[];
+  /** v2: ISO yyyy-mm-dd, or null if no date picked yet. */
+  date: string | null;
+  /** v2: selected `Activity.id`s. */
+  activities: string[];
+  /** v2: selected vibes from `VIBE_MOODS`. */
+  vibes: string[];
+  /** v2: selected neighborhood names. */
+  neighborhoods: string[];
+}
+
+/** Persisted row from `user_itineraries`.
+ *
+ *  v2 adds the four criteria columns (plan_date / activities / vibes /
+ *  neighborhoods). All default to empty / null on v1 rows. */
+export interface Itinerary {
+  id: string;
+  userId: string;
+  city: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  items: ItineraryItem[];
+  date: string | null;
+  activities: string[];
+  vibes: string[];
+  neighborhoods: string[];
+}
+
+/** Persisted row from `user_itinerary_items`. */
+export interface ItineraryItem {
+  spotId: string;
+  position: number;
+  timeLabel: string | null;
 }

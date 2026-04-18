@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CATEGORY_LABELS, CATEGORY_ORDER, Category, Spot } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
 import ImageCarousel from "@/components/ImageCarousel";
+import AddToPlanButton from "@/components/itinerary/AddToPlanButton";
 import { NewBadge } from "@/lib/new-badge";
 import { CircleCheck, Search, X, ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -108,14 +109,17 @@ export default function CheckinsClient({ spots, citySlug, ratings = {} }: { spot
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-6">
                 {paginated.map((spot) => (
-                  <div key={spot.id}>
-                    <Link href={`/${citySlugFromName(spot.city)}/${spot.id}`}>
+                  <div key={spot.id} className="relative">
+                    <Link href={`/${citySlugFromName(spot.city)}/${spot.id}`} className="block relative">
                       <ImageCarousel images={spot.images} alt={spot.name} />
+                      {/* Top-left badge overlay on the image. */}
+                      <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                        <NewBadge spot={spot} />
+                      </div>
                     </Link>
-                    <div className="mt-3">
+                    <div className="mt-3 pr-10">
                       <div className="flex items-center gap-2 min-w-0">
                         <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
-                        <NewBadge spot={spot} />
                         {ratings[spot.id] !== undefined && (
                           <span className="ml-auto text-xs font-semibold tabular-nums text-neutral-700 dark:text-neutral-200 px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800">
                             {ratings[spot.id].toFixed(1)}
@@ -125,6 +129,14 @@ export default function CheckinsClient({ spots, citySlug, ratings = {} }: { spot
                       <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">
                         {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
                       </p>
+                    </div>
+                    {/* Bottom-right "Add to plan" floating over the card. */}
+                    <div className="absolute bottom-2 right-2 z-10">
+                      <AddToPlanButton
+                        spotId={spot.id}
+                        citySlug={citySlugFromName(spot.city)}
+                        variant="card"
+                      />
                     </div>
                   </div>
                 ))}
