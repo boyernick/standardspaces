@@ -93,7 +93,7 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
       img.style.height = size;
       img.style.borderRadius = "6px";
       img.style.overflow = "hidden";
-      img.style.border = `3px solid ${isMain ? THEME.brand : THEME.white}`;
+      img.style.border = `3px solid ${isMain ? THEME.brand : dark ? THEME.dark.surface : THEME.light.surface}`;
       img.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
       img.style.transition = "width 0.2s, height 0.2s, border-color 0.2s";
       img.style.backgroundSize = "cover";
@@ -110,13 +110,21 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
       label.style.fontSize = "10px";
       label.style.fontWeight = "500";
       label.style.color = dark ? "#ededed" : "#1a1a1a";
-      label.style.marginTop = "2px";
+      label.style.marginTop = "4px";
       label.style.whiteSpace = "nowrap";
-      label.style.maxWidth = "70px";
+      label.style.maxWidth = "80px";
       label.style.overflow = "hidden";
       label.style.textOverflow = "ellipsis";
       label.style.textAlign = "center";
       label.style.fontFamily = "var(--font-calibre), system-ui, sans-serif";
+      // Pill container: light surface bg + soft shadow so the name reads
+      // against the map tiles.
+      label.style.padding = "2px 6px";
+      label.style.borderRadius = "9999px";
+      label.style.backgroundColor = dark ? "#13120A" : "#F7F7F3";
+      label.style.boxShadow = dark
+        ? "0 2px 6px rgba(0,0,0,0.45)"
+        : "0 2px 6px rgba(0,0,0,0.12)";
       el.appendChild(label);
 
       return el;

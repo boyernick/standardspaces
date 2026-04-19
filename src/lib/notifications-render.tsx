@@ -130,7 +130,7 @@ function eventHref(row: NotificationRow): string {
 export function renderNotification(row: NotificationRow): RenderedNotification {
   const name = actorName(row);
   const avatar = row.actor?.avatar_url ?? null;
-  const actorHref = row.actor ? `/u/${row.actor.id}` : "/";
+  const actorHref = row.actor ? `/members/${row.actor.id}` : "/";
 
   switch (row.type) {
     case "followed_you":

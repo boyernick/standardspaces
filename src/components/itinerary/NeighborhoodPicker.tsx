@@ -12,7 +12,7 @@
 // city page. This component just mirrors the look.
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, MapPin, X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 
 export interface NeighborhoodPickerProps {
   /** Full list of selectable neighborhood names, in display order. */
@@ -22,10 +22,7 @@ export interface NeighborhoodPickerProps {
   value: string[];
   /** Invoked with the next selected list on each toggle. */
   onChange: (next: string[]) => void;
-  /** Optional per-neighborhood count — shown as a trailing number for
-   *  parity with CityClient's dropdown. Pass `undefined` to hide. */
-  counts?: Record<string, number>;
-  /** Label when nothing is selected. Defaults to "Any area". */
+  /** Label when nothing is selected. Defaults to "Where". */
   emptyLabel?: string;
 }
 
@@ -33,8 +30,7 @@ export default function NeighborhoodPicker({
   options,
   value,
   onChange,
-  counts,
-  emptyLabel = "Any area",
+  emptyLabel = "Where",
 }: NeighborhoodPickerProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -97,7 +93,6 @@ export default function NeighborhoodPicker({
             : "bg-surface text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
         }`}
       >
-        <MapPin size={12} strokeWidth={1.75} />
         <span>{chipLabel}</span>
         {activeCount > 0 ? (
           <X
@@ -120,7 +115,7 @@ export default function NeighborhoodPicker({
 
       {open && (
         <div className="absolute left-0 top-full z-40 mt-1.5 w-56 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-72 animate-[fadeSlideDown_150ms_ease-out]">
-          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-1">
+          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
             {options.length === 0 && (
               <div className="px-4 py-3 text-xs text-neutral-400">
                 No neighborhoods yet
@@ -128,15 +123,14 @@ export default function NeighborhoodPicker({
             )}
             {options.map((n) => {
               const isActive = selectedSet.has(n.toLowerCase());
-              const count = counts?.[n];
               return (
                 <button
                   key={n}
                   type="button"
                   onClick={() => toggle(n)}
-                  className={`flex w-full items-center justify-between gap-2 px-4 py-2 text-xs transition-colors ${
+                  className={`flex w-full items-center justify-between gap-2 px-4 py-2.5 text-xs transition-colors ${
                     isActive
-                      ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900"
+                      ? "text-neutral-900 dark:text-white font-medium bg-ink-100"
                       : "text-neutral-600 dark:text-neutral-400 hover:bg-ink-100"
                   }`}
                 >
@@ -144,7 +138,7 @@ export default function NeighborhoodPicker({
                     <span
                       className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
                         isActive
-                          ? "bg-brand-500 border-brand-500"
+                          ? "bg-neutral-900 border-neutral-900 text-white dark:bg-white dark:border-white dark:text-neutral-900"
                           : "border-neutral-300 dark:border-neutral-600"
                       }`}
                     >
@@ -158,7 +152,7 @@ export default function NeighborhoodPicker({
                         >
                           <path
                             d="M2.5 6L5 8.5L9.5 3.5"
-                            stroke="white"
+                            stroke="currentColor"
                             strokeWidth="1.5"
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -168,11 +162,6 @@ export default function NeighborhoodPicker({
                     </span>
                     <span className="truncate">{n}</span>
                   </span>
-                  {typeof count === "number" && (
-                    <span className="text-neutral-300 dark:text-neutral-600 shrink-0">
-                      {count}
-                    </span>
-                  )}
                 </button>
               );
             })}
@@ -182,7 +171,7 @@ export default function NeighborhoodPicker({
               <button
                 type="button"
                 onClick={clearAll}
-                className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+                className="block w-full text-left px-4 py-2.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-ink-100 transition-colors"
               >
                 Clear areas
               </button>

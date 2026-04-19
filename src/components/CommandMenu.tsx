@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { CATEGORY_LABELS, CATEGORY_ORDER, TOP_VIBES, Category, Spot, EventRecord } from "@/lib/types";
+import { CATEGORY_LABELS, CATEGORY_ORDER, ITINERARY_MAX_STOPS, TOP_VIBES, Category, Spot, EventRecord } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
 import { NewBadge } from "@/lib/new-badge";
-import { Search, MapPin, X, CircleUserRound, Calendar, Loader2 } from "lucide-react";
+import { useItineraryDraft } from "@/hooks/useItineraryDraft";
+import { Search, MapPin, X, CircleUserRound, Calendar, Loader2, Plus } from "lucide-react";
 
 function Highlight({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
@@ -20,6 +21,67 @@ function Highlight({ text, query }: { text: string; query: string }) {
       </span>
       {text.slice(idx + query.length)}
     </>
+  );
+}
+
+/** Inline add-to-plan affordance rendered on each spot result row. Lives
+ *  as a sibling of the outer row button (not nested inside it) so the
+ *  two stay HTML-valid — a `<button>` inside a `<button>` is invalid and
+ *  blocks independent activation. Each instance subscribes to its own
+ *  per-city draft because the menu surfaces spots across any city.
+ *
+ *  Both states share one `<button>` + one `<Plus>`, with a 45° rotation
+ *  on `inPlan` so the + visually becomes an × (the remove affordance).
+ *  Keeping the same DOM in both states lets the rotation animate, and
+ *  the in-plan branch gets a higher-contrast black outline so the
+ *  committed state reads as "you did this" rather than the subtle grey
+ *  of a passive check. Mirrors the icon variant of the external
+ *  `AddToPlanButton`. */
+function AddToPlanButton({ spot }: { spot: Spot }) {
+  const citySlug = citySlugFromName(spot.city);
+  const { draft, add, remove } = useItineraryDraft(citySlug);
+  const inPlan = draft.items.some((it) => it.spotId === spot.id);
+  const isFull = draft.items.length >= ITINERARY_MAX_STOPS;
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        // Don't let the click fall through to the outer row (which would
+        // navigate away from the menu before the add/remove registers).
+        e.stopPropagation();
+        if (inPlan) {
+          remove(spot.id);
+          return;
+        }
+        add(spot.id);
+      }}
+      // Only the add path is capacity-gated; removing from a full plan
+      // is always valid (and in fact the way to make room).
+      disabled={!inPlan && isFull}
+      aria-pressed={inPlan}
+      aria-label={
+        inPlan ? `Remove ${spot.name} from plan` : `Add ${spot.name} to plan`
+      }
+      title={
+        inPlan
+          ? "Remove from plan"
+          : isFull
+            ? "Plan is full"
+            : `Add ${spot.name} to plan`
+      }
+      className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+        inPlan
+          ? "border-neutral-900 text-neutral-900 dark:border-white dark:text-white"
+          : "border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white hover:border-neutral-500 dark:hover:border-neutral-500"
+      }`}
+    >
+      <Plus
+        size={14}
+        strokeWidth={2}
+        className={`transition-transform duration-200 ${inPlan ? "rotate-45" : ""}`}
+      />
+    </button>
   );
 }
 
@@ -49,10 +111,21 @@ export default function CommandMenu() {
   const listRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // Fetch spots once on first open. Only the columns the menu actually reads
-  // are selected to keep the payload small.
+  // Refetch the three datasets each time the menu opens. We deliberately
+  // don't cache past the first open: a newly-approved member, a newly-added
+  // space, or a newly-published event needs to be discoverable on the very
+  // next Cmd+K without a page reload. Payloads are small and the old state
+  // stays visible while the refresh runs (stale-while-revalidate for free —
+  // we only call `setX` on success, so typing a query the instant the menu
+  // opens still hits the prior list until the new one lands).
+  //
+  // `cancelled` + the cleanup handler drops any in-flight response whose
+  // menu-open session has since ended, preventing stale writes after close.
+
+  // Fetch spots. Only the columns the menu actually reads are selected to
+  // keep the payload small.
   useEffect(() => {
-    if (!open || spots.length > 0) return;
+    if (!open) return;
     let cancelled = false;
     createClient()
       .from("spots")
@@ -71,11 +144,11 @@ export default function CommandMenu() {
         } as Spot)));
       });
     return () => { cancelled = true; };
-  }, [open, spots.length]);
+  }, [open]);
 
-  // Fetch members once on first open
+  // Fetch members.
   useEffect(() => {
-    if (!open || members.length > 0) return;
+    if (!open) return;
     let cancelled = false;
     createClient()
       .from("profiles")
@@ -87,12 +160,13 @@ export default function CommandMenu() {
         setMembers(data as Member[]);
       });
     return () => { cancelled = true; };
-  }, [open, members.length]);
+  }, [open]);
 
-  // Fetch upcoming public events once on first open. Only the columns the
-  // menu actually reads are selected to keep the payload small.
+  // Fetch upcoming public events. The `starts_at >= now` filter is tied to
+  // the moment of the fetch, which is another reason to re-run per open —
+  // yesterday's "upcoming" list shouldn't bleed into today.
   useEffect(() => {
-    if (!open || events.length > 0) return;
+    if (!open) return;
     let cancelled = false;
     createClient()
       .from("events")
@@ -106,7 +180,7 @@ export default function CommandMenu() {
         setEvents(data as unknown as EventRecord[]);
       });
     return () => { cancelled = true; };
-  }, [open, events.length]);
+  }, [open]);
 
   const neighborhoods = useMemo(() => [...new Set(spots.map((s) => s.neighborhood))].sort(), [spots]);
 
@@ -385,29 +459,33 @@ export default function CommandMenu() {
                   </p>
                   <div className="-mx-5">
                     {spots.slice(0, 5).map((spot) => (
-                      <button
-                        key={spot.id}
-                        onClick={() => {
-                          setOpen(false);
-                          router.push(`/${citySlugFromName(spot.city)}/${spot.id}`);
-                        }}
-                        className="w-full text-left px-5 py-2.5 flex items-center gap-3 hover:bg-ink-100 transition-colors"
-                      >
-                        {spot.images?.[0] && (
-                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
-                            <img src={spot.images[0]} alt="" className="w-full h-full object-cover spot-img" />
+                      <div key={spot.id} className="relative">
+                        <button
+                          onClick={() => {
+                            setOpen(false);
+                            router.push(`/${citySlugFromName(spot.city)}/${spot.id}`);
+                          }}
+                          className="w-full text-left pl-5 pr-14 py-2.5 flex items-center gap-3 hover:bg-ink-100 transition-colors"
+                        >
+                          {spot.images?.[0] && (
+                            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                              <img src={spot.images[0]} alt="" className="w-full h-full object-cover spot-img" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <p className="text-sm font-medium truncate">{spot.name}</p>
+                              <NewBadge spot={spot} compact />
+                            </div>
+                            <p className="text-xs text-neutral-400 dark:text-neutral-500 truncate">
+                              {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
+                            </p>
                           </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <p className="text-sm font-medium truncate">{spot.name}</p>
-                            <NewBadge spot={spot} compact />
-                          </div>
-                          <p className="text-xs text-neutral-400 dark:text-neutral-500 truncate">
-                            {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
-                          </p>
+                        </button>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <AddToPlanButton spot={spot} />
                         </div>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -444,7 +522,7 @@ export default function CommandMenu() {
                         onClick={() => selectItem({ type: "member", value: member.id })}
                         onMouseEnter={() => setSelectedIndex(idx)}
                         className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
-                          isSelected ? "bg-neutral-50 dark:bg-neutral-900" : ""
+                          isSelected ? "bg-ink-100" : ""
                         }`}
                       >
                         {member.avatar_url ? (
@@ -489,7 +567,7 @@ export default function CommandMenu() {
                         onClick={() => selectItem({ type: "event", value: event.id })}
                         onMouseEnter={() => setSelectedIndex(idx)}
                         className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
-                          isSelected ? "bg-neutral-50 dark:bg-neutral-900" : ""
+                          isSelected ? "bg-ink-100" : ""
                         }`}
                       >
                         {thumb ? (
@@ -530,7 +608,7 @@ export default function CommandMenu() {
                         onClick={() => handleQuickFilter(n)}
                         onMouseEnter={() => setSelectedIndex(idx)}
                         className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
-                          isSelected ? "bg-neutral-50 dark:bg-neutral-900" : ""
+                          isSelected ? "bg-ink-100" : ""
                         }`}
                       >
                         <MapPin size={16} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 shrink-0" />
@@ -561,7 +639,7 @@ export default function CommandMenu() {
                         onClick={() => handleQuickFilter(CATEGORY_LABELS[c])}
                         onMouseEnter={() => setSelectedIndex(idx)}
                         className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
-                          isSelected ? "bg-neutral-50 dark:bg-neutral-900" : ""
+                          isSelected ? "bg-ink-100" : ""
                         }`}
                       >
                         <Search size={14} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 shrink-0" />
@@ -585,30 +663,34 @@ export default function CommandMenu() {
                     const idx = flatIdx++;
                     const isSelected = idx === selectedIndex;
                     return (
-                      <button
-                        key={spot.id}
-                        data-selected={isSelected}
-                        onClick={() => selectItem({ type: "spot", value: spot.id })}
-                        onMouseEnter={() => setSelectedIndex(idx)}
-                        className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
-                          isSelected ? "bg-neutral-50 dark:bg-neutral-900" : ""
-                        }`}
-                      >
-                        {spot.images?.[0] && (
-                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
-                            <img src={spot.images[0]} alt="" className="w-full h-full object-cover spot-img" />
+                      <div key={spot.id} className="relative">
+                        <button
+                          data-selected={isSelected}
+                          onClick={() => selectItem({ type: "spot", value: spot.id })}
+                          onMouseEnter={() => setSelectedIndex(idx)}
+                          className={`w-full text-left pl-5 pr-14 py-2.5 flex items-center gap-3 transition-colors ${
+                            isSelected ? "bg-ink-100" : ""
+                          }`}
+                        >
+                          {spot.images?.[0] && (
+                            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                              <img src={spot.images[0]} alt="" className="w-full h-full object-cover spot-img" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <p className="text-sm font-medium truncate"><Highlight text={spot.name} query={query} /></p>
+                              <NewBadge spot={spot} compact />
+                            </div>
+                            <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5 truncate">
+                              <Highlight text={spot.neighborhood} query={query} /> · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
+                            </p>
                           </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <p className="text-sm font-medium truncate"><Highlight text={spot.name} query={query} /></p>
-                            <NewBadge spot={spot} compact />
-                          </div>
-                          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5 truncate">
-                            <Highlight text={spot.neighborhood} query={query} /> · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
-                          </p>
+                        </button>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <AddToPlanButton spot={spot} />
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -649,7 +731,7 @@ export default function CommandMenu() {
                         onClick={() => selectItem({ type: "spot", value: spot.id })}
                         onMouseEnter={() => setSelectedIndex(idx)}
                         className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
-                          isSelected ? "bg-neutral-50 dark:bg-neutral-900" : ""
+                          isSelected ? "bg-ink-100" : ""
                         }`}
                       >
                         {spot.images?.[0] && (

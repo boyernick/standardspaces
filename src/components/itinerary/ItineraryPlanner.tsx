@@ -1,44 +1,37 @@
 "use client";
 
-// Editable itinerary planner (v1 — the active UX).
+// Editable itinerary planner. Top of the side panel is the criteria
+// row (date, activity, vibe, neighborhood). Below that, the ordered,
+// drag-reorderable stops list. Below the stops, the `SpaceFinder`
+// search + "Pairs well" suggestions. The map at right renders
+// committed stops as numbered pins, plus a candidate dot layer and
+// suggestion pulse layer driven by the same criteria.
 //
-// Shape of the page:
-//   ┌────────────────────────────┬──────────────────┐
-//   │ Name input                 │                  │
-//   │ Stop count · caption       │                  │
-//   ├────────────────────────────┤                  │
-//   │ 1 ⋮⋮ Gekko       7:30 PM × │                  │
-//   │ 2 ⋮⋮ Delilah     9:00 PM × │      Map         │
-//   │ (drag to reorder)          │                  │
-//   │                            │                  │
-//   │ [+ Browse spaces]          │                  │
-//   ├────────────────────────────┤                  │
-//   │ [Share link]  [Save plan]  │                  │
-//   └────────────────────────────┴──────────────────┘
+// The plan name is not user-editable in the UI — we carry it in state
+// so a saved plan loaded from the DB keeps its existing name, and new
+// plans fall back to "Untitled plan" on save. Removing the field from
+// the form meant fewer decisions to make before building the plan.
 //
-// No criteria row, no SpaceFinder, no BottomSheet — those belong to v2
-// which lives alongside this file (see `ItineraryPlannerV2.tsx`). V1's
-// planning workflow expects the user to find spaces on the city grid
-// and click each card's circle-plus icon; the planner is purely the
-// commit / reorder / time-assign / save / share surface.
-//
-// Shared components with v2: `StopRow` (single stop row with dnd-kit
-// handle + time input + reserve link) and `ItineraryMap` (numbered
-// pins + route). Both accept v2-only props (candidate/suggestion
-// layers on the map) but V1 simply doesn't pass them.
-//
-// Persistence: when `persistAsDraft` is true, edits mirror into the
-// per-city localStorage draft via `useItineraryDraft` so a reload
-// preserves work. When editing a saved row, that flag is false and
-// edits stay local until Save.
+// State model: the planner owns `name`, `items`, and the four criteria
+// fields in local React state. When `persistAsDraft` is true (the
+// default for /[city]/itinerary), it mirrors every change into the
+// localStorage draft via the hook, so a reload preserves the work.
+// When editing a saved itinerary, the caller passes
+// `persistAsDraft=false`; local edits don't leak into the draft.
 //
 // Save writes to the DB and (for draft mode) clears the draft on
-// success. Share serializes the current state to a URL and copies it
-// via the clipboard API.
+// success. Share serializes the current state (including criteria) to
+// a URL and copies it via the browser's clipboard API.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   DndContext,
   PointerSensor,
@@ -54,14 +47,55 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Trash2, Sparkles } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { ITINERARY_MAX_STOPS, type Spot } from "@/lib/types";
-import { buildShareUrl, parseTimeInputValue } from "@/lib/itinerary-url";
+import {
+  ACTIVITIES_BY_ID,
+  ITINERARY_MAX_STOPS,
+  type Category,
+  type Spot,
+} from "@/lib/types";
+import type { LngLatBounds } from "@/lib/geo";
+import { buildShareUrl } from "@/lib/itinerary-url";
 import { useItineraryDraft } from "@/hooks/useItineraryDraft";
-import { saveItinerary, deleteItinerary } from "@/app/actions/itineraries";
-import ItineraryMap, { type ItineraryMapStop } from "./ItineraryMap";
+import {
+  saveItinerary,
+  deleteItinerary,
+} from "@/app/actions/itineraries";
+import SpotMap from "@/components/Map";
+import CriteriaRow from "./CriteriaRow";
 import StopRow from "./StopRow";
+import SpaceFinder from "./SpaceFinder";
+import BottomSheet, { type BottomSheetSnap } from "./BottomSheet";
+
+/** Matches the Tailwind `split:` breakpoint (56rem ≈ 896px). Used to
+ *  decide between the desktop two-column layout and the mobile
+ *  map-underneath, bottom-sheet-over-the-top layout. */
+const SPLIT_BREAKPOINT_PX = 896;
+
+/** Subscribe to the split breakpoint via `matchMedia`. useSyncExternalStore
+ *  is the React 19 idiom for external subscriptions — it avoids the
+ *  "setState synchronously in effect" anti-pattern the linter flags for
+ *  the older useEffect + setState approach, and it returns a consistent
+ *  value on the same render (no flash between SSR and hydration). */
+function subscribeSplit(onChange: () => void): () => void {
+  const mql = window.matchMedia(`(min-width: ${SPLIT_BREAKPOINT_PX}px)`);
+  mql.addEventListener("change", onChange);
+  return () => mql.removeEventListener("change", onChange);
+}
+function getSplitSnapshot(): boolean {
+  return window.matchMedia(`(min-width: ${SPLIT_BREAKPOINT_PX}px)`).matches;
+}
+function getSplitServerSnapshot(): boolean {
+  return true; // SSR default: desktop layout. Hydration corrects on mount.
+}
+function useIsSplitLayout(): boolean {
+  return useSyncExternalStore(
+    subscribeSplit,
+    getSplitSnapshot,
+    getSplitServerSnapshot,
+  );
+}
 
 type Item = { spotId: string; timeLabel: string | null };
 
@@ -76,6 +110,10 @@ export interface ItineraryPlannerProps {
   initial: {
     name: string;
     items: Item[];
+    date?: string | null;
+    activities?: string[];
+    vibes?: string[];
+    neighborhoods?: string[];
   };
   /** If present, Save updates this row. If absent, Save inserts a new row. */
   savedId?: string;
@@ -99,7 +137,18 @@ export default function ItineraryPlanner({
 
   const [name, setName] = useState(initial.name);
   const [items, setItems] = useState<Item[]>(initial.items);
+  const [date, setDate] = useState<string | null>(initial.date ?? null);
+  const [activities, setActivities] = useState<string[]>(
+    initial.activities ?? [],
+  );
+  const [vibes, setVibes] = useState<string[]>(initial.vibes ?? []);
+  const [neighborhoods, setNeighborhoods] = useState<string[]>(
+    initial.neighborhoods ?? [],
+  );
   const [hoverSpotId, setHoverSpotId] = useState<string | null>(null);
+  const [focusedCandidateId, setFocusedCandidateId] = useState<string | null>(
+    null,
+  );
   const [saveState, setSaveState] = useState<
     | { kind: "idle" }
     | { kind: "saving" }
@@ -107,9 +156,6 @@ export default function ItineraryPlanner({
     | { kind: "error"; message: string }
   >({ kind: "idle" });
   const [copied, setCopied] = useState(false);
-  // Brief "Saved" confirmation after a successful save — auto-reverts
-  // so the button can return to "Update" for subsequent edits.
-  const [justSaved, setJustSaved] = useState(false);
 
   // Spot lookup by id — stable across renders unless the spots array changes.
   const spotById = useMemo(() => {
@@ -127,6 +173,8 @@ export default function ItineraryPlanner({
   );
 
   // Drift guard: if `initial` changes (e.g. the URL id changes), re-seed.
+  // Use a value key that captures everything we want to react to; changing
+  // savedId/items length/name is enough for the saved-plan tab → tab case.
   const initialKeyRef = useRef<string>("");
   const initialKey = `${savedId ?? "draft"}:${initial.items.length}:${initial.name}`;
   useEffect(() => {
@@ -134,7 +182,19 @@ export default function ItineraryPlanner({
     initialKeyRef.current = initialKey;
     setName(initial.name);
     setItems(initial.items);
-  }, [initialKey, initial.name, initial.items]);
+    setDate(initial.date ?? null);
+    setActivities(initial.activities ?? []);
+    setVibes(initial.vibes ?? []);
+    setNeighborhoods(initial.neighborhoods ?? []);
+  }, [
+    initialKey,
+    initial.name,
+    initial.items,
+    initial.date,
+    initial.activities,
+    initial.vibes,
+    initial.neighborhoods,
+  ]);
 
   // Persist edits into the localStorage draft when in draft mode.
   useEffect(() => {
@@ -146,10 +206,23 @@ export default function ItineraryPlanner({
       })),
     );
     draft.setName(name);
+    draft.setDate(date);
+    draft.setActivities(activities);
+    draft.setVibes(vibes);
+    draft.setNeighborhoods(neighborhoods);
     // Setters are stable useCallback refs; listing `draft` would cause
     // the effect to re-run for every snapshot update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, name, persistAsDraft]);
+  }, [items, name, date, activities, vibes, neighborhoods, persistAsDraft]);
+
+  // "Saved" is a transient state — flash the confirmation, then revert
+  // to idle so a subsequent edit shows "Update" again rather than
+  // staying stuck on the success label.
+  useEffect(() => {
+    if (saveState.kind !== "saved") return;
+    const t = setTimeout(() => setSaveState({ kind: "idle" }), 2000);
+    return () => clearTimeout(t);
+  }, [saveState]);
 
   // dnd-kit sensors: pointer + keyboard. 6px activation distance so a
   // tap on the remove button inside the row doesn't accidentally start
@@ -176,32 +249,110 @@ export default function ItineraryPlanner({
     setItems((prev) => prev.filter((it) => it.spotId !== spotId));
   }, []);
 
-  const setTime = useCallback((spotId: string, value: string) => {
-    const hhmm = parseTimeInputValue(value);
-    setItems((prev) =>
-      prev.map((it) =>
-        it.spotId === spotId ? { ...it, timeLabel: hhmm } : it,
-      ),
-    );
-  }, []);
-
   const stopCount = visibleItems.length;
   const canAddMore = stopCount < ITINERARY_MAX_STOPS;
 
-  // Map stops are derived directly from state so reorder triggers a
-  // cheap position re-number (no marker recreation).
-  const mapStops: ItineraryMapStop[] = useMemo(() => {
-    return visibleItems.map((it, i) => {
-      const s = spotById.get(it.spotId)!;
-      return {
-        spotId: s.id,
-        name: s.name,
-        lng: s.lng,
-        lat: s.lat,
-        position: i,
-      };
-    });
+  /** Add a spot to the plan. Returns true on success, false at capacity.
+   *  Mirrors the shape `SpaceFinder` expects. */
+  const addSpot = useCallback(
+    (spotId: string): boolean => {
+      let added = false;
+      setItems((prev) => {
+        if (prev.some((it) => it.spotId === spotId)) {
+          added = true;
+          return prev;
+        }
+        if (prev.length >= ITINERARY_MAX_STOPS) {
+          added = false;
+          return prev;
+        }
+        added = true;
+        return [...prev, { spotId, timeLabel: null }];
+      });
+      return added;
+    },
+    [],
+  );
+
+  // Ordered plan stop ids — drives SpaceFinder's exclusion set, the
+  // numbered corner pins on SpotMap cards, and the dashed route line
+  // between stops. Reordering updates numbers in place (no marker
+  // teardown) via SpotMap's plan-pin sync effect.
+  const planStopIds = useMemo(
+    () => visibleItems.map((it) => it.spotId),
+    [visibleItems],
+  );
+
+  // Neighborhood options derived from the city's spot list.
+  const neighborhoodOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of spots) {
+      if (s.neighborhood) set.add(s.neighborhood);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [spots]);
+
+  // Last-added stop's coords — SpaceFinder uses this as the proximity
+  // anchor for its "pairs well" ranking.
+  const anchor: [number, number] | null = useMemo(() => {
+    const last = visibleItems[visibleItems.length - 1];
+    if (!last) return null;
+    const s = spotById.get(last.spotId);
+    return s ? [s.lng, s.lat] : null;
   }, [visibleItems, spotById]);
+
+  // Bounds that cover every spot matching the current activity
+  // categories ∩ neighborhoods. When the user sets or changes either,
+  // this tuple identity changes and SpotMap's `focusBounds` effect
+  // re-fits to the region — a neighborhood filter behaves like "pan to
+  // Wynwood" without us hiding non-matching markers from the map.
+  //
+  // When no criteria are set we return null so the map's normal
+  // initial-fit / user-location logic wins. When criteria are set but
+  // no spots match, we also return null — re-fitting to an empty box
+  // would be jarring and `rankCandidates` will already be empty.
+  const focusBounds: LngLatBounds | null = useMemo(() => {
+    if (activities.length === 0 && neighborhoods.length === 0) return null;
+
+    const requiredCats = new Set<Category>();
+    for (const id of activities) {
+      const a = ACTIVITIES_BY_ID[id];
+      if (!a) continue;
+      for (const c of a.categories) requiredCats.add(c);
+    }
+    const selectedHoods = new Set(neighborhoods.map((n) => n.toLowerCase()));
+
+    let minLng = Infinity;
+    let minLat = Infinity;
+    let maxLng = -Infinity;
+    let maxLat = -Infinity;
+    let count = 0;
+    for (const s of spots) {
+      // Match SpaceFinder: primary-category match only, so the map's
+      // fit-to-region mirrors the list of spots that actually surface
+      // as recommendations below.
+      if (requiredCats.size) {
+        const primary = s.category[0];
+        if (!primary || !requiredCats.has(primary)) continue;
+      }
+      if (
+        selectedHoods.size &&
+        !selectedHoods.has(s.neighborhood.toLowerCase())
+      ) {
+        continue;
+      }
+      if (s.lng < minLng) minLng = s.lng;
+      if (s.lng > maxLng) maxLng = s.lng;
+      if (s.lat < minLat) minLat = s.lat;
+      if (s.lat > maxLat) maxLat = s.lat;
+      count++;
+    }
+    if (count === 0) return null;
+    return [
+      [minLng, minLat],
+      [maxLng, maxLat],
+    ];
+  }, [spots, activities, neighborhoods]);
 
   async function handleSave() {
     if (!canSave || visibleItems.length === 0) return;
@@ -214,11 +365,13 @@ export default function ItineraryPlanner({
         spotId: it.spotId,
         timeLabel: it.timeLabel,
       })),
+      date,
+      activities,
+      vibes,
+      neighborhoods,
     });
     if (res.success) {
       setSaveState({ kind: "saved", id: res.id });
-      setJustSaved(true);
-      setTimeout(() => setJustSaved(false), 2000);
       if (persistAsDraft) draft.clear();
       // Navigate to the canonical saved URL. Replace (not push) so the
       // back button doesn't bounce through /itinerary → /itinerary/:id.
@@ -253,6 +406,10 @@ export default function ItineraryPlanner({
         timeLabel: it.timeLabel ?? undefined,
       })),
       name: name.trim() || undefined,
+      date,
+      activities,
+      vibes,
+      neighborhoods,
     });
     try {
       await navigator.clipboard.writeText(url);
@@ -268,188 +425,197 @@ export default function ItineraryPlanner({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  return (
-    <div className="h-full flex flex-col split:flex-row">
-      {/* Left column: the plan. On narrow viewports this takes the full
-          width and the map is pushed below. On split view (≥896px) it
-          sits at a fixed 45% width beside the map. */}
-      <div className="w-full split:w-[45%] lg:w-[40%] split:min-w-[380px] split:shrink-0 flex flex-col overflow-hidden">
-        {/* Header: name + stop count. */}
-        <div className="px-4 md:px-6 pt-4 pb-3 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-surface">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={`Saturday night in ${cityName}`}
-            maxLength={60}
-            className="w-full bg-transparent text-xl md:text-2xl font-medium placeholder:text-neutral-400 dark:placeholder:text-neutral-600 focus:outline-none"
-            aria-label="Plan name"
-          />
-          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-            {stopCount === 0
-              ? `Pick the spaces that'll make your night in ${cityName}.`
-              : !canAddMore
-                ? `Plan is full — ${ITINERARY_MAX_STOPS} spaces max.`
-                : stopCount === 1
-                  ? `1 space in your plan. Drag to reorder, set times below.`
-                  : `${stopCount} spaces in your plan. Drag to reorder, set times below.`}
-          </p>
+  const isSplit = useIsSplitLayout();
+  const [sheetSnap, setSheetSnap] = useState<BottomSheetSnap>("half");
+
+  // When the user taps a map dot on mobile, bump the sheet to "half" so
+  // the focused card is visible without burying the map. Desktop is a
+  // no-op (the focused card appears inline in the fixed panel).
+  useEffect(() => {
+    if (isSplit) return;
+    if (!focusedCandidateId) return;
+    if (sheetSnap === "peek") setSheetSnap("half");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedCandidateId, isSplit]);
+
+  // Shared blocks — rendered inside the desktop split column *or* the
+  // mobile bottom sheet. We factor them into JSX variables rather than
+  // sub-components so state access stays direct (no prop ferrying).
+
+  const header = (
+    <div className="px-4 md:px-6 pt-4 pb-3 space-y-3 bg-surface">
+      <CriteriaRow
+        date={date}
+        onDateChange={setDate}
+        activities={activities}
+        onActivitiesChange={setActivities}
+        neighborhoodOptions={neighborhoodOptions}
+        neighborhoods={neighborhoods}
+        onNeighborhoodsChange={setNeighborhoods}
+      />
+    </div>
+  );
+
+  const body = (
+    <div className="px-4 md:px-6 py-4 space-y-6">
+      {visibleItems.length > 0 && (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={onDragEnd}
+        >
+          <SortableContext
+            items={visibleItems.map((it) => it.spotId)}
+            strategy={verticalListSortingStrategy}
+          >
+            <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
+              {visibleItems.map((it, i) => {
+                const spot = spotById.get(it.spotId)!;
+                return (
+                  <StopRow
+                    key={it.spotId}
+                    spot={spot}
+                    position={i}
+                    onRemove={() => removeItem(it.spotId)}
+                    onHover={(hover) =>
+                      setHoverSpotId(hover ? it.spotId : null)
+                    }
+                  />
+                );
+              })}
+            </ul>
+          </SortableContext>
+        </DndContext>
+      )}
+
+      <SpaceFinder
+        spots={spots}
+        inPlanIds={planStopIds}
+        activities={activities}
+        vibes={vibes}
+        neighborhoods={neighborhoods}
+        anchor={anchor}
+        focusedSpotId={focusedCandidateId}
+        onClearFocused={() => setFocusedCandidateId(null)}
+        onAdd={addSpot}
+        isFull={!canAddMore}
+      />
+    </div>
+  );
+
+  const actionBar = (
+    // Buttons float right; the destructive Delete gets `mr-auto` so it
+    // stays pinned to the far left (where destructive actions read as
+    // separate from the primary-action cluster). The error span, when
+    // present, sits directly left of the Share/Save pair.
+    <div className="bg-surface px-4 md:px-6 py-3 flex items-center gap-2 justify-end">
+      {savedId && canSave && (
+        <Button
+          type="button"
+          variant="danger"
+          size="md"
+          onClick={handleDelete}
+          className="mr-auto"
+          aria-label="Delete plan"
+        >
+          <Trash2 size={14} />
+        </Button>
+      )}
+      {saveState.kind === "error" && (
+        <span className="text-xs text-red-600">{saveState.message}</span>
+      )}
+      <Button
+        type="button"
+        variant="secondary"
+        size="md"
+        onClick={handleCopyShare}
+        disabled={stopCount === 0}
+        aria-label="Copy share link"
+      >
+        {copied ? "Copied" : "Share link"}
+      </Button>
+      {canSave && (
+        <Button
+          type="button"
+          variant="primary"
+          size="md"
+          onClick={handleSave}
+          disabled={stopCount === 0 || saveState.kind === "saving"}
+        >
+          {saveState.kind === "saving"
+            ? "Saving…"
+            : saveState.kind === "saved"
+              ? "Saved"
+              : savedId
+                ? "Update"
+                : "Save plan"}
+        </Button>
+      )}
+    </div>
+  );
+
+  // Map surface — reuses the city-page SpotMap so dot/card mode, plan
+  // corner pins, and the active-spot ring all behave identically to the
+  // main discovery surface. `planStopIds` + `showPlanRoute` wire in the
+  // dashed route between stops; `activeSpot` drives the emphasized card.
+  const focusedSpot = focusedCandidateId
+    ? (spotById.get(focusedCandidateId) ?? null)
+    : null;
+  const mapNode = (
+    <SpotMap
+      spots={spots}
+      activeSpot={focusedSpot}
+      onSpotSelect={(s) => setFocusedCandidateId(s?.id ?? null)}
+      hoverSpotId={hoverSpotId}
+      planStopIds={planStopIds}
+      showPlanRoute
+      focusBounds={focusBounds}
+    />
+  );
+
+  if (isSplit) {
+    return (
+      <div className="h-full flex flex-row">
+        {/* Left column: panel */}
+        <div className="w-[45%] lg:w-[40%] min-w-[380px] shrink-0 flex flex-col overflow-hidden">
+          <div className="shrink-0">{header}</div>
+          <div className="flex-1 min-h-0 overflow-y-auto">{body}</div>
+          <div className="shrink-0">{actionBar}</div>
         </div>
 
-        {/* Stops list (dnd-kit) + add-a-space CTA. */}
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="px-4 md:px-6 py-3 space-y-3">
-            {visibleItems.length > 0 ? (
-              <>
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={onDragEnd}
-                >
-                  <SortableContext
-                    items={visibleItems.map((it) => it.spotId)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <ul className="space-y-2">
-                      {visibleItems.map((it, i) => {
-                        const spot = spotById.get(it.spotId)!;
-                        return (
-                          <StopRow
-                            key={it.spotId}
-                            spot={spot}
-                            position={i}
-                            timeLabel={it.timeLabel}
-                            onRemove={() => removeItem(it.spotId)}
-                            onTimeChange={(v) => setTime(it.spotId, v)}
-                            onHover={(hover) =>
-                              setHoverSpotId(hover ? it.spotId : null)
-                            }
-                          />
-                        );
-                      })}
-                    </ul>
-                  </SortableContext>
-                </DndContext>
-
-                {/* End-of-list CTA — dashed rectangle that reads as a
-                    natural continuation of the stop rows. When the plan
-                    is full we swap it for a muted notice instead. */}
-                {canAddMore ? (
-                  <Link
-                    href={`/${citySlug}`}
-                    className="flex items-center justify-center px-4 py-3 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:border-neutral-500 dark:hover:border-neutral-500 transition-colors"
-                  >
-                    Add a space from {cityName}
-                  </Link>
-                ) : (
-                  <div className="px-4 py-3 rounded-xl bg-neutral-100 dark:bg-neutral-900 text-center text-xs text-neutral-500 dark:text-neutral-400">
-                    Plan is full — remove a space to add another.
-                  </div>
-                )}
-              </>
-            ) : (
-              <EmptyList citySlug={citySlug} cityName={cityName} />
-            )}
+        {/* Right column: map — matches the city page's bordered, padded
+            map well (px-4 pt-1.5 pb-4 outer, rounded-2xl inner). */}
+        <div className="flex-1 min-h-0 relative px-4 pb-4 pt-1.5">
+          <div className="w-full h-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative">
+            {mapNode}
           </div>
         </div>
-
-        {/* Action bar: Share (always) + Save / Update (signed in) +
-            Delete (saved plans only). Per button rule, labels are
-            text-only; the delete button is the one exception as an
-            icon-only control. */}
-        <div className="shrink-0 border-t border-neutral-200 dark:border-neutral-800 bg-surface px-4 md:px-6 py-3 flex items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="md"
-            onClick={handleCopyShare}
-            disabled={stopCount === 0}
-            aria-label="Copy share link"
-          >
-            {copied ? "Link copied" : "Share link"}
-          </Button>
-          {canSave && (
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              onClick={handleSave}
-              disabled={stopCount === 0 || saveState.kind === "saving"}
-            >
-              {saveState.kind === "saving"
-                ? "Saving…"
-                : justSaved
-                  ? "Saved"
-                  : savedId
-                    ? "Update"
-                    : "Save plan"}
-            </Button>
-          )}
-          {savedId && canSave && (
-            <Button
-              type="button"
-              variant="danger"
-              size="md"
-              onClick={handleDelete}
-              className="ml-auto"
-              aria-label="Delete plan"
-            >
-              <Trash2 size={14} />
-            </Button>
-          )}
-          {saveState.kind === "error" && (
-            <span className="text-xs text-red-600">{saveState.message}</span>
-          )}
-        </div>
       </div>
+    );
+  }
 
-      {/* Right column: map. On mobile it drops below the panel as a
-          fixed-height band so the user can still see their route
-          without leaving the page. */}
-      <div className="h-[40vh] split:h-auto split:flex-1 min-h-0 relative px-4 pb-4 split:pt-1.5">
-        <div className="w-full h-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative">
-          <ItineraryMap
-            stops={mapStops}
-            highlightSpotId={hoverSpotId}
-            onPinClick={(id) => setHoverSpotId(id)}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EmptyList({
-  citySlug,
-  cityName,
-}: {
-  citySlug: string;
-  cityName: string;
-}) {
-  // Centered empty state matching the pattern used elsewhere in the app
-  // (Favorites / Check-ins / Wishlist). The icon is purely decorative —
-  // the rule that forbids icons-in-buttons doesn't apply to inline
-  // illustrations like this one.
+  // Mobile: map fills the viewport; bottom sheet slides over. Three
+  // snap points: peek (header only), half (header + stops), full
+  // (everything including SpaceFinder suggestions).
   return (
-    <div className="flex flex-col items-center text-center px-6 py-12">
-      <div className="w-14 h-14 rounded-full flex items-center justify-center mb-5 bg-ink-100">
-        <Sparkles
-          size={22}
-          strokeWidth={1.5}
-          className="text-neutral-500 dark:text-neutral-400"
-        />
+    <div className="h-full w-full relative overflow-hidden">
+      <div className="absolute inset-0 px-3 pb-3 pt-1.5">
+        <div className="w-full h-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative">
+          {mapNode}
+        </div>
       </div>
-      <h3 className="text-base font-medium">Build your night out</h3>
-      <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs">
-        Add up to {ITINERARY_MAX_STOPS} spaces in order — dinner, drinks,
-        wherever you&rsquo;re ending up — and we&rsquo;ll map your route.
-      </p>
-      <Link
-        href={`/${citySlug}`}
-        className="inline-flex items-center justify-center mt-6 px-4 py-2 rounded-full text-sm font-medium bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:opacity-90 transition-opacity"
+      <BottomSheet
+        snap={sheetSnap}
+        onSnapChange={setSheetSnap}
+        ariaLabel="Itinerary plan"
+        header={header}
       >
-        Browse {cityName} spaces
-      </Link>
+        <div className="flex flex-col">
+          {body}
+          {actionBar}
+        </div>
+      </BottomSheet>
     </div>
   );
 }
+

@@ -59,6 +59,10 @@ export default async function SavedItineraryPage({
               spotId: it.spotId,
               timeLabel: it.timeLabel,
             })),
+            date: rec.date,
+            activities: rec.activities,
+            vibes: rec.vibes,
+            neighborhoods: rec.neighborhoods,
           }}
         />
       </div>

@@ -5,9 +5,11 @@
 // the planner would either SSR with an empty items array (flash) or
 // have to re-read the draft itself on every render.
 //
-// V1: the active planner ignores date/activities/vibes/neighborhoods,
-// so we thread only name + items through. The draft hook still carries
-// those fields (for v2 compat) — they're just unread.
+// The planner reads its full authoring state — including date,
+// activities, vibes, and neighborhoods — from `initial`, then owns
+// those values in local state and mirrors them back into the draft via
+// the hook's setters. Threading them here keeps the reload → restore
+// loop lossless.
 //
 // No hydration sentinel needed: `useItineraryDraft` uses
 // `useSyncExternalStore` with a server snapshot that returns the same
@@ -44,6 +46,10 @@ export default function ItineraryPlannerClient({
           spotId: it.spotId,
           timeLabel: it.timeLabel ?? null,
         })),
+        date: draft.date,
+        activities: draft.activities,
+        vibes: draft.vibes,
+        neighborhoods: draft.neighborhoods,
       }}
     />
   );

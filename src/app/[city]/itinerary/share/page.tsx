@@ -1,17 +1,18 @@
-// Public, read-only share view (v1).
+// Public, read-only share view.
 // URL shape:
 //   /[city]/itinerary/share
 //     ?s=<spotId>[:HHMM](,<spotId>[:HHMM])*
 //     &n=<name>
+//     &d=YYYY-MM-DD            (optional — plan date)
+//     &act=<id>,<id>           (optional — activity ids)
+//     &v=<vibe>,<vibe>         (optional — vibe labels)
+//     &a=<hood>,<hood>         (optional — neighborhoods)
 //
-// The parser skips malformed tokens (bogus slugs, bad times) rather than
-// throwing, so a tampered URL still renders a valid subset. Non-matching
-// spot IDs are dropped at the DB step. Empty result → the view shows an
-// "empty or expired" state with a link back to the city page.
-//
-// v2 additional params (d / act / v / a) are still parsed by the codec
-// and ignored here — the v1 view doesn't surface criteria. Keeping the
-// parser lenient means v2 share links don't 500 when opened on v1.
+// The parser skips malformed tokens (bogus slugs, bad times, unknown
+// activity ids) rather than throwing, so a tampered URL still renders a
+// valid subset. Non-matching spot IDs are dropped at the DB step. Empty
+// result → the view shows an "empty or expired" state with a link back
+// to the city page.
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -24,6 +25,10 @@ import ItineraryView from "@/components/itinerary/ItineraryView";
 type SearchParams = Promise<{
   s?: string | string[];
   n?: string | string[];
+  d?: string | string[];
+  act?: string | string[];
+  v?: string | string[];
+  a?: string | string[];
 }>;
 
 function firstValue(v: string | string[] | undefined): string | undefined {
@@ -72,6 +77,10 @@ export default async function ItinerarySharePage({
   const parsed = parseItineraryUrl({
     s: firstValue(sp.s),
     n: firstValue(sp.n),
+    d: firstValue(sp.d),
+    act: firstValue(sp.act),
+    v: firstValue(sp.v),
+    a: firstValue(sp.a),
   });
 
   const uniqueIds = Array.from(new Set(parsed.items.map((it) => it.spotId)));
@@ -98,6 +107,10 @@ export default async function ItinerarySharePage({
             timeLabel: it.timeLabel ?? null,
           }))}
           spots={resolvedSpots}
+          date={parsed.date}
+          activities={parsed.activities}
+          vibes={parsed.vibes}
+          neighborhoods={parsed.neighborhoods}
         />
       </div>
     </div>

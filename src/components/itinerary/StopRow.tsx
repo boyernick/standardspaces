@@ -9,22 +9,17 @@
 // still wires the drag handle; everything else is a plain callback.
 
 import Link from "next/link";
-import { Clock, ExternalLink, GripVertical, X } from "lucide-react";
+import { GripVertical, X } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { type Spot } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
-import { formatTime, toTimeInputValue } from "@/lib/itinerary-url";
 
 export interface StopRowProps {
   spot: Spot;
   /** Zero-based position — displayed 1-indexed in the number badge. */
   position: number;
-  /** Stored "HHMM" time (24h) or null for no time. */
-  timeLabel: string | null;
   onRemove: () => void;
-  /** Receives the raw `<input type="time">` value ("HH:MM"). */
-  onTimeChange: (value: string) => void;
   /** Fires true on mouse enter, false on mouse leave — used by the
    *  planner to highlight the corresponding map pin. */
   onHover: (hovering: boolean) => void;
@@ -33,9 +28,7 @@ export interface StopRowProps {
 export default function StopRow({
   spot,
   position,
-  timeLabel,
   onRemove,
-  onTimeChange,
   onHover,
 }: StopRowProps) {
   const {
@@ -54,7 +47,6 @@ export default function StopRow({
   };
 
   const thumbnail = spot.images?.[0];
-  const timeDisplay = formatTime(timeLabel);
   const reserveUrl = spot.bookingUrl?.trim();
   const reserveLabel = spot.bookingPlatform
     ? `Reserve on ${spot.bookingPlatform}`
@@ -66,81 +58,68 @@ export default function StopRow({
       style={style}
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
-      className="flex items-center gap-3 p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-surface hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors"
+      className="flex items-center gap-2.5 pl-1.5 pr-2 py-4 bg-surface"
     >
       <button
         type="button"
-        className="w-6 h-6 shrink-0 flex items-center justify-center text-neutral-400 hover:text-neutral-900 dark:hover:text-white cursor-grab active:cursor-grabbing touch-none"
+        className="w-5 h-6 shrink-0 flex items-center justify-center text-neutral-300 dark:text-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 cursor-grab active:cursor-grabbing touch-none transition-colors"
         aria-label={`Reorder ${spot.name}`}
         {...attributes}
         {...listeners}
       >
-        <GripVertical size={16} />
+        <GripVertical size={13} strokeWidth={1.75} />
       </button>
 
-      {/* Number badge — neutral, matches the map pin color. */}
-      <div
-        className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-xs font-bold"
-        aria-hidden="true"
-      >
-        {position + 1}
+      {/* Thumbnail + stop-number corner pin read as one unit — matches
+       *  the city-page tray's row design. The surface-colored ring around
+       *  the pin gives it a sticker effect so the badge is readable
+       *  against any photo. */}
+      <div className="relative w-10 h-10 shrink-0">
+        {thumbnail ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={thumbnail}
+            alt=""
+            className="w-full h-full rounded-lg object-cover bg-neutral-100 dark:bg-neutral-800"
+          />
+        ) : (
+          <div className="w-full h-full rounded-lg bg-neutral-100 dark:bg-neutral-800" />
+        )}
+        <div
+          className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-[10px] font-bold ring-2 ring-[var(--color-surface)]"
+          aria-hidden="true"
+        >
+          {position + 1}
+        </div>
       </div>
-
-      {thumbnail ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={thumbnail}
-          alt=""
-          className="w-11 h-11 rounded-lg object-cover shrink-0 bg-neutral-100 dark:bg-neutral-800"
-        />
-      ) : (
-        <div className="w-11 h-11 rounded-lg bg-neutral-100 dark:bg-neutral-800 shrink-0" />
-      )}
 
       <div className="min-w-0 flex-1">
         <Link
           href={`/${citySlugFromName(spot.city)}/${spot.id}`}
-          className="text-sm font-medium truncate hover:underline underline-offset-2 block"
+          className="text-sm font-medium truncate leading-tight hover:underline underline-offset-2 block"
         >
           {spot.name}
         </Link>
-        <div className="flex items-center gap-1.5 mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-          <span className="truncate">{spot.neighborhood}</span>
-          {timeDisplay && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span className="inline-flex items-center gap-0.5">
-                <Clock size={10} /> {timeDisplay}
-              </span>
-            </>
-          )}
+        <div className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate leading-tight mt-0.5">
+          <span>{spot.neighborhood}</span>
           {reserveUrl && (
             <>
-              <span aria-hidden="true">·</span>
+              {" · "}
               <a
                 href={reserveUrl}
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-0.5 text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white underline underline-offset-2"
+                className="text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white underline underline-offset-2"
                 aria-label={reserveLabel}
                 title={reserveLabel}
               >
                 Reserve
-                <ExternalLink size={9} />
               </a>
             </>
           )}
         </div>
       </div>
-
-      <input
-        type="time"
-        value={toTimeInputValue(timeLabel)}
-        onChange={(e) => onTimeChange(e.target.value)}
-        aria-label={`Time for ${spot.name}`}
-        className="w-[6.5rem] shrink-0 bg-transparent border border-neutral-200 dark:border-neutral-800 rounded-md px-2 py-1 text-xs focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600"
-      />
 
       <button
         type="button"

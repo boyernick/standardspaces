@@ -1,31 +1,33 @@
 "use client";
 
-// Read-only rendering of an itinerary for the public /share route (v1).
+// Read-only rendering of an itinerary for the public /share route.
 // Mirrors the planner's visual layout but strips all editing affordances
 // (drag handles, time inputs, remove buttons, save bar). Offers a
-// "Duplicate to edit" CTA that writes the contents into the viewer's
-// localStorage draft and redirects them into the planner.
-//
-// V2's criteria-chip row (date / activity / vibe / neighborhood) lives
-// in `ItineraryViewV2.tsx` — preserved alongside this file for when we
-// revisit the richer planning UX.
+// "Duplicate to edit" CTA that writes the contents — including v2
+// criteria (date, activities, vibes, neighborhoods) — into the viewer's
+// localStorage draft and redirects them into the planner where they can
+// modify.
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Calendar as CalendarIcon,
   Check,
   Clock,
   Copy,
   ExternalLink,
+  MapPin,
+  Sparkles,
+  Utensils,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { citySlugFromName } from "@/lib/cities";
-import { type Spot } from "@/lib/types";
+import { ACTIVITIES_BY_ID, type Spot } from "@/lib/types";
 import { formatTime } from "@/lib/itinerary-url";
 import { writeDraftImperative } from "@/hooks/useItineraryDraft";
-import ItineraryMap, { type ItineraryMapStop } from "./ItineraryMap";
+import SpotMap from "@/components/Map";
 
 type SharedItem = { spotId: string; timeLabel: string | null };
 
@@ -35,6 +37,14 @@ export interface ItineraryViewProps {
   name: string;
   items: SharedItem[];
   spots: Spot[]; // resolved subset that matched valid IDs
+  /** v2 — ISO yyyy-mm-dd, or null. */
+  date?: string | null;
+  /** v2 — selected `Activity.id`s. */
+  activities?: string[];
+  /** v2 — selected vibe labels. */
+  vibes?: string[];
+  /** v2 — selected neighborhood names. */
+  neighborhoods?: string[];
 }
 
 export default function ItineraryView({
@@ -43,25 +53,23 @@ export default function ItineraryView({
   name,
   items,
   spots,
+  date = null,
+  activities = [],
+  vibes = [],
+  neighborhoods = [],
 }: ItineraryViewProps) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const spotById = new Map(spots.map((s) => [s.id, s]));
-  const stops: ItineraryMapStop[] = items
-    .map((it, i) => {
-      const s = spotById.get(it.spotId);
-      if (!s) return null;
-      return {
-        spotId: s.id,
-        name: s.name,
-        lng: s.lng,
-        lat: s.lat,
-        position: i,
-      };
-    })
-    .filter((v): v is ItineraryMapStop => v !== null);
+  // Ordered list of stop ids for the shared plan. Drives the SpotMap's
+  // numbered corner pins and dashed route. Filter out ids that no
+  // longer resolve to a spot so the map never tries to anchor an empty
+  // marker / orphan the route.
+  const planStopIds = items
+    .map((it) => it.spotId)
+    .filter((id) => spotById.has(id));
 
   async function handleCopyLink() {
     if (typeof window === "undefined") return;
@@ -88,13 +96,38 @@ export default function ItineraryView({
           spotId: it.spotId,
           timeLabel: it.timeLabel ?? undefined,
         })),
+        date,
+        activities,
+        vibes,
+        neighborhoods,
       });
       router.push(`/${citySlug}/itinerary`);
     });
   }
 
   const displayName = name.trim() || "A plan in " + cityName;
-  const stopCount = stops.length;
+  const stopCount = planStopIds.length;
+
+  const activityLabels = activities
+    .map((id) => ACTIVITIES_BY_ID[id]?.label)
+    .filter((x): x is string => Boolean(x));
+
+  const dateLabel = (() => {
+    if (!date) return null;
+    const d = new Date(`${date}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+  })();
+
+  const hasCriteria =
+    !!dateLabel ||
+    activityLabels.length > 0 ||
+    vibes.length > 0 ||
+    neighborhoods.length > 0;
 
   return (
     <div className="h-full flex flex-col split:flex-row">
@@ -113,6 +146,35 @@ export default function ItineraryView({
               ? "No valid spaces in this plan."
               : `${stopCount} ${stopCount === 1 ? "space" : "spaces"} · ${cityName}`}
           </p>
+
+          {hasCriteria && (
+            <div className="flex flex-wrap gap-1.5 mt-2.5">
+              {dateLabel && (
+                <ReadOnlyChip icon={<CalendarIcon size={11} />} label={dateLabel} />
+              )}
+              {activityLabels.map((label) => (
+                <ReadOnlyChip
+                  key={`act-${label}`}
+                  icon={<Utensils size={11} />}
+                  label={label}
+                />
+              ))}
+              {vibes.map((v) => (
+                <ReadOnlyChip
+                  key={`vibe-${v}`}
+                  icon={<Sparkles size={11} />}
+                  label={v}
+                />
+              ))}
+              {neighborhoods.map((n) => (
+                <ReadOnlyChip
+                  key={`hood-${n}`}
+                  icon={<MapPin size={11} />}
+                  label={n}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto">
@@ -138,8 +200,7 @@ export default function ItineraryView({
                     className="flex items-center gap-3 p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-surface"
                   >
                     <div
-                      className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                      style={{ backgroundColor: "var(--color-brand-500, #FD5304)" }}
+                      className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-xs font-bold"
                       aria-hidden="true"
                     >
                       {i + 1}
@@ -226,13 +287,38 @@ export default function ItineraryView({
         </div>
       </div>
 
-      {/* Right column: map. On mobile drops to a fixed-height band
-          below the list. */}
-      <div className="h-[40vh] split:h-auto split:flex-1 min-h-0 relative px-4 pb-4 split:pt-1.5">
+      {/* Right column: map — mirrors the planner's bordered, padded
+          map well so the share view matches the city page's chrome. */}
+      <div className="flex-1 min-h-0 relative px-4 pb-4 split:pt-1.5">
         <div className="w-full h-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative">
-          <ItineraryMap stops={stops} />
+          <SpotMap
+            spots={spots}
+            activeSpot={null}
+            onSpotSelect={() => {}}
+            planStopIds={planStopIds}
+            showPlanRoute
+          />
         </div>
       </div>
     </div>
+  );
+}
+
+/** Tiny read-only chip mirroring the planner's criteria row style. No
+ *  click target — this view is display-only. */
+function ReadOnlyChip({
+  icon,
+  label,
+}: {
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full border bg-surface text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-800">
+      <span className="opacity-70" aria-hidden="true">
+        {icon}
+      </span>
+      {label}
+    </span>
   );
 }

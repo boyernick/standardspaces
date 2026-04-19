@@ -1,15 +1,11 @@
 "use client";
 
-// "Pairs well" + inline search block. Combines three surfaces into a
-// single component because they share the same underlying candidate
-// ranking and the same card UI:
+// "Pairs well" suggestion block. Two surfaces in one component because
+// they share the same underlying candidate ranking and the same card UI:
 //
 //   1. A ranked list of 3–5 suggestions based on the planner's criteria
 //      and (if ≥1 stop is added) the last stop's coordinates.
-//   2. A free-text search input (client-side, against the full city
-//      `spots` list) so the user can find a specific space that didn't
-//      surface in the ranked list.
-//   3. A direct-add card when the planner signals the user clicked a
+//   2. A direct-add card when the planner signals the user clicked a
 //      candidate pin on the map (via `focusedSpotId`).
 //
 // Scoring lives entirely here. The caller passes the full spot list for
@@ -17,8 +13,8 @@
 // list. Keeping the scorer co-located with its callers means we can
 // iterate on weights without coordinating across files.
 
-import { useDeferredValue, useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { useMemo } from "react";
+import { Plus } from "lucide-react";
 import { ACTIVITIES_BY_ID, type Category, type Spot } from "@/lib/types";
 import { squaredDistance, type LngLat } from "@/lib/geo";
 
@@ -64,13 +60,11 @@ export default function SpaceFinder({
   onAdd,
   isFull = false,
 }: SpaceFinderProps) {
-  const [query, setQuery] = useState("");
-  const deferredQuery = useDeferredValue(query);
   const inPlanSet = useMemo(() => new Set(inPlanIds), [inPlanIds]);
+  const hasCriteria =
+    activities.length > 0 || vibes.length > 0 || neighborhoods.length > 0;
 
-  // Scored / filtered candidates, fed by criteria. Memoized so we don't
-  // re-score on every keystroke in the search box (the search derives
-  // its own filter on top).
+  // Scored / filtered candidates, fed by criteria.
   const ranked = useMemo<Scored[]>(() => {
     return rankCandidates(spots, {
       inPlanSet,
@@ -81,70 +75,20 @@ export default function SpaceFinder({
     });
   }, [spots, inPlanSet, activities, vibes, neighborhoods, anchor]);
 
-  // Search results — local substring match on name / neighborhood /
-  // subcategory so typos ("gekko" / "Gekko" / "miami") all hit. We
-  // exclude already-added spots and respect the criteria's *required*
-  // activity filter (so searching "coffee" while "Dinner" is selected
-  // still filters to dining spots — avoids contradictory results).
-  const searchResults = useMemo<Spot[]>(() => {
-    const q = deferredQuery.trim().toLowerCase();
-    if (!q) return [];
-    const requiredCats = collectActivityCategories(activities);
-    return spots
-      .filter((s) => !inPlanSet.has(s.id))
-      .filter((s) =>
-        requiredCats.size
-          ? s.category.some((c) => requiredCats.has(c))
-          : true,
-      )
-      .filter((s) => {
-        const blob = [
-          s.name,
-          s.neighborhood,
-          ...(s.subcategory ?? []),
-          ...(s.vibes ?? []),
-        ]
-          .join(" ")
-          .toLowerCase();
-        return blob.includes(q);
-      })
-      .slice(0, 12);
-  }, [spots, inPlanSet, deferredQuery, activities]);
-
   const focused = focusedSpotId
     ? spots.find((s) => s.id === focusedSpotId && !inPlanSet.has(s.id))
     : undefined;
 
   const visibleSuggestions = ranked.slice(0, topN);
-  const showSuggestions = visibleSuggestions.length > 0 && !deferredQuery.trim();
-  const hasAnyContent =
-    focused ||
-    showSuggestions ||
-    searchResults.length > 0 ||
-    deferredQuery.trim();
+  const showSuggestions = visibleSuggestions.length > 0;
+  const hasAnyContent = focused || showSuggestions;
 
   return (
     <div className="space-y-3">
-      {/* Search */}
-      <label className="block relative">
-        <Search
-          size={14}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-          aria-hidden="true"
-        />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search spaces"
-          className="w-full bg-surface border border-neutral-200 dark:border-neutral-800 rounded-full pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-600"
-        />
-      </label>
-
       {/* Focused (map-clicked) card */}
       {focused && (
         <div>
-          <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mb-1.5">
+          <div className="text-sm font-medium text-neutral-900 dark:text-white mb-2">
             Selected on the map
           </div>
           <SpaceCard
@@ -157,26 +101,17 @@ export default function SpaceFinder({
         </div>
       )}
 
-      {/* Search results override suggestions when a query is present */}
-      {deferredQuery.trim() ? (
+      {showSuggestions && (
         <div>
-          <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mb-1.5">
-            {searchResults.length === 0
-              ? `No matches for "${deferredQuery}"`
-              : `${searchResults.length} ${searchResults.length === 1 ? "match" : "matches"}`}
-          </div>
-          <ul className="space-y-1.5">
-            {searchResults.map((s) => (
-              <li key={s.id}>
-                <SpaceCard spot={s} onAdd={() => onAdd(s.id)} isFull={isFull} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : showSuggestions ? (
-        <div>
-          <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mb-1.5">
-            {inPlanIds.length === 0 ? "Start here" : "Pairs well"}
+          <div className="mb-2">
+            <div className="text-sm font-medium text-neutral-900 dark:text-white">
+              {inPlanIds.length === 0 ? "Start here" : "Pairs well"}
+            </div>
+            {hasCriteria && (
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                Ranked by your filters
+              </p>
+            )}
           </div>
           <ul className="space-y-1.5">
             {visibleSuggestions.map(({ spot }) => (
@@ -190,11 +125,11 @@ export default function SpaceFinder({
             ))}
           </ul>
         </div>
-      ) : null}
+      )}
 
       {!hasAnyContent && (
         <div className="text-xs text-neutral-500 dark:text-neutral-400">
-          Pick a date, activity, or vibe above — matching spaces will appear
+          Pick a date, activity, or area above — matching spaces will appear
           here.
         </div>
       )}
@@ -235,8 +170,25 @@ export function rankCandidates(
   const out: Scored[] = [];
   for (const s of spots) {
     if (ctx.inPlanSet.has(s.id)) continue;
-    // Hard filter: activity-required categories.
-    if (requiredCats.size && !s.category.some((c) => requiredCats.has(c))) {
+    // Hard filter: activity-required categories. Compare against the
+    // spot's *primary* category (`category[0]`) rather than any tag in
+    // the array. A cocktail bar that also serves food is tagged
+    // `["drinks","dining"]`, and `some()` would admit it for "Dinner"
+    // even though its primary identity is drinks. The rest of the app
+    // (cards, notifications, copy) already treats `category[0]` as the
+    // headline, so ranking follows the same convention.
+    if (requiredCats.size) {
+      const primary = s.category[0];
+      if (!primary || !requiredCats.has(primary)) continue;
+    }
+    // Hard filter: neighborhood. "Where" is a place the user is
+    // committing to — a recommendation outside their chosen area isn't
+    // a useful suggestion, it's a distraction. Vibe stays a bonus
+    // (it's the only dimension we soft-rank on).
+    if (
+      selectedHoods.size &&
+      !selectedHoods.has(s.neighborhood.toLowerCase())
+    ) {
       continue;
     }
 
@@ -245,9 +197,6 @@ export function rankCandidates(
     for (const v of sVibes) {
       if (selectedVibes.has(v)) score += 2;
       if (activityVibes.has(v)) score += 1;
-    }
-    if (selectedHoods.size && selectedHoods.has(s.neighborhood.toLowerCase())) {
-      score += 1;
     }
     if (ctx.anchor && maxDist > 0) {
       const d = squaredDistance(ctx.anchor, [s.lng, s.lat]);
@@ -319,11 +268,11 @@ function SpaceCard({
         type="button"
         onClick={onAdd}
         disabled={isFull}
-        className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:bg-brand-500 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white hover:border-neutral-400 dark:hover:border-neutral-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         aria-label={`Add ${spot.name}`}
         title={isFull ? "Plan is full" : `Add ${spot.name}`}
       >
-        <Plus size={16} strokeWidth={2} />
+        <Plus size={14} strokeWidth={2} />
       </button>
     </div>
   );
