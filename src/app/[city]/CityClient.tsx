@@ -985,7 +985,8 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                     onMouseEnter={() => setHoveredSpotId(spot.id)}
                     onMouseLeave={() => setHoveredSpotId((prev) => (prev === spot.id ? null : prev))}
                   >
-                    <Link href={`/${citySlug}/${spot.id}`} className="block">
+                    <Link href={`/${citySlug}/${spot.id}`} className="block relative">
+                      <NewBadge spot={spot} overlay />
                       <ImageCarousel
                         images={spot.images}
                         alt={spot.name}
@@ -997,7 +998,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                       <div className="p-3 rounded-b-2xl bg-surface">
                         <div className="flex items-center justify-between gap-2">
                           <h3 className="text-sm font-semibold line-clamp-1">{spot.name}</h3>
-                          <NewBadge spot={spot} />
                         </div>
                         <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">
                           {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}

@@ -109,13 +109,13 @@ export default function CheckinsClient({ spots, citySlug, ratings = {} }: { spot
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-6">
                 {paginated.map((spot) => (
                   <div key={spot.id}>
-                    <Link href={`/${citySlugFromName(spot.city)}/${spot.id}`}>
+                    <Link href={`/${citySlugFromName(spot.city)}/${spot.id}`} className="block relative">
+                      <NewBadge spot={spot} overlay />
                       <ImageCarousel images={spot.images} alt={spot.name} />
                     </Link>
                     <div className="mt-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
-                        <NewBadge spot={spot} />
                         {ratings[spot.id] !== undefined && (
                           <span className="ml-auto text-xs font-semibold tabular-nums text-neutral-700 dark:text-neutral-200 px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800">
                             {ratings[spot.id].toFixed(1)}

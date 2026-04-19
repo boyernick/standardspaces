@@ -112,14 +112,14 @@ export default function FavoritesClient({ spots, citySlug }: { spots: Spot[]; ci
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-6">
                 {paginated.map((spot) => (
                   <div key={spot.id}>
-                    <Link href={`/${citySlugFromName(spot.city)}/${spot.id}`}>
+                    <Link href={`/${citySlugFromName(spot.city)}/${spot.id}`} className="block relative">
+                      <NewBadge spot={spot} overlay />
                       <ImageCarousel images={spot.images} alt={spot.name} />
                     </Link>
                     <div className="mt-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <h3 className="font-medium text-base leading-tight">{spot.name}</h3>
-                          <NewBadge spot={spot} />
                         </div>
                         <FavoriteButton spotId={spot.id} initialFavorited={true} size="sm" />
                       </div>
