@@ -56,7 +56,14 @@ export default function ReferPage() {
             <>
               <h1 className="mb-3">Invite sent</h1>
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                We&apos;ll text {name} with a link to apply. You&apos;ll be asked to approve their application.
+                We&apos;ll text{" "}
+                <span className="font-semibold text-neutral-900 dark:text-white">
+                  {name}
+                </span>
+                {" "}
+                with a link to apply.
+                <br />
+                You&apos;ll be asked to approve their application.
               </p>
               <div className="mt-6 space-y-3">
                 <Button
