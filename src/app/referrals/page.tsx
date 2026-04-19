@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { getReferrals, approveReferral, denyReferral } from "@/app/actions/referrals";
-import { Check, X, UserPlus, Send } from "lucide-react";
+import { getReferrals, approveReferral, denyReferral, resendReferralInvite, deleteReferral } from "@/app/actions/referrals";
+import { Check, X, UserPlus } from "lucide-react";
 import PageShell from "@/components/ui/PageShell";
 import PageHeader from "@/components/ui/PageHeader";
-import { ButtonLink } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 
 type Referral = {
@@ -26,6 +26,8 @@ export default function ReferralsPage() {
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const [rowBusy, setRowBusy] = useState<string | null>(null);
+  const [justResent, setJustResent] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     getReferrals().then((data) => {
@@ -54,6 +56,40 @@ export default function ReferralsPage() {
         );
       }
     });
+  }
+
+  async function handleResend(referralId: string) {
+    setRowBusy(referralId);
+    const result = await resendReferralInvite(referralId);
+    setRowBusy(null);
+    if (result.success) {
+      setJustResent((prev) => {
+        const next = new Set(prev);
+        next.add(referralId);
+        return next;
+      });
+      setTimeout(() => {
+        setJustResent((prev) => {
+          const next = new Set(prev);
+          next.delete(referralId);
+          return next;
+        });
+      }, 2000);
+    } else if (result.error) {
+      alert(result.error);
+    }
+  }
+
+  async function handleDelete(referralId: string) {
+    if (!confirm("Delete this referral? The invite will disappear from your list.")) return;
+    setRowBusy(referralId);
+    const result = await deleteReferral(referralId);
+    setRowBusy(null);
+    if (result.success) {
+      setReferrals((prev) => prev.filter((r) => r.id !== referralId));
+    } else if (result.error) {
+      alert(result.error);
+    }
   }
 
   const pending = referrals.filter((r) => r.status === "pending_approval");
@@ -119,19 +155,36 @@ export default function ReferralsPage() {
 
           {waitingToApply.length > 0 && (
             <section>
-              <h2 className="eyebrow mb-3">Invited — waiting to apply</h2>
+              <h2 className="eyebrow mb-3">Invited</h2>
               <div className="space-y-2">
                 {waitingToApply.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between p-4 border border-neutral-200 dark:border-neutral-800 rounded-xl">
-                    <div>
-                      <p className="text-sm font-medium text-neutral-900 dark:text-white">
+                  <div key={r.id} className="flex items-center justify-between gap-3 p-4 border border-neutral-200 dark:border-neutral-800 rounded-xl">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">
                         {r.referred_name}
                       </p>
                       <p className="text-xs text-neutral-400 dark:text-neutral-500">
                         Invite sent
                       </p>
                     </div>
-                    <Send size={14} className="text-neutral-300 dark:text-neutral-600" />
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleResend(r.id)}
+                        disabled={rowBusy === r.id}
+                      >
+                        {rowBusy === r.id ? "Sending…" : justResent.has(r.id) ? "Sent" : "Resend"}
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleDelete(r.id)}
+                        disabled={rowBusy === r.id}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
