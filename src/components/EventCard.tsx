@@ -31,7 +31,7 @@ export default function EventCard({ event, spotName }: Props) {
             <div className="text-4xl font-semibold">{day}</div>
           </div>
         )}
-        <div className="absolute top-2 left-2 bg-white/95 dark:bg-neutral-900/95 backdrop-blur rounded-lg px-2 py-1 flex flex-col items-center leading-none">
+        <div className="absolute top-2 left-2 bg-white/95 dark:bg-neutral-900/95 backdrop-blur rounded-md px-2 pt-1.5 pb-1 flex flex-col items-center leading-none">
           <span className="text-[9px] font-medium text-neutral-500">{month}</span>
           <span className="text-sm font-semibold">{day}</span>
         </div>
