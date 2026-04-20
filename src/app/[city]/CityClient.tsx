@@ -239,6 +239,9 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const filterBarRef = useRef<HTMLDivElement>(null);
+  // Soft shadow beneath the filter bar once the side panel scrolls away from
+  // its top edge — reads as the filters floating above the list.
+  const [panelScrolled, setPanelScrolled] = useState(false);
   const bottomBarRef = useRef<HTMLDivElement>(null);
   const [mapHeight, setMapHeight] = useState<number | null>(null);
 
@@ -397,6 +400,17 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     return () => observer.disconnect();
   }, [filtered.length, visibleCount]);
 
+  // Track whether the side panel has scrolled so the filter bar can cast a
+  // soft shadow over the scrolling content below it.
+  useEffect(() => {
+    const root = panelRef.current;
+    if (!root) return;
+    const onScroll = () => setPanelScrolled(root.scrollTop > 0);
+    onScroll();
+    root.addEventListener("scroll", onScroll, { passive: true });
+    return () => root.removeEventListener("scroll", onScroll);
+  }, []);
+
   const handleSpotSelect = useCallback((spot: Spot | null) => { setActiveSpot(spot); }, []);
 
   // Imperative focus mechanism for "Nearby spaces" card hover — bumping
@@ -433,6 +447,13 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
         <div className={`w-full ${mapExpanded ? "split:w-0 split:min-w-0 split:grow-0 split:basis-0" : "split:w-[55%] lg:w-1/2 split:min-w-[420px]"} split:flex split:flex-col split:shrink-0 ${mobileView === "list" ? "flex flex-col flex-1 min-h-0" : "flex flex-col split:flex"}`}>
           {/* Filters bar */}
           {allSpots.length > 0 && <motion.div ref={filterBarRef} layout="position" transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }} className={`relative z-20 py-2.5 shrink-0 bg-surface ${mapExpanded ? "split:absolute split:top-3 split:left-4 split:right-[4.5rem] split:z-40 split:bg-transparent" : ""}`}>
+            {/* Bottom-only soft shadow on panel scroll. Uses a downward
+                gradient anchored to the bar so it can't bleed sideways into
+                the adjacent map column the way a 4-sided box-shadow would. */}
+            <div
+              aria-hidden
+              className={`pointer-events-none absolute inset-x-0 top-full h-3 bg-gradient-to-b from-black/[0.05] to-transparent transition-opacity duration-[var(--duration-base)] ${panelScrolled && !mapExpanded ? "opacity-100" : "opacity-0"}`}
+            />
             <div ref={filterScrollRef} className="flex items-center gap-2 overflow-x-auto scrollbar-hide px-4">
               {/* City — hidden until more cities exist. Keep component intact. */}
               {false && (
@@ -1128,14 +1149,14 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
         <div className="flex items-center gap-2">
           <button
             onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
-            className="flex-1 flex items-center gap-2 px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-full text-neutral-400 dark:text-neutral-500"
+            className="flex-1 flex items-center gap-2 px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-400 dark:text-neutral-500"
           >
             <Search size={15} strokeWidth={2} />
             Search
           </button>
           <button
             onClick={() => setMobileView(mobileView === "list" ? "map" : "list")}
-            className="flex items-center justify-center w-[70px] py-2.5 border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 text-neutral-600 dark:text-neutral-400 text-sm font-medium rounded-full shrink-0 transition-colors"
+            className="flex items-center justify-center w-[70px] py-2.5 border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 text-neutral-600 dark:text-neutral-400 text-sm font-medium rounded-lg shrink-0 transition-colors"
           >
             {mobileView === "list" ? "Map" : "List"}
           </button>

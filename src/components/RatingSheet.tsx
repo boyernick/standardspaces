@@ -189,7 +189,7 @@ export default function RatingSheet({
                   key={b}
                   onClick={() => handleBucketPick(b)}
                   disabled={submitting}
-                  className={`w-full px-4 py-3 text-sm rounded-xl border transition-colors text-left ${
+                  className={`w-full px-4 py-3 text-sm rounded-lg border transition-colors text-left ${
                     active
                       ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
                       : "bg-surface text-neutral-900 dark:text-white border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"

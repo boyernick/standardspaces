@@ -113,12 +113,12 @@ export default function CheckInButton({
           data-tooltip={isChecked ? "Visited" : "Check in"}
         >
           {isChecked ? (
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="10" fill="currentColor" className="text-neutral-900 dark:text-white" />
               <path d="m9 12 2 2 4-4" stroke="var(--color-surface)" strokeWidth="2" />
             </svg>
           ) : (
-            <CircleCheck size={18} strokeWidth={1.5} className="text-neutral-600 dark:text-neutral-300" />
+            <CircleCheck size={16} strokeWidth={2} className="text-neutral-600 dark:text-neutral-300" />
           )}
         </button>
 

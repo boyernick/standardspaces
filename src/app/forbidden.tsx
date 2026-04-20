@@ -14,7 +14,7 @@ export default function Forbidden() {
         </p>
         <Link
           href="/"
-          className="px-5 py-2 text-sm font-medium text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+          className="px-5 py-2 text-sm font-medium text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
           style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}
         >
           Back to guide

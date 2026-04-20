@@ -122,7 +122,7 @@ export default function RecommendForm() {
           <ButtonLink href="/recommend" variant="primary">View recommendations</ButtonLink>
           <button
             onClick={() => { setStep("form"); setUrl(""); setAdditionalUrls([]); }}
-            className="px-4 py-2 text-sm font-medium rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
+            className="px-4 py-2 text-sm font-medium rounded-lg border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
           >
             Recommend another
           </button>

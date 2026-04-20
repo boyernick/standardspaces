@@ -353,7 +353,7 @@ export default function NewEventClient({
             <button
               type="button"
               onClick={() => setVisibility("public")}
-              className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm transition-colors ${
+              className={`flex items-center gap-2.5 px-4 py-3 rounded-lg border text-sm transition-colors ${
                 visibility === "public"
                   ? "border-neutral-900 dark:border-white"
                   : "border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
@@ -368,7 +368,7 @@ export default function NewEventClient({
             <button
               type="button"
               onClick={() => setVisibility("private")}
-              className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm transition-colors ${
+              className={`flex items-center gap-2.5 px-4 py-3 rounded-lg border text-sm transition-colors ${
                 visibility === "private"
                   ? "border-neutral-900 dark:border-white"
                   : "border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600"
@@ -465,7 +465,7 @@ export default function NewEventClient({
             <button
               type="submit"
               disabled={pending}
-              className="px-8 py-2.5 text-sm font-medium rounded-xl bg-black text-white dark:bg-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-60 transition-colors flex items-center gap-2 shrink-0"
+              className="px-8 py-2.5 text-sm font-medium rounded-lg bg-black text-white dark:bg-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-60 transition-colors flex items-center gap-2 shrink-0"
             >
               {pending ? (
                 <>

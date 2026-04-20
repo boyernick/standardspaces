@@ -15,14 +15,14 @@ export default function Unauthorized() {
         <div className="flex gap-3 justify-center">
           <Link
             href="/login"
-            className="px-5 py-2 text-sm font-medium text-white bg-black dark:bg-white dark:text-black rounded-full hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
+            className="px-5 py-2 text-sm font-medium text-white bg-black dark:bg-white dark:text-black rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
             style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}
           >
             Log in
           </Link>
           <Link
             href="/apply"
-            className="px-5 py-2 text-sm font-medium text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            className="px-5 py-2 text-sm font-medium text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
             style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}
           >
             Apply to join

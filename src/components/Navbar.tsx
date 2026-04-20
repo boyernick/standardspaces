@@ -26,7 +26,12 @@ export default function Navbar() {
   // Tri-state: undefined = unknown (don't render anything yet), null = signed
   // out / no avatar (render default icon), string = avatar URL.
   const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(undefined);
+  // Drives the soft shadow beneath the sticky navbar once the page has
+  // scrolled away from the top. Lets the nav read as a floating layer over
+  // content without adding visual weight when it sits flush at the top.
+  const [scrolled, setScrolled] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,14 +99,49 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Track scroll on whichever ancestor actually scrolls on this page so the
+  // shadow appears the moment content starts sliding under the navbar. Most
+  // pages scroll the window; PageShell and a few others scroll an inner
+  // container — we walk up from the header to find whichever one it is.
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+
+    let scroller: HTMLElement | Window = window;
+    let node: HTMLElement | null = header.parentElement;
+    while (node) {
+      const overflowY = getComputedStyle(node).overflowY;
+      if (overflowY === "auto" || overflowY === "scroll") {
+        scroller = node;
+        break;
+      }
+      node = node.parentElement;
+    }
+
+    const getScrollTop = () =>
+      scroller === window
+        ? window.scrollY
+        : (scroller as HTMLElement).scrollTop;
+
+    const onScroll = () => setScrolled(getScrollTop() > 0);
+    onScroll();
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => scroller.removeEventListener("scroll", onScroll);
+  }, []);
+
   const menuLinkClass = "block px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors";
 
   return (
-    <header className="bg-surface shrink-0" style={{ position: "relative", zIndex: 40 }}>
+    <header
+      ref={headerRef}
+      className={`bg-surface shrink-0 sticky top-0 z-40 transition-shadow duration-[var(--duration-base)] ${
+        scrolled ? "shadow-[0_2px_8px_rgba(0,0,0,0.04)]" : ""
+      }`}
+    >
       <div className="px-4 py-2.5 flex items-center">
         {/* Left: Logo + City */}
         <div className="flex-1 flex items-center gap-5">
-          <Link href="/" className="flex items-center gap-1">
+          <Link href="/" className="flex items-center gap-1 h-8">
             <img src="/logo.svg" alt="Standard Spaces" className="h-5 w-5 nav-logo dark:invert" />
             <span className="text-lg tracking-tight whitespace-nowrap text-neutral-900 dark:text-white nav-title" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
               Standard Spaces
@@ -113,15 +153,10 @@ export default function Navbar() {
         {/* Center: Search (desktop) */}
         <button
           onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
-          className="hidden md:flex items-center justify-between w-[280px] pl-3 pr-2.5 py-1.5 text-xs border border-neutral-200 dark:border-neutral-800 rounded-full bg-transparent text-neutral-400 dark:text-neutral-500 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
+          className="hidden md:flex items-center gap-1.5 h-9 w-[280px] pl-3 pr-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-full bg-transparent text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
         >
-          <span className="flex items-center gap-1.5">
-            <Search size={13} strokeWidth={2} />
-            Search
-          </span>
-          <kbd className="text-[10px] text-neutral-300 dark:text-neutral-600 border border-neutral-200 dark:border-neutral-800 rounded px-1 py-0.5">
-            ⌘K
-          </kbd>
+          <Search size={14} strokeWidth={2} />
+          Search
         </button>
 
         {/* Right: User menu */}
@@ -129,7 +164,7 @@ export default function Navbar() {
         <div ref={menuRef} className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="relative flex items-center gap-2 pl-3 pr-1.5 py-1 border border-neutral-200 dark:border-neutral-800 rounded-full hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
+            className="relative flex items-center gap-2 h-10 pl-3 pr-1.5 border border-neutral-200 dark:border-neutral-800 rounded-full hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
           >
             {(unreadNotifs > 0 || adminPending > 0 || mockJewel) && (
               <span

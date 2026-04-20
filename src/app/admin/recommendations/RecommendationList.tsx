@@ -189,7 +189,7 @@ export default function RecommendationList({
                     {(rec.status === "scraped" || rec.status === "published") && (
                       <Link
                         href={`/admin/review/${rec.id}`}
-                        className="px-3 py-1.5 text-xs font-medium text-white bg-black dark:bg-white dark:text-black rounded-full hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-black dark:bg-white dark:text-black rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
                         style={fontCalibre}
                       >
                         {rec.status === "published" ? "View" : "Review & publish"}
@@ -199,7 +199,7 @@ export default function RecommendationList({
                       <button
                         onClick={() => handleRescrape(rec.id, rec.url)}
                         disabled={busy === rec.id}
-                        className="px-3 py-1.5 text-xs font-medium text-black/60 dark:text-white/60 border border-black/15 dark:border-white/15 rounded-full hover:border-black/30 dark:hover:border-white/30 transition-colors disabled:opacity-50"
+                        className="px-3 py-1.5 text-xs font-medium text-black/60 dark:text-white/60 border border-black/15 dark:border-white/15 rounded-lg hover:border-black/30 dark:hover:border-white/30 transition-colors disabled:opacity-50"
                         style={fontCalibre}
                       >
                         {busy === rec.id ? "..." : "Re-scrape"}
@@ -208,7 +208,7 @@ export default function RecommendationList({
                     <button
                       onClick={() => handleDelete(rec.id)}
                       disabled={busy === rec.id}
-                      className="px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-full hover:border-red-300 transition-colors disabled:opacity-50"
+                      className="px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:border-red-300 transition-colors disabled:opacity-50"
                       style={fontCalibre}
                     >
                       Delete
