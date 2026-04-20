@@ -7,20 +7,21 @@ import Tabs from "@/components/ui/Tabs";
 import EmptyState from "@/components/ui/EmptyState";
 import type { MyRecommendation } from "@/app/actions/recommendations";
 
-type Tab = "pending" | "approved" | "denied";
+type Tab = "pending" | "approved";
 
 /**
  * Member-facing recommendations hub. Tabs bucket the user's own submissions
  * by visible outcome:
- *   - Pending: any status that isn't `published` or `denied` (covers
- *     `pending`, `processing`, `scraped`, `failed` — all "not yet live").
+ *   - Pending: anything not yet live (`pending`, `processing`, `scraped`,
+ *     `failed`, `denied`). We deliberately collapse "denied" into
+ *     "pending" for the member view today — there's no admin flow that
+ *     emits `denied`, and we'd rather not surface a "Denied" tab that
+ *     exists only to shame rejections. Revisit when we build an explicit
+ *     "not accepted" flow with reason copy.
  *   - Approved: status = `published` (live in the guide).
- *   - Denied: status = `denied` (no admin flow emits this today, so the
- *     tab renders empty until we add one — keeps the shape future-safe).
  */
 function bucketFor(status: string): Tab {
   if (status === "published") return "approved";
-  if (status === "denied") return "denied";
   return "pending";
 }
 
@@ -50,7 +51,6 @@ export default function RecommendHubClient({
     const out: Record<Tab, MyRecommendation[]> = {
       pending: [],
       approved: [],
-      denied: [],
     };
     for (const r of recommendations) out[bucketFor(r.status)].push(r);
     return out;
@@ -59,7 +59,6 @@ export default function RecommendHubClient({
   const tabs: { id: Tab; label: string; count: number }[] = [
     { id: "pending", label: "Pending", count: grouped.pending.length },
     { id: "approved", label: "Approved", count: grouped.approved.length },
-    { id: "denied", label: "Denied", count: grouped.denied.length },
   ];
 
   const active = grouped[tab];
@@ -69,15 +68,10 @@ export default function RecommendHubClient({
           title: "No pending recommendations",
           body: "Spaces you submit will show up here while we review them.",
         }
-      : tab === "approved"
-        ? {
-            title: "No approved recommendations yet",
-            body: "When one of your submissions is added to the guide, it'll live here.",
-          }
-        : {
-            title: "No denied recommendations",
-            body: "Recommendations we couldn't add will show up here with a note.",
-          };
+      : {
+          title: "No approved recommendations yet",
+          body: "When one of your submissions is added to the guide, it'll live here.",
+        };
 
   return (
     <>
