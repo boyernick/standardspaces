@@ -4,19 +4,19 @@
 // city page. Appears when the draft has at least one space. Two states:
 //
 // - Collapsed (default): a compact pill — avatar stack, "N spaces in the
-//   plan," Save plan + clear actions.
+//   plan," and a clear action.
 // - Expanded: the same pill morphs into a surface-matched card with the
 //   full stops list (thumbnail + name + neighborhood + time + remove),
-//   a "Clear plan" footer link, and an "Open planner" CTA for deeper
-//   editing (criteria, reorder, save/share).
+//   a "Clear plan" footer link, and an "Open planner" CTA that routes to
+//   the saved-plan editor for date, invites, and reorder.
 //
 // Expansion is local — the tray stays mounted on the city page; tapping
-// the pill never routes. The planner at /[city]/itinerary remains the
-// canonical edit surface; the tray is a peek-and-prune panel that also
-// carries a one-tap Save plan affordance.
+// the pill never routes. Saving the draft to a persisted plan lives on
+// the saved-plan editor now; the tray is pure peek-and-prune.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, GripVertical, ListOrdered, X } from "lucide-react";
 import {
@@ -36,10 +36,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useItineraryDraft } from "@/hooks/useItineraryDraft";
-import { citySlugFromName } from "@/lib/cities";
+import { cityNameFromSlug, citySlugFromName } from "@/lib/cities";
 import { formatTime } from "@/lib/itinerary-url";
 import { ITINERARY_MAX_STOPS, type Spot } from "@/lib/types";
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { saveItinerary } from "@/app/actions/itineraries";
 
 // Same inset from viewport bottom as the map view's bottom controls (and
@@ -52,31 +52,20 @@ type PlanStop = { spot: Spot; timeLabel: string | null };
 
 export default function ItineraryTray({
   citySlug,
-  cityName,
   spots,
   /** Extra bottom offset (px) added on top of the default. Callers like
    *  CityClient pass this to clear their mobile bottom bar. */
   bottomOffset = DEFAULT_BOTTOM_OFFSET,
 }: {
   citySlug: string;
-  /** Display name of the city — required for the Save plan action, which
-   *  persists the canonical city name on the itinerary row. */
-  cityName: string;
   spots: Spot[];
   bottomOffset?: number;
 }) {
+  const router = useRouter();
   const { draft, clear, remove, setItems } = useItineraryDraft(citySlug);
   const [expanded, setExpanded] = useState(false);
-  // Save state is just idle/saving here — on success we clear the draft
-  // (which unmounts the tray via AnimatePresence exit) and surface a
-  // bottom-right toast, so the "saved" confirmation lives entirely in
-  // the toast rather than on the button label.
-  type SaveState =
-    | { kind: "idle" }
-    | { kind: "saving" }
-    | { kind: "error"; message: string };
-  const [saveState, setSaveState] = useState<SaveState>({ kind: "idle" });
-  const [toast, setToast] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
+  const [openError, setOpenError] = useState<string | null>(null);
 
   // Resolve the Spot records for each draft item so we can render their
   // images + names + times. Missing spots (e.g. a stale draft referring
@@ -129,14 +118,16 @@ export default function ItineraryTray({
     [remove, count],
   );
 
-  // Save the current draft to the user's account. On success we clear
-  // the draft, which trips the tray's `show = count > 0` gate and plays
-  // the existing exit animation — so the tray slides away on its own.
-  // A bottom-right toast confirms the save. The saved plan lives on the
-  // user's account; they can revisit it from the planner surface.
-  const handleSave = useCallback(async () => {
-    if (count === 0 || saveState.kind === "saving") return;
-    setSaveState({ kind: "saving" });
+  // Persist the draft to a real itinerary row and jump into the
+  // saved-plan editor. Opening the planner is the only way to turn a
+  // draft into a stored plan now — the polish surface is where dates,
+  // invites, and reorder live. On success we clear the local draft so
+  // the tray exits cleanly behind the navigation.
+  const handleOpenPlanner = useCallback(async () => {
+    if (opening || draft.items.length === 0) return;
+    setOpening(true);
+    setOpenError(null);
+    const cityName = cityNameFromSlug(citySlug) ?? citySlug;
     const res = await saveItinerary({
       city: cityName,
       name: draft.name?.trim() || "Untitled plan",
@@ -149,43 +140,41 @@ export default function ItineraryTray({
       vibes: draft.vibes,
       neighborhoods: draft.neighborhoods,
     });
-    if (res.success) {
-      setSaveState({ kind: "idle" });
-      setToast("Plan saved");
-      clear();
-      setExpanded(false);
-    } else {
+    if (!res.success) {
       const msg =
         res.error === "too_many_stops"
-          ? `Maximum ${ITINERARY_MAX_STOPS} stops per plan.`
+          ? `Maximum ${ITINERARY_MAX_STOPS} spaces per plan.`
           : res.error === "unauthenticated"
-            ? "Sign in to save your plan."
+            ? "Sign in to open the planner."
             : res.error === "empty"
-              ? "Add at least one space before saving."
-              : "Couldn't save — try again.";
-      setSaveState({ kind: "idle" });
-      setToast(msg);
+              ? "Add at least one space before opening."
+              : "Couldn't open the planner — try again.";
+      setOpenError(msg);
+      setOpening(false);
+      return;
     }
+    clear();
+    setExpanded(false);
+    router.push(`/${citySlug}/itinerary/${res.id}`);
   }, [
-    count,
-    saveState.kind,
-    cityName,
-    draft.name,
+    opening,
     draft.items,
+    draft.name,
     draft.date,
     draft.activities,
     draft.vibes,
     draft.neighborhoods,
+    citySlug,
     clear,
+    router,
   ]);
 
-  // Auto-dismiss the toast. 2.4s is long enough to read the confirmation
-  // without hanging around after attention has moved elsewhere.
+  // Auto-clear the open-planner error when the draft changes — any edit
+  // is an implicit retry intent.
   useEffect(() => {
-    if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 2400);
-    return () => window.clearTimeout(t);
-  }, [toast]);
+    if (!openError) return;
+    setOpenError(null);
+  }, [draft.items.length, openError]);
 
   // Reorder via dnd-kit. The hook's `setItems` is a wholesale replacement
   // and reads the freshest draft internally before writing, so there's no
@@ -202,7 +191,6 @@ export default function ItineraryTray({
   );
 
   return (
-    <>
     <AnimatePresence>
       {show && (
         <motion.div
@@ -290,12 +278,14 @@ export default function ItineraryTray({
                     aria-label="Plan details"
                   >
                     <ExpandedPanel
-                      citySlug={citySlug}
                       planStops={planStops}
                       onRemove={removeAndMaybeCollapse}
                       onClear={clearAndCollapse}
                       onCollapse={() => setExpanded(false)}
                       onReorder={reorderStops}
+                      onOpenPlanner={handleOpenPlanner}
+                      opening={opening}
+                      openError={openError}
                     />
                   </motion.div>
                 ) : (
@@ -351,29 +341,16 @@ export default function ItineraryTray({
                         </div>
                       </div>
                     </button>
-                    {/* Action cluster — Save + Clear read as one unit, so
-                        a tight gap (vs. the outer gap-3 that sets the
-                        label apart) keeps them visually paired. */}
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={handleSave}
-                        disabled={count === 0 || saveState.kind === "saving"}
-                        aria-label="Save plan"
-                      >
-                        {saveState.kind === "saving" ? "Saving…" : "Save plan"}
-                      </Button>
-                      <button
-                        type="button"
-                        onClick={clearAndCollapse}
-                        aria-label="Clear plan"
-                        className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-ink-100 transition-colors"
-                      >
-                        <X size={15} />
-                      </button>
-                    </div>
+                    {/* Clear action — Save lives on the saved-plan editor
+                        now; the tray is pure peek-and-prune. */}
+                    <button
+                      type="button"
+                      onClick={clearAndCollapse}
+                      aria-label="Clear plan"
+                      className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-ink-100 transition-colors"
+                    >
+                      <X size={15} />
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -387,32 +364,6 @@ export default function ItineraryTray({
         </motion.div>
       )}
     </AnimatePresence>
-    {/* Save-plan confirmation toast. Anchored to the bottom-right so it
-        doesn't collide with the tray's centered pill on narrow viewports
-        and keeps its own stacking context. Safe-area inset matches the
-        tray so both clear the iOS home indicator. */}
-    <AnimatePresence>
-      {toast && (
-        <motion.div
-          key="itinerary-toast"
-          initial={{ y: 16, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 16, opacity: 0 }}
-          transition={{
-            y: { type: "spring", stiffness: 320, damping: 34, mass: 0.85 },
-            opacity: { duration: 0.24, ease: [0.22, 1, 0.36, 1] },
-          }}
-          role="status"
-          aria-live="polite"
-          className="fixed right-4 z-50 bottom-[calc(16px+env(safe-area-inset-bottom,0px))] pointer-events-none"
-        >
-          <div className="pointer-events-auto bg-surface border border-neutral-200 dark:border-neutral-800 shadow-[0_16px_40px_rgba(0,0,0,0.35)] rounded-full px-4 py-2.5 text-xs font-medium">
-            {toast}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-    </>
   );
 }
 
@@ -420,19 +371,23 @@ export default function ItineraryTray({
  *  footer with Clear + Open planner actions. Rendered inside the same
  *  outer fixed container so animations stay scoped to the same region. */
 function ExpandedPanel({
-  citySlug,
   planStops,
   onRemove,
   onClear,
   onCollapse,
   onReorder,
+  onOpenPlanner,
+  opening,
+  openError,
 }: {
-  citySlug: string;
   planStops: PlanStop[];
   onRemove: (spotId: string) => void;
   onClear: () => void;
   onCollapse: () => void;
   onReorder: (activeId: string, overId: string) => void;
+  onOpenPlanner: () => void;
+  opening: boolean;
+  openError: string | null;
 }) {
   // Sensors mirror the planner's: small pointer activation distance so
   // grabbing the handle on a scrollable list doesn't steal a scroll
@@ -502,25 +457,36 @@ function ExpandedPanel({
         </SortableContext>
       </DndContext>
 
-      {/* Footer — clear (destructive, ghost) + open-planner (primary).
-          Extra horizontal padding pulls both buttons off the card's
-          curved edges so the rounded corners frame the action row. */}
-      <div className="flex items-center gap-2 px-4 py-3 border-t border-neutral-200 dark:border-neutral-800">
-        <button
-          type="button"
-          onClick={onClear}
-          className="text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 px-2.5 py-1.5 rounded-full transition-colors"
-        >
-          Clear plan
-        </button>
-        <ButtonLink
-          href={`/${citySlug}/itinerary`}
-          variant="secondary"
-          size="sm"
-          className="ml-auto"
-        >
-          Open planner
-        </ButtonLink>
+      {/* Footer — clear (destructive, ghost) + open-planner (saves the
+          draft as a real itinerary row, then routes into the saved-plan
+          editor for date, invites, and reorder). Extra horizontal padding
+          pulls both buttons off the card's curved edges so the rounded
+          corners frame the action row. */}
+      <div className="flex flex-col gap-1.5 px-4 py-3 border-t border-neutral-200 dark:border-neutral-800">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 px-2.5 py-1.5 rounded-full transition-colors"
+          >
+            Clear plan
+          </button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onOpenPlanner}
+            disabled={opening}
+            className="ml-auto"
+          >
+            {opening ? "Opening…" : "Open planner"}
+          </Button>
+        </div>
+        {openError && (
+          <div className="text-[11px] text-red-500 text-right">
+            {openError}
+          </div>
+        )}
       </div>
     </div>
   );

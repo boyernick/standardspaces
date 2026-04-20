@@ -114,13 +114,19 @@ interface MapProps {
    * keeps the effect from refitting on every render.
    */
   focusBounds?: LngLatBounds | null;
+  /**
+   * When true, hide the locate-me / zoom-in / zoom-out control cluster
+   * in the lower right. Used by polish surfaces (saved-plan hero map)
+   * where the map is a decorative context strip, not a panning tool.
+   */
+  hideControls?: boolean;
 }
 
 const PLAN_ROUTE_SOURCE_ID = "plan-route";
 const PLAN_ROUTE_LAYER_ID = "plan-route";
 
 export default function SpotMap(props: MapProps) {
-  const { spots = [], activeSpot = null, onSpotSelect = () => {}, onViewChange, initialView, focusSpot = null, focusToken, hoverSpotId = null, planStopIds, showPlanRoute = false, focusBounds = null } = props ?? {};
+  const { spots = [], activeSpot = null, onSpotSelect = () => {}, onViewChange, initialView, focusSpot = null, focusToken, hoverSpotId = null, planStopIds, showPlanRoute = false, focusBounds = null, hideControls = false } = props ?? {};
   const onViewChangeRef = useRef(onViewChange);
   onViewChangeRef.current = onViewChange;
   // Latch the initialView at first render so later prop changes (e.g. after
@@ -1053,35 +1059,37 @@ export default function SpotMap(props: MapProps) {
           transition: "opacity 500ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       />
-      <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
-        <button
-          type="button"
-          onClick={handleRecenter}
-          aria-label="Center on my location"
-          className="w-8 h-8 rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-sm flex items-center justify-center hover:bg-white/70 dark:hover:bg-neutral-900/70 transition-colors"
-        >
-          <LocateFixed size={14} strokeWidth={1.75} className="text-neutral-900 dark:text-white" />
-        </button>
-        <div className="w-8 rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-sm flex flex-col items-center overflow-hidden">
+      {!hideControls && (
+        <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
           <button
             type="button"
-            onClick={() => zoomBy(1)}
-            aria-label="Zoom in"
-            className="w-8 h-8 flex items-center justify-center hover:bg-white/70 dark:hover:bg-neutral-900/70 transition-colors"
+            onClick={handleRecenter}
+            aria-label="Center on my location"
+            className="w-8 h-8 rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-sm flex items-center justify-center hover:bg-white/70 dark:hover:bg-neutral-900/70 transition-colors"
           >
-            <Plus size={14} strokeWidth={1.75} className="text-neutral-900 dark:text-white" />
+            <LocateFixed size={14} strokeWidth={1.75} className="text-neutral-900 dark:text-white" />
           </button>
-          <div className="h-px w-full bg-neutral-300 dark:bg-neutral-600" />
-          <button
-            type="button"
-            onClick={() => zoomBy(-1)}
-            aria-label="Zoom out"
-            className="w-8 h-8 flex items-center justify-center hover:bg-white/70 dark:hover:bg-neutral-900/70 transition-colors"
-          >
-            <Minus size={14} strokeWidth={1.75} className="text-neutral-900 dark:text-white" />
-          </button>
+          <div className="w-8 rounded-[10px] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-sm flex flex-col items-center overflow-hidden">
+            <button
+              type="button"
+              onClick={() => zoomBy(1)}
+              aria-label="Zoom in"
+              className="w-8 h-8 flex items-center justify-center hover:bg-white/70 dark:hover:bg-neutral-900/70 transition-colors"
+            >
+              <Plus size={14} strokeWidth={1.75} className="text-neutral-900 dark:text-white" />
+            </button>
+            <div className="h-px w-full bg-neutral-300 dark:bg-neutral-600" />
+            <button
+              type="button"
+              onClick={() => zoomBy(-1)}
+              aria-label="Zoom out"
+              className="w-8 h-8 flex items-center justify-center hover:bg-white/70 dark:hover:bg-neutral-900/70 transition-colors"
+            >
+              <Minus size={14} strokeWidth={1.75} className="text-neutral-900 dark:text-white" />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

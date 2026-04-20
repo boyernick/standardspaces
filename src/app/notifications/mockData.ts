@@ -102,6 +102,7 @@ function base(
     actor_id: null,
     spot_id: null,
     event_id: null,
+    itinerary_id: null,
     recommendation_id: null,
     metadata: {},
     read_at: null,

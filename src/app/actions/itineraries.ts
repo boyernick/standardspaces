@@ -9,14 +9,22 @@
 // v2: the parent row also carries planning criteria (date, activities,
 // vibes, neighborhoods). They're optional inputs / nullable outputs so
 // v1 rows keep loading and v1 callers that don't pass them still work.
+//
+// v3: plans can be co-viewed. `itinerary_invites` holds the guest list
+// and the SELECT policies on user_itineraries / user_itinerary_items
+// include invited users. Writes remain owner-only. `isOwner` is tagged
+// onto read results so callers can branch UI without a second query.
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createNotification } from "@/lib/notifications";
 import {
   ACTIVITIES_BY_ID,
   ITINERARY_MAX_STOPS,
   VIBE_MOODS,
 } from "@/lib/types";
 import type { Itinerary, ItineraryItem } from "@/lib/types";
+import type { MemberSearchResult } from "@/app/actions/events";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -75,7 +83,9 @@ export type SaveItineraryInput = {
   /** Present → update that row. Absent → insert a new one. */
   id?: string;
   city: string;
-  name: string;
+  /** Optional — the saved-plan UI no longer exposes a name field. The tray
+   *  still passes "Untitled plan" for back-compat; empty/omitted is fine. */
+  name?: string;
   items: Array<{ spotId: string; timeLabel: string | null }>;
   /** v2 — ISO yyyy-mm-dd or null. */
   date?: string | null;
@@ -110,7 +120,11 @@ export async function saveItinerary(
     return { success: false, error: "too_many_stops" };
   }
 
-  const name = input.name.trim() || "Untitled plan";
+  // `name` is legacy — kept in the schema so existing rows don't need a
+  // migration, but the new saved-plan UI doesn't collect one. Fall back to
+  // "Untitled plan" when blank so list views that still render it don't
+  // show a blank row title.
+  const name = (input.name ?? "").trim() || "Untitled plan";
   const planDate =
     input.date && DATE_RE.test(input.date) ? input.date : null;
   const activities = cleanActivities(input.activities);
@@ -199,10 +213,11 @@ export async function getMyItineraries(
   } = await supabase.auth.getUser();
   if (!user) return [];
 
+  // SELECT is RLS-gated to "owner OR invitee" — no explicit user_id filter
+  // here, so invited plans show up alongside owned ones in the hub.
   let query = supabase
     .from("user_itineraries")
     .select(ITINERARY_COLUMNS)
-    .eq("user_id", user.id)
     .order("updated_at", { ascending: false });
   if (city) query = query.eq("city", city);
 
@@ -242,6 +257,7 @@ export async function getMyItineraries(
     activities: normalizeTextArray(p.activities),
     vibes: normalizeTextArray(p.vibes),
     neighborhoods: normalizeTextArray(p.neighborhoods),
+    isOwner: (p.user_id as string) === user.id,
   }));
 }
 
@@ -253,11 +269,12 @@ export async function getItinerary(id: string): Promise<Itinerary | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // RLS: owner OR invitee. Drop the explicit user_id eq so invitees can
+  // land on the saved-plan page.
   const { data: parent } = await supabase
     .from("user_itineraries")
     .select(ITINERARY_COLUMNS)
     .eq("id", id)
-    .eq("user_id", user.id)
     .single();
   if (!parent) return null;
 
@@ -283,6 +300,7 @@ export async function getItinerary(id: string): Promise<Itinerary | null> {
     activities: normalizeTextArray(parent.activities),
     vibes: normalizeTextArray(parent.vibes),
     neighborhoods: normalizeTextArray(parent.neighborhoods),
+    isOwner: (parent.user_id as string) === user.id,
   };
 }
 
@@ -300,4 +318,192 @@ export async function deleteItinerary(id: string): Promise<{ success: boolean }>
     .eq("user_id", user.id);
 
   return { success: !error };
+}
+
+// --- Invites ---------------------------------------------------------------
+//
+// Mirrors the events invite pattern (see `events.ts:392-548`): a small set
+// of owner-gated actions around the `itinerary_invites` side table plus a
+// `leaveItinerary` for invitees. `MemberSearchResult` is reused so the
+// shared `InviteMembersField` component can point at either feature.
+
+async function runItineraryMemberSearch(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  query: string,
+  excludeUserId: string,
+): Promise<MemberSearchResult[]> {
+  const q = query.trim();
+  if (!q) return [];
+
+  const pattern = `%${q.replace(/[%_]/g, "\\$&")}%`;
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name, avatar_url, instagram")
+    .or(
+      `first_name.ilike.${pattern},last_name.ilike.${pattern},instagram.ilike.${pattern}`,
+    )
+    .neq("id", excludeUserId)
+    .not("first_name", "is", null)
+    .limit(8);
+
+  return (data ?? []) as MemberSearchResult[];
+}
+
+/** Owner-only. Returns up to 8 matching members, excluding the caller. */
+export async function searchMembersForItineraryInvite(
+  itineraryId: string,
+  query: string,
+): Promise<MemberSearchResult[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: plan } = await supabase
+    .from("user_itineraries")
+    .select("user_id")
+    .eq("id", itineraryId)
+    .single();
+  if (!plan || plan.user_id !== user.id) return [];
+
+  return runItineraryMemberSearch(supabase, query, user.id);
+}
+
+/** Owner-only. Returns the current invited members (empty list otherwise). */
+export async function getItineraryInvitees(
+  itineraryId: string,
+): Promise<MemberSearchResult[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: plan } = await supabase
+    .from("user_itineraries")
+    .select("user_id")
+    .eq("id", itineraryId)
+    .single();
+  if (!plan || plan.user_id !== user.id) return [];
+
+  const { data } = await supabase
+    .from("itinerary_invites")
+    .select(
+      "user_id, profiles:user_id(id, first_name, last_name, avatar_url, instagram)",
+    )
+    .eq("itinerary_id", itineraryId);
+
+  return (((data ?? [])
+    .map((r) => r.profiles)
+    .filter(Boolean) as unknown) as MemberSearchResult[]);
+}
+
+/** Owner inserts invite rows. Fires `plan_invited` notifications (deduped). */
+export async function inviteItineraryMembers(
+  itineraryId: string,
+  userIds: string[],
+): Promise<{ ok: true; added: number } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "unauthenticated" };
+
+  const { data: plan } = await supabase
+    .from("user_itineraries")
+    .select("id, user_id, city, plan_date")
+    .eq("id", itineraryId)
+    .single();
+  if (!plan) return { ok: false, error: "Plan not found" };
+  if (plan.user_id !== user.id) return { ok: false, error: "Not authorized" };
+
+  const cleanIds = Array.from(new Set(userIds.filter(Boolean))).filter(
+    (id) => id !== user.id,
+  );
+  if (cleanIds.length === 0) return { ok: true, added: 0 };
+
+  const rows = cleanIds.map((id) => ({
+    itinerary_id: itineraryId,
+    user_id: id,
+    invited_by: user.id,
+  }));
+
+  const { error } = await supabase
+    .from("itinerary_invites")
+    .upsert(rows, {
+      onConflict: "itinerary_id,user_id",
+      ignoreDuplicates: true,
+    });
+  if (error) return { ok: false, error: error.message };
+
+  await Promise.all(
+    cleanIds.map((id) =>
+      createNotification({
+        userId: id,
+        type: "plan_invited",
+        actorId: user.id,
+        itineraryId,
+        metadata: {
+          city: plan.city,
+          date: (plan.plan_date as string | null) ?? null,
+        },
+        dedupeKey: `plan_invited:${itineraryId}:${id}`,
+      }),
+    ),
+  );
+
+  revalidatePath(`/plans`);
+  return { ok: true, added: cleanIds.length };
+}
+
+/** Owner-only. Removes a single invited member from the plan. */
+export async function removeItineraryInvite(
+  itineraryId: string,
+  userId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "unauthenticated" };
+
+  const { data: plan } = await supabase
+    .from("user_itineraries")
+    .select("user_id")
+    .eq("id", itineraryId)
+    .single();
+  if (!plan) return { ok: false, error: "Plan not found" };
+  if (plan.user_id !== user.id) return { ok: false, error: "Not authorized" };
+
+  const { error } = await supabase
+    .from("itinerary_invites")
+    .delete()
+    .eq("itinerary_id", itineraryId)
+    .eq("user_id", userId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/plans`);
+  return { ok: true };
+}
+
+/** Invitee removes themselves from a plan. RLS permits self-delete. */
+export async function leaveItinerary(
+  itineraryId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "unauthenticated" };
+
+  const { error } = await supabase
+    .from("itinerary_invites")
+    .delete()
+    .eq("itinerary_id", itineraryId)
+    .eq("user_id", user.id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/plans`);
+  return { ok: true };
 }

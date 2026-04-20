@@ -394,6 +394,10 @@ export interface Itinerary {
   activities: string[];
   vibes: string[];
   neighborhoods: string[];
+  /** True when the viewing user authored this plan. False when they were
+   *  invited. Set on read by the server action; absent on freshly-created
+   *  drafts since drafts are always owner-scoped. */
+  isOwner?: boolean;
 }
 
 /** Persisted row from `user_itinerary_items`. */

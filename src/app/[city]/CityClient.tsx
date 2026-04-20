@@ -1157,7 +1157,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
           lower (bottomOffset=16). */}
       <ItineraryTray
         citySlug={citySlug}
-        cityName={cityName}
         spots={allSpots}
         bottomOffset={80}
       />
