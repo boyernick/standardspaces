@@ -62,7 +62,7 @@ export async function approveApplication(
 
   await sendSms(
     app.phone,
-    `Welcome to Standard Spaces, ${app.first_name}! You've been approved. Log in at thestandardspaces.com`,
+    `Welcome to Standard Spaces, ${app.first_name}! You've been approved. Log in at standardspaces.com`,
   );
 
   return { ok: true };

@@ -166,7 +166,7 @@ async function resolveReferrerName(userId: string): Promise<string> {
 }
 
 function buildInviteBody(referrerName: string, referralId: string) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thestandardspaces.com";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://standardspaces.com";
   return `${referrerName} invited you to join Standard Spaces. Apply here: ${siteUrl}/apply?ref=${referralId}`;
 }
 

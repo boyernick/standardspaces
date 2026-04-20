@@ -286,7 +286,7 @@ async function notifyReferrerBySms(
 }
 
 async function sendReferrerNotificationSms(referrerPhone: string, applicantFirstName: string) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thestandardspaces.com";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://standardspaces.com";
   await sendSms(
     referrerPhone,
     `${applicantFirstName} applied to Standard Spaces and listed you as a reference. Approve or deny: ${siteUrl}/referrals`,

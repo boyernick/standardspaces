@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import LandingVideo from "@/components/LandingVideo";
 import LandingTheme from "@/components/LandingTheme";
@@ -14,7 +15,7 @@ export default function Home() {
       {/* Header */}
       <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-5 py-4">
         <div className="flex items-center gap-1">
-          <img src="/logo.svg" alt="Standard Spaces" className="h-5 w-5" />
+          <Image src="/logo.svg" alt="Standard Spaces" width={20} height={20} priority className="h-5 w-5" />
           <span className="text-lg tracking-tight text-black whitespace-nowrap" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>
             Standard Spaces
           </span>
