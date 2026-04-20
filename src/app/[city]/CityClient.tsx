@@ -90,6 +90,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
   const favoritedSet = useMemo(() => new Set(favoritedSpotIds), [favoritedSpotIds]);
   const wishlistedSet = useMemo(() => new Set(wishlistedSpotIds), [wishlistedSpotIds]);
   const checkedInSet = useMemo(() => new Set(checkedInSpotIds), [checkedInSpotIds]);
+
   // Spot counts per facet — drive the count-desc ordering of pills, with
   // the canonical array order in CATEGORY_ORDER / VIBES / SUBCATEGORIES as
   // the deterministic tiebreak.
@@ -532,7 +533,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 {categories.map((cat) => {
                   const isActive = activeCategory === cat;
                   const isDropdownOpen = categoryDropdown === cat;
-                  const activeSubCount = isActive ? activeSubcategories.size : 0;
                   return (
                     <button
                       key={cat}
@@ -588,7 +588,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                       }`}
                     >
                       {CATEGORY_LABELS[cat]}
-                      {activeSubCount > 0 && <span className="text-[10px] opacity-70">({activeSubCount})</span>}
                       {isActive ? (
                         <X size={12} strokeWidth={2} className="opacity-70 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setActiveCategory(null); setActiveSubcategories(new Set()); setCategoryDropdown(null); }} />
                       ) : (
@@ -625,7 +624,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 <div ref={eventTypesDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                   <div className="relative" style={{ marginLeft: left }}>
                     <div className="mt-1.5 w-56 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-72 animate-[fadeSlideDown_150ms_ease-out]">
-                      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-1">
+                      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
                       {visibleTypes.length === 0 && (
                         <div className="px-4 py-3 text-xs text-neutral-400">No upcoming events</div>
                       )}
@@ -649,11 +648,11 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                                 setActiveNeighborhood(null);
                               }
                             }}
-                            className={`group flex w-full items-center justify-between gap-2.5 px-4 py-2 text-xs transition-colors ${isActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-ink-100"}`}
+                            className={`group flex w-full items-center justify-between gap-2.5 px-4 py-2.5 text-xs transition-colors ${isActive ? "text-neutral-900 dark:text-white font-medium bg-ink-100" : "text-neutral-600 dark:text-neutral-400 hover:bg-ink-100"}`}
                           >
                             <span className="flex items-center gap-2.5 min-w-0">
-                              <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isActive ? "bg-brand-500 border-brand-500" : "border-neutral-300 dark:border-neutral-600"}`}>
-                                {isActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                              <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isActive ? "bg-neutral-900 border-neutral-900 text-white dark:bg-white dark:border-white dark:text-neutral-900" : "border-neutral-300 dark:border-neutral-600"}`}>
+                                {isActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                               </span>
                               <span className="truncate">{CATEGORY_LABELS[c]}</span>
                             </span>
@@ -664,7 +663,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                       </div>
                       {activeEventTypes.size > 0 && (
                         <div className="border-t border-neutral-100 dark:border-neutral-800">
-                          <button onClick={() => { setActiveEventTypes(new Set()); setEventTypesOpen(false); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear filter</button>
+                          <button onClick={() => { setActiveEventTypes(new Set()); setEventTypesOpen(false); }} className="block w-full text-left px-4 py-2.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-ink-100 transition-colors">Clear filter</button>
                         </div>
                       )}
                     </div>
@@ -688,7 +687,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               <div ref={neighborhoodDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                 <div className="relative" style={{ marginLeft: left }}>
                   <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-60 animate-[fadeSlideDown_150ms_ease-out]">
-                    <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-1">
+                    <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
                     {neighborhoods.map((n) => {
                       const count = allSpots.filter((s) => s.neighborhood === n).length;
                       return (
@@ -701,7 +700,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                     </div>
                     {activeNeighborhood && (
                       <div className="border-t border-neutral-100 dark:border-neutral-800">
-                        <button onClick={() => { setActiveNeighborhood(null); setNeighborhoodOpen(false); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear filter</button>
+                        <button onClick={() => { setActiveNeighborhood(null); setNeighborhoodOpen(false); }} className="block w-full text-left px-4 py-2.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-ink-100 transition-colors">Clear filter</button>
                       </div>
                     )}
                   </div>
@@ -754,10 +753,10 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 const isSubActive = activeSubcategories.has(sub);
                 const count = subCount.get(sub) ?? 0;
                 return (
-                  <button key={sub} onClick={() => { setActiveSubcategories((prev) => { const next = new Set(prev); isSubActive ? next.delete(sub) : next.add(sub); return next; }); }} className={`group flex w-full items-center justify-between gap-2.5 px-4 py-2 text-xs transition-colors ${isSubActive ? "text-neutral-900 dark:text-white font-medium bg-neutral-50 dark:bg-neutral-900" : "text-neutral-600 dark:text-neutral-400 hover:bg-ink-100"}`}>
+                  <button key={sub} onClick={() => { setActiveSubcategories((prev) => { const next = new Set(prev); isSubActive ? next.delete(sub) : next.add(sub); return next; }); }} className={`group flex w-full items-center justify-between gap-2.5 px-4 py-2.5 text-xs transition-colors ${isSubActive ? "text-neutral-900 dark:text-white font-medium bg-ink-100" : "text-neutral-600 dark:text-neutral-400 hover:bg-ink-100"}`}>
                     <span className="flex items-center gap-2.5 min-w-0">
-                      <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isSubActive ? "bg-brand-500 border-brand-500" : "border-neutral-300 dark:border-neutral-600"}`}>
-                        {isSubActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                      <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${isSubActive ? "bg-neutral-900 border-neutral-900 text-white dark:bg-white dark:border-white dark:text-neutral-900" : "border-neutral-300 dark:border-neutral-600"}`}>
+                        {isSubActive && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                       </span>
                       <span className="truncate">{sub}</span>
                     </span>
@@ -769,7 +768,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 <div ref={categoryDropdownRef} className="absolute left-0 right-0 z-50" style={{ top: "100%" }}>
                   <div className="relative" style={{ marginLeft: left }}>
                     <div className="mt-1.5 w-52 bg-surface border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-72 animate-[fadeSlideDown_150ms_ease-out]">
-                      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-1">
+                      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
                       {renderedGroups
                         ? renderedGroups.map((g) => (
                             <div key={g.label}>
@@ -782,7 +781,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                         : ungroupedSubs?.map(renderSub)}
                       </div>
                       <div className="border-t border-neutral-100 dark:border-neutral-800">
-                        <button onClick={() => { setActiveCategory(null); setActiveSubcategories(new Set()); setCategoryDropdown(null); }} className="block w-full text-left px-4 py-2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">Clear filter</button>
+                        <button onClick={() => { setActiveCategory(null); setActiveSubcategories(new Set()); setCategoryDropdown(null); }} className="block w-full text-left px-4 py-2.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-ink-100 transition-colors">Clear filter</button>
                       </div>
                     </div>
                   </div>
@@ -985,8 +984,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                     onMouseEnter={() => setHoveredSpotId(spot.id)}
                     onMouseLeave={() => setHoveredSpotId((prev) => (prev === spot.id ? null : prev))}
                   >
-                    <Link href={`/${citySlug}/${spot.id}`} className="block relative">
-                      <NewBadge spot={spot} overlay />
+                    <Link href={`/${citySlug}/${spot.id}`} className="block">
                       <ImageCarousel
                         images={spot.images}
                         alt={spot.name}
@@ -995,15 +993,18 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                         priority={i < 6}
                         sizes="(min-width: 1024px) 40vw, (min-width: 640px) 50vw, 100vw"
                       />
-                      <div className="p-3 rounded-b-2xl bg-surface">
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="text-sm font-semibold line-clamp-1">{spot.name}</h3>
-                        </div>
+                      <div className="p-3 pr-12 rounded-b-2xl bg-surface">
+                        <h3 className="text-sm font-semibold line-clamp-1">{spot.name}</h3>
                         <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">
                           {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
                         </p>
                       </div>
                     </Link>
+                    {/* Top-left badge overlay on the image. pointer-events-none
+                        so it doesn't steal the card's Link click. */}
+                    <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                      <NewBadge spot={spot} />
+                    </div>
                   </motion.div>
                 ))}
                 </AnimatePresence>
@@ -1082,6 +1083,11 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                         </p>
                       </Link>
                       <div className="flex items-center -space-x-1 mt-1 -ml-2">
+                        <WishlistButton
+                          spotId={activeSpot.id}
+                          initialWishlisted={wishlistedSet.has(activeSpot.id)}
+                          size="icon"
+                        />
                         <FavoriteButton
                           spotId={activeSpot.id}
                           initialFavorited={favoritedSet.has(activeSpot.id)}
@@ -1093,11 +1099,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                           variant="icon"
                           initialChecked={checkedInSet.has(activeSpot.id)}
                           initialWishlisted={wishlistedSet.has(activeSpot.id)}
-                        />
-                        <WishlistButton
-                          spotId={activeSpot.id}
-                          initialWishlisted={wishlistedSet.has(activeSpot.id)}
-                          size="icon"
                         />
                       </div>
                     </div>

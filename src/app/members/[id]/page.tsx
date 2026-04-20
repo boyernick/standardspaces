@@ -5,7 +5,7 @@ import { getSpotsByIds } from "@/lib/data";
 import { getProfileStats } from "@/app/actions/profile";
 import { getFollowStatus } from "@/app/actions/follows";
 import { getPastAttendedEvents } from "@/lib/events";
-import Navbar from "@/components/Navbar";
+import PageShell from "@/components/ui/PageShell";
 import ProfileClient from "@/app/profile/ProfileClient";
 
 export default async function MemberProfilePage({ params }: { params: Promise<{ id: string }> }) {
@@ -60,8 +60,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
   }
 
   return (
-    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--color-surface)" }}>
-      <Navbar />
+    <PageShell maxWidth="md">
       <ProfileClient
         profile={profile}
         stats={stats}
@@ -72,6 +71,6 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
         attendedEvents={attendedEvents}
         ratings={ratings}
       />
-    </div>
+    </PageShell>
   );
 }

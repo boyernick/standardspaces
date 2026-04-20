@@ -497,9 +497,9 @@ export default async function SpotPage({
               spotSubtitle={[spot.neighborhood, spot.city].filter(Boolean).join(" · ")}
               variant="icon"
             />
+            <WishlistButtonClient spotId={spot.id} size="icon" />
             <FavoriteButtonClient spotId={spot.id} size="icon" />
             <CheckInButton spotId={spot.id} spotName={spot.name} variant="icon" />
-            <WishlistButtonClient spotId={spot.id} size="icon" />
           </div>
           {primaryAction && (
             <a

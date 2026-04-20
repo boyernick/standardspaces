@@ -277,3 +277,4 @@ export interface EventInvite {
   invited_by: string;
   created_at: string;
 }
+
