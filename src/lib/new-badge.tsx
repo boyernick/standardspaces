@@ -32,7 +32,7 @@ interface NewBadgeProps {
 export function NewBadge({ spot, compact = false, overlay = false, className = "" }: NewBadgeProps) {
   if (!isSpotNew(spot)) return null;
   const position = overlay ? "absolute top-2 left-2 z-10 " : "";
-  const size = compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]";
+  const size = compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-1 text-[10px]";
   // Pill background tracks `--color-surface` so it reads as a "lifted
   // chip" of the page itself rather than a bright sticker. Shadow does
   // the separation work; dark-mode text flips so the pill stays legible
