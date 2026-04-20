@@ -4,7 +4,6 @@ import { Suspense, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { citySlugFromName } from "@/lib/cities";
-import Link from "next/link";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -202,15 +201,6 @@ function LoginForm() {
           </form>
         )}
 
-        <div className="mt-6 text-center">
-          <Link
-            href="/apply"
-            className="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-            style={fontCalibre}
-          >
-            Not a member? Apply to join
-          </Link>
-        </div>
       </div>
     </div>
   );

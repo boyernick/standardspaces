@@ -182,15 +182,23 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
         actorName: name,
       };
 
-    case "referred_friend_joined":
+    case "referred_friend_joined": {
+      // At approval time the referred user hasn't signed in yet, so there's
+      // no `profiles` row to join on — `approveApplication` stashes their
+      // first name in `metadata.name` instead. Prefer that over the generic
+      // "Someone" fallback from `actorName()`.
+      const metaName =
+        typeof row.metadata?.name === "string" ? row.metadata.name.trim() : "";
+      const referredName = metaName || name;
       return {
         icon: "sparkles",
-        title: <>{bold(name)} just became a member</>,
+        title: <>{bold(referredName)} just became a member</>,
         body: "Your referral was approved",
         href: actorHref,
         actorAvatar: avatar,
-        actorName: name,
+        actorName: referredName,
       };
+    }
 
     case "event_invited":
       // Actor avatar leads (inviter identity reads faster than the event

@@ -4,8 +4,6 @@ import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { checkApplicationByPhone, requestApplyOtp, submitApplication } from "@/app/actions/apply";
-import { getPopulatedCities } from "@/app/actions/cities";
-import { CITIES } from "@/lib/cities";
 import Link from "next/link";
 
 type Step = "phone" | "verify" | "details" | "submitted" | "approved";
@@ -21,18 +19,14 @@ function ApplyForm() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [instagram, setInstagram] = useState("");
-  const [city, setCity] = useState("Miami");
+  // Miami-only at launch. When we open more cities this becomes state
+  // driven by a <select> again.
+  const city = "Miami";
   const [referredByName, setReferredByName] = useState("");
   const [referredByPhone, setReferredByPhone] = useState("");
   const [referrerDisplayName, setReferrerDisplayName] = useState("");
-  const [populatedCities, setPopulatedCities] = useState<string[]>([]);
-  const [cityWarning, setCityWarning] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    getPopulatedCities().then(setPopulatedCities);
-  }, []);
 
   // If ?ref= param present, look up the referrer's name
   useEffect(() => {
@@ -166,14 +160,14 @@ function ApplyForm() {
             <>
               <h1 className="text-xl font-medium mb-3" style={fontMartina}>You&apos;re in</h1>
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6" style={fontCalibre}>
-                Welcome to Standard Spaces. Sign in to continue.
+                Welcome to Standard Spaces.
               </p>
               <Link
                 href={`/login?phone=${encodeURIComponent(fullPhone)}`}
                 className="inline-block px-6 py-2.5 text-sm font-medium text-white bg-neutral-900 dark:bg-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
                 style={fontCalibre}
               >
-                Go to sign in
+                Sign in
               </Link>
             </>
           ) : step === "submitted" ? (
@@ -185,9 +179,9 @@ function ApplyForm() {
             </>
           ) : step === "details" ? (
             <>
-              <h1 className="text-xl font-medium mb-1" style={fontMartina}>Almost there</h1>
+              <h1 className="text-xl font-medium mb-1" style={fontMartina}>Submit your application</h1>
               <p className="text-sm text-neutral-500 dark:text-neutral-400" style={fontCalibre}>
-                Tell us a bit about yourself.
+                Tell us about yourself
               </p>
             </>
           ) : step === "verify" ? (
@@ -288,34 +282,31 @@ function ApplyForm() {
               className={inputStyle}
               style={fontCalibre}
             />
-            <input
-              type="text"
-              value={instagram}
-              onChange={(e) => setInstagram(e.target.value)}
-              placeholder="Instagram handle"
-              required
-              className={inputStyle}
-              style={fontCalibre}
-            />
-            <select
-              value={city}
-              onChange={(e) => {
-                const picked = e.target.value;
-                setCity(picked);
-                if (populatedCities.length > 0 && !populatedCities.includes(picked)) {
-                  setCityWarning(`We're not in ${picked} yet — pick another city to start with.`);
-                } else {
-                  setCityWarning("");
-                }
-              }}
-              className={inputStyle}
-              style={fontCalibre}
-            >
-              {CITIES.map((c) => (
-                <option key={c.slug} value={c.name}>{c.name}</option>
-              ))}
-            </select>
-            {cityWarning && <p className="text-xs text-amber-600" style={fontCalibre}>{cityWarning}</p>}
+            {/* `@` is baked into the field as a static affordance (same
+                pattern as protocol prefixes on URL inputs) so the user types
+                only their handle. We still strip a leading `@` on change in
+                case they paste `@handle` or copy from the browser address bar. */}
+            <div className="relative">
+              <span
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-neutral-400 dark:text-neutral-500"
+                style={fontCalibre}
+                aria-hidden="true"
+              >
+                @
+              </span>
+              <input
+                type="text"
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value.replace(/^@+/, ""))}
+                placeholder="Instagram (optional)"
+                className={`${inputStyle} pl-[1.65rem]`}
+                style={fontCalibre}
+              />
+            </div>
+            {/* City is hardcoded to Miami at launch — only populated city. When
+                we open additional cities this becomes a <select> again (see
+                git history for the previous dropdown + `getPopulatedCities`
+                warning pattern). */}
 
             {/* Referral fields — when a ?ref=<id> link is present the referral
                 is already encoded in the URL, so we only render the "Referred by"
@@ -331,14 +322,14 @@ function ApplyForm() {
               <>
                 <div className="pt-2">
                   <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-2" style={fontCalibre}>
-                    Know a member? (optional)
+                    Know a member?
                   </p>
                 </div>
                 <input
                   type="text"
                   value={referredByName}
                   onChange={(e) => setReferredByName(e.target.value)}
-                  placeholder="Referrer's name"
+                  placeholder="Member's name"
                   className={inputStyle}
                   style={fontCalibre}
                 />
@@ -346,7 +337,7 @@ function ApplyForm() {
                   type="tel"
                   value={formatPhone(refRawDigits)}
                   onChange={(e) => setReferredByPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  placeholder="Referrer's phone number"
+                  placeholder="Member's number"
                   className={inputStyle}
                   style={fontCalibre}
                 />
@@ -355,7 +346,7 @@ function ApplyForm() {
             {error && <p className="text-xs text-red-600" style={fontCalibre}>{error}</p>}
             <button
               type="submit"
-              disabled={loading || !!cityWarning}
+              disabled={loading}
               className="w-full py-2.5 text-sm font-medium text-white bg-neutral-900 dark:bg-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50"
               style={fontCalibre}
             >
@@ -364,17 +355,6 @@ function ApplyForm() {
           </form>
         )}
 
-        {step !== "submitted" && step !== "approved" && (
-          <div className="mt-6 text-center">
-            <Link
-              href="/login"
-              className="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-              style={fontCalibre}
-            >
-              Already a member? Sign in
-            </Link>
-          </div>
-        )}
       </div>
     </div>
   );

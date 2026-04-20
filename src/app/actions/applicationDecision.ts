@@ -45,10 +45,13 @@ export async function approveApplication(
         .eq("id", app.referral_id)
         .single();
       if (ref?.referrer_user_id) {
+        const fullName = `${app.first_name ?? ""} ${app.last_name ?? ""}`.trim() ||
+          app.first_name ||
+          "A new member";
         await createNotification({
           userId: ref.referrer_user_id,
           type: "referred_friend_joined",
-          metadata: { name: app.first_name },
+          metadata: { name: fullName },
           dedupeKey: `referred_friend_joined:${applicationId}`,
         });
       }

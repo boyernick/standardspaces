@@ -83,13 +83,16 @@ export async function submitApplication(formData: {
   const referredByName = referralId ? undefined : formData.referredByName?.trim() || undefined;
   const referredByPhone = referralId ? undefined : formData.referredByPhone?.trim() || undefined;
 
-  if (!firstName || !lastName || !instagram || !phone) {
-    return { error: "All fields are required." };
+  if (!firstName || !lastName || !phone) {
+    return { error: "Name and phone are required." };
   }
   if (firstName.length > NAME_MAX || lastName.length > NAME_MAX) {
     return { error: "Name is too long." };
   }
-  if (!INSTAGRAM_RE.test(instagram)) {
+  // Instagram is optional — only validate the shape when the applicant
+  // actually supplied one. An empty string after normalization means "not
+  // provided" and we store null in the DB.
+  if (instagram && !INSTAGRAM_RE.test(instagram)) {
     return { error: "Enter a valid Instagram handle." };
   }
   if (!PHONE_RE.test(phone)) {
@@ -131,7 +134,10 @@ export async function submitApplication(formData: {
   const applicationData: Record<string, unknown> = {
     first_name: firstName,
     last_name: lastName,
-    instagram,
+    // `applications.instagram` is nullable — store null instead of an empty
+    // string so downstream readers can trust `applicant.instagram == null`
+    // as the "not provided" signal.
+    instagram: instagram || null,
     phone,
     city: city || "Miami",
   };
@@ -233,7 +239,7 @@ export async function submitApplication(formData: {
             <h2 style="margin: 0 0 8px;">New membership application</h2>
             <p><strong>${firstName} ${lastName}</strong></p>
             <p style="color: #666;">${phone}</p>
-            <p style="color: #666;">@${instagram}</p>
+            ${instagram ? `<p style="color: #666;">@${instagram}</p>` : ""}
             <p style="color: #666;">City: ${city}</p>
             ${referralLine}
             <p style="margin-top: 16px;">
