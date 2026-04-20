@@ -109,7 +109,7 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
       label.textContent = s.name;
       label.style.fontSize = "10px";
       label.style.fontWeight = "500";
-      label.style.color = dark ? "#ededed" : "#1a1a1a";
+      label.style.color = "#1a1a1a";
       label.style.marginTop = "4px";
       label.style.whiteSpace = "nowrap";
       label.style.maxWidth = "80px";
@@ -121,7 +121,7 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
       // against the map tiles.
       label.style.padding = "2px 6px";
       label.style.borderRadius = "9999px";
-      label.style.backgroundColor = dark ? "#13120A" : "#F7F7F3";
+      label.style.backgroundColor = "#F7F7F3";
       label.style.boxShadow = dark
         ? "0 2px 6px rgba(0,0,0,0.45)"
         : "0 2px 6px rgba(0,0,0,0.12)";

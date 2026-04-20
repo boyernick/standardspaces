@@ -254,7 +254,7 @@ export default function SpotMap(props: MapProps) {
       imgWrap.style.width = "42px";
       imgWrap.style.height = "42px";
       img.style.borderRadius = "14px";
-      img.style.borderColor = dark ? THEME.dark.surface : THEME.light.surface;
+      img.style.borderColor = THEME.light.surface;
       img.style.borderWidth = "3px";
       // Restore zIndex appropriate for current mode.
       el.style.zIndex = entry.mode === "card" ? "1" : "0";
@@ -591,7 +591,7 @@ export default function SpotMap(props: MapProps) {
       img.style.height = "100%";
       img.style.borderRadius = "14px";
       img.style.overflow = "hidden";
-      img.style.border = `3px solid ${dark ? THEME.dark.surface : THEME.light.surface}`;
+      img.style.border = `3px solid ${THEME.light.surface}`;
       img.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
       img.style.transition = "border-radius 0.2s, border-color 0.2s";
       img.style.backgroundSize = "cover";
@@ -624,7 +624,7 @@ export default function SpotMap(props: MapProps) {
       planPin.style.fontFamily = "var(--font-calibre), system-ui, sans-serif";
       planPin.style.backgroundColor = dark ? "#ffffff" : "#111111";
       planPin.style.color = dark ? "#111111" : "#ffffff";
-      planPin.style.boxShadow = `0 0 0 2px ${dark ? THEME.dark.surface : THEME.light.surface}`;
+      planPin.style.boxShadow = `0 0 0 2px ${THEME.light.surface}`;
       planPin.style.pointerEvents = "none";
       planPin.style.zIndex = "2";
       const initialPlanIdx = planIndexByIdRef.current.get(s.id);
@@ -640,7 +640,7 @@ export default function SpotMap(props: MapProps) {
       label.textContent = s.name;
       label.style.fontSize = "10px";
       label.style.fontWeight = "500";
-      label.style.color = dark ? "#ededed" : "#1a1a1a";
+      label.style.color = "#1a1a1a";
       label.style.marginTop = "4px";
       label.style.whiteSpace = "nowrap";
       label.style.maxWidth = "80px";
@@ -652,7 +652,7 @@ export default function SpotMap(props: MapProps) {
       // against the map tiles.
       label.style.padding = "2px 6px";
       label.style.borderRadius = "9999px";
-      label.style.backgroundColor = dark ? "#13120A" : "#F7F7F3";
+      label.style.backgroundColor = "#F7F7F3";
       label.style.boxShadow = dark
         ? "0 2px 6px rgba(0,0,0,0.45)"
         : "0 2px 6px rgba(0,0,0,0.12)";

@@ -387,16 +387,25 @@ export async function getItineraryInvitees(
     .single();
   if (!plan || plan.user_id !== user.id) return [];
 
-  const { data } = await supabase
+  // Two-step fetch instead of a PostgREST embed. The embed pattern
+  // `profiles:user_id(...)` works for `event_invites` because PostgREST
+  // eventually learns the chain through `auth.users`, but that inference
+  // has been flaky on this table post-migration and silently returns
+  // `null` rather than an error — which made invited members look like
+  // they weren't saved. Explicit join is unambiguous.
+  const { data: inviteRows, error: invErr } = await supabase
     .from("itinerary_invites")
-    .select(
-      "user_id, profiles:user_id(id, first_name, last_name, avatar_url, instagram)",
-    )
+    .select("user_id")
     .eq("itinerary_id", itineraryId);
+  if (invErr || !inviteRows || inviteRows.length === 0) return [];
 
-  return (((data ?? [])
-    .map((r) => r.profiles)
-    .filter(Boolean) as unknown) as MemberSearchResult[]);
+  const userIds = inviteRows.map((r) => r.user_id);
+  const { data: profileRows } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name, avatar_url, instagram")
+    .in("id", userIds);
+
+  return (profileRows ?? []) as unknown as MemberSearchResult[];
 }
 
 /** Owner inserts invite rows. Fires `plan_invited` notifications (deduped). */

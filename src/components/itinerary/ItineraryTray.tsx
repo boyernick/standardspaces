@@ -18,7 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, GripVertical, ListOrdered, X } from "lucide-react";
+import { ChevronDown, ChevronUp, GripVertical, ListOrdered, X } from "lucide-react";
 import {
   DndContext,
   KeyboardSensor,
@@ -341,16 +341,31 @@ export default function ItineraryTray({
                         </div>
                       </div>
                     </button>
-                    {/* Clear action — Save lives on the saved-plan editor
-                        now; the tray is pure peek-and-prune. */}
-                    <button
-                      type="button"
-                      onClick={clearAndCollapse}
-                      aria-label="Clear plan"
-                      className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-ink-100 transition-colors"
-                    >
-                      <X size={15} />
-                    </button>
+                    {/* Icon button cluster — tight pairing so the two
+                        controls read as one affordance group, distinct
+                        from the main pill text to their left. */}
+                    <div className="flex items-center shrink-0">
+                      {/* Clear — Save lives on the saved-plan editor now;
+                          the tray is pure peek-and-prune. */}
+                      <button
+                        type="button"
+                        onClick={clearAndCollapse}
+                        aria-label="Clear plan"
+                        className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-ink-100 transition-colors"
+                      >
+                        <X size={15} />
+                      </button>
+                      {/* Expand — mirrors the pill's primary click,
+                          isolated so the chevron is its own affordance. */}
+                      <button
+                        type="button"
+                        onClick={() => setExpanded(true)}
+                        aria-label="Open plan"
+                        className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-ink-100 transition-colors"
+                      >
+                        <ChevronUp size={15} />
+                      </button>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
