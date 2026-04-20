@@ -11,6 +11,8 @@ import {
   type NotificationRow,
 } from "@/lib/notifications-render";
 import EmptyState from "@/components/ui/EmptyState";
+import PageHeader from "@/components/ui/PageHeader";
+import Tabs from "@/components/ui/Tabs";
 
 interface Props {
   initialRows: NotificationRow[];
@@ -57,17 +59,18 @@ function relative(ts: string): string {
   return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-type Bucket = "Today" | "This week" | "Earlier";
+type Bucket = "today" | "week" | "month";
 function bucketFor(ts: string): Bucket {
   const delta = Date.now() - new Date(ts).getTime();
   const day = 24 * 60 * 60 * 1000;
-  if (delta < day) return "Today";
-  if (delta < 7 * day) return "This week";
-  return "Earlier";
+  if (delta < day) return "today";
+  if (delta < 7 * day) return "week";
+  return "month";
 }
 
 export default function NotificationsClient({ initialRows, mock = false }: Props) {
   const [rows, setRows] = useState(initialRows);
+  const [tab, setTab] = useState<Bucket>("today");
 
   // Snapshot of which rows were unread when the page loaded. We auto-mark
   // everything as read on mount, so the row's own read_at stops being a
@@ -103,51 +106,66 @@ export default function NotificationsClient({ initialRows, mock = false }: Props
 
   const grouped = useMemo(() => {
     const out: Record<Bucket, NotificationRow[]> = {
-      Today: [],
-      "This week": [],
-      Earlier: [],
+      today: [],
+      week: [],
+      month: [],
     };
     for (const r of rows) out[bucketFor(r.created_at)].push(r);
     return out;
   }, [rows]);
 
   const isEmpty = rows.length === 0;
+  const active = grouped[tab];
+
+  const tabs: { id: Bucket; label: string; count: number }[] = [
+    { id: "today", label: "Today", count: grouped.today.length },
+    { id: "week", label: "This week", count: grouped.week.length },
+    { id: "month", label: "This month", count: grouped.month.length },
+  ];
+
+  const emptyByTab: Record<Bucket, { title: string; body: string }> = {
+    today: {
+      title: "Nothing new today",
+      body: "When something happens, you'll see it here.",
+    },
+    week: {
+      title: "Nothing this week",
+      body: "Activity from the last seven days shows up here.",
+    },
+    month: {
+      title: "Nothing older",
+      body: "Older activity will live here.",
+    },
+  };
 
   return (
     <>
-      <div className="flex items-end justify-between gap-4 mb-6">
-        <h1 className="mb-0">Notifications</h1>
-        {mock && (
-          <span className="text-[11px] italic text-neutral-400 dark:text-neutral-500 shrink-0 pb-2">
-            Preview mode · add <code className="not-italic">?mock=1</code>
-          </span>
-        )}
-      </div>
+      <PageHeader
+        title="Notifications"
+        action={
+          mock ? (
+            <span className="text-[11px] italic text-neutral-400 dark:text-neutral-500 shrink-0">
+              Preview mode · add <code className="not-italic">?mock=1</code>
+            </span>
+          ) : undefined
+        }
+      />
 
       {isEmpty ? (
         <EmptyState icon={Bell} title="You're all caught up" body="No new notifications right now." />
       ) : (
-        (["Today", "This week", "Earlier"] as const).map((bucket) => {
-          const items = grouped[bucket];
-          if (items.length === 0) return null;
-          return (
-            <section key={bucket} className="mb-10">
-              <div className="mb-3 pt-2">
-                <h3
-                  className="text-xl font-medium text-neutral-900 dark:text-white"
-                  style={{ fontFamily: "var(--font-martina), Georgia, serif" }}
-                >
-                  {bucket}
-                </h3>
-              </div>
-              <ul>
-                {items.map((row) => (
-                  <NotificationItem key={row.id} row={row} unread={unreadOnMount.has(row.id)} />
-                ))}
-              </ul>
-            </section>
-          );
-        })
+        <>
+          <Tabs tabs={tabs} value={tab} onChange={setTab} />
+          {active.length === 0 ? (
+            <EmptyState icon={Bell} title={emptyByTab[tab].title} body={emptyByTab[tab].body} />
+          ) : (
+            <ul>
+              {active.map((row) => (
+                <NotificationItem key={row.id} row={row} unread={unreadOnMount.has(row.id)} />
+              ))}
+            </ul>
+          )}
+        </>
       )}
     </>
   );

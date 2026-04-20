@@ -885,7 +885,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
                 We&apos;re curating the best spaces in {cityName}.<br />Know a place that belongs here?
               </p>
-              <Link href="/recommend" className="inline-block mt-4 text-sm font-medium text-brand-500 hover:underline">
+              <Link href="/recommend/new" className="inline-block mt-4 text-sm font-medium text-brand-500 hover:underline">
                 Recommend a space
               </Link>
             </div>
