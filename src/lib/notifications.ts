@@ -22,8 +22,6 @@ export type NotificationType =
   | "your_event_rsvp_cancelled"
   | "your_event_at_capacity"
   | "your_event_taken_down"
-  // itineraries
-  | "plan_invited"
   // recommendations
   | "recommendation_published"
   // curation
@@ -53,7 +51,6 @@ export function categoryForType(type: NotificationType): NotificationCategory {
     case "your_event_rsvp_cancelled":
     case "your_event_at_capacity":
     case "your_event_taken_down":
-    case "plan_invited":
       return "events";
     case "recommendation_published":
       return "recommendations";
@@ -69,7 +66,6 @@ export interface NotificationInput {
   actorId?: string | null;
   spotId?: string | null;
   eventId?: string | null;
-  itineraryId?: string | null;
   recommendationId?: string | null;
   metadata?: Record<string, unknown>;
   dedupeKey?: string | null;
@@ -117,7 +113,6 @@ export async function createNotification(input: NotificationInput): Promise<void
       actor_id: input.actorId ?? null,
       spot_id: input.spotId ?? null,
       event_id: input.eventId ?? null,
-      itinerary_id: input.itineraryId ?? null,
       recommendation_id: input.recommendationId ?? null,
       metadata: input.metadata ?? {},
       dedupe_key: input.dedupeKey ?? null,

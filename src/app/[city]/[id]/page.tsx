@@ -11,8 +11,6 @@ import ShareButton from "@/components/ShareButton";
 import FavoriteButtonClient from "@/components/FavoriteButtonClient";
 import WishlistButtonClient from "@/components/WishlistButtonClient";
 import CheckInButton from "@/components/CheckInButton";
-import AddToPlanButton from "@/components/itinerary/AddToPlanButton";
-import { citySlugFromName } from "@/lib/cities";
 import SpotRatingInline from "@/components/SpotRatingInline";
 import { getSpotAggregate } from "@/app/actions/ratings";
 import { Clock, Shirt, Car, MapPin, Newspaper, Smartphone, Globe, AtSign, CalendarCheck } from "lucide-react";
@@ -502,7 +500,6 @@ export default async function SpotPage({
             <WishlistButtonClient spotId={spot.id} size="icon" />
             <FavoriteButtonClient spotId={spot.id} size="icon" />
             <CheckInButton spotId={spot.id} spotName={spot.name} variant="icon" />
-            <AddToPlanButton spotId={spot.id} citySlug={citySlugFromName(spot.city)} variant="icon" />
           </div>
           {primaryAction && (
             <a

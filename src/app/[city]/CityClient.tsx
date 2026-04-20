@@ -13,9 +13,6 @@ import Navbar from "@/components/Navbar";
 import CheckInButton from "@/components/CheckInButton";
 import FavoriteButton from "@/components/FavoriteButton";
 import WishlistButton from "@/components/WishlistButton";
-import ItineraryTray from "@/components/itinerary/ItineraryTray";
-import AddToPlanButton from "@/components/itinerary/AddToPlanButton";
-import { useItineraryDraft } from "@/hooks/useItineraryDraft";
 import { NewBadge } from "@/lib/new-badge";
 import { ChevronDown, Map as MapIcon, List, X, MapPin, Search, Calendar, SlidersHorizontal, Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -94,15 +91,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
   const wishlistedSet = useMemo(() => new Set(wishlistedSpotIds), [wishlistedSpotIds]);
   const checkedInSet = useMemo(() => new Set(checkedInSpotIds), [checkedInSpotIds]);
 
-  // Subscribe to the per-city plan draft so map markers can show a
-  // numbered corner pin for each stop. `ItineraryTray` keeps its own
-  // subscription; both are backed by the same localStorage + custom
-  // event bus, so edits from either surface converge in one tick.
-  const { draft: planDraft } = useItineraryDraft(citySlug);
-  const planStopIds = useMemo(
-    () => planDraft.items.map((it) => it.spotId),
-    [planDraft.items],
-  );
   // Spot counts per facet — drive the count-desc ordering of pills, with
   // the canonical array order in CATEGORY_ORDER / VIBES / SUBCATEGORIES as
   // the deterministic tiebreak.
@@ -1017,16 +1005,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                     <div className="absolute top-2 left-2 z-10 pointer-events-none">
                       <NewBadge spot={spot} />
                     </div>
-                    {/* Bottom-right "Add to plan" floating over the card's
-                        text area. The button stops propagation internally,
-                        so a click here won't navigate the card. */}
-                    <div className="absolute bottom-3 right-3 z-10">
-                      <AddToPlanButton
-                        spotId={spot.id}
-                        citySlug={citySlug}
-                        variant="card"
-                      />
-                    </div>
                   </motion.div>
                 ))}
                 </AnimatePresence>
@@ -1053,7 +1031,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               focusSpot={focusSpot}
               focusToken={focusToken}
               hoverSpotId={hoveredSpotId}
-              planStopIds={planStopIds}
               initialView={
                 initialViewport
                   ? { center: initialViewport.center, zoom: initialViewport.zoom }
@@ -1123,11 +1100,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                           initialChecked={checkedInSet.has(activeSpot.id)}
                           initialWishlisted={wishlistedSet.has(activeSpot.id)}
                         />
-                        <AddToPlanButton
-                          spotId={activeSpot.id}
-                          citySlug={citySlug}
-                          variant="icon"
-                        />
                       </div>
                     </div>
                   </div>
@@ -1150,16 +1122,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
           `}</style>
         </div>
       </motion.div>
-
-      {/* Itinerary tray — floats above the mobile view-toggle bar on
-          narrow viewports (bottomOffset=80 ≈ toggle bar height + gap).
-          On split view the toggle bar is hidden, so the tray can sit
-          lower (bottomOffset=16). */}
-      <ItineraryTray
-        citySlug={citySlug}
-        spots={allSpots}
-        bottomOffset={80}
-      />
 
       {/* Mobile bottom bar */}
       <div ref={bottomBarRef} className="split:hidden fixed bottom-0 inset-x-0 z-30 bg-surface border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">

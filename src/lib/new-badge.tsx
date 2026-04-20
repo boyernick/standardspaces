@@ -36,10 +36,12 @@ export function NewBadge({ spot, compact = false, overlay = false, className = "
   // Pill background tracks `--color-surface` so it reads as a "lifted
   // chip" of the page itself rather than a bright sticker. Shadow does
   // the separation work; dark-mode text flips so the pill stays legible
-  // when surface is near-black.
+  // when surface is near-black. Dark-mode shadows flip to a soft white
+  // glow so the pill separates from the near-black surface (a dark
+  // shadow vanishes on a dark canvas).
   const shadow = overlay
-    ? "shadow-[0_6px_18px_rgba(0,0,0,0.28)]"
-    : "shadow-[0_2px_8px_rgba(0,0,0,0.14)]";
+    ? "shadow-[0_6px_18px_rgba(0,0,0,0.28)] dark:shadow-[0_0_18px_rgba(255,255,255,0.22)]"
+    : "shadow-[0_2px_8px_rgba(0,0,0,0.14)] dark:shadow-[0_0_10px_rgba(255,255,255,0.18)]";
   return (
     <span
       className={`${position}shrink-0 ${size} font-semibold rounded-full bg-surface text-neutral-900 dark:text-white ${shadow} ${className}`}

@@ -38,18 +38,13 @@ export async function getNotifications(limit = 50): Promise<NotificationRow[]> {
   const eventIds = Array.from(
     new Set(rows.map((r) => r.event_id).filter((id): id is string => !!id)),
   );
-  const itineraryIds = Array.from(
-    new Set(
-      rows.map((r) => r.itinerary_id).filter((id): id is string => !!id),
-    ),
-  );
   const recIds = Array.from(
     new Set(
       rows.map((r) => r.recommendation_id).filter((id): id is string => !!id),
     ),
   );
 
-  const [actorsRes, spotsRes, eventsRes, itinerariesRes, recsRes] = await Promise.all([
+  const [actorsRes, spotsRes, eventsRes, recsRes] = await Promise.all([
     actorIds.length
       ? admin
           .from("profiles")
@@ -84,18 +79,6 @@ export async function getNotifications(limit = 50): Promise<NotificationRow[]> {
             city: string;
             cover_image_url: string | null;
             images: string[] | null;
-          }>,
-        }),
-    itineraryIds.length
-      ? admin
-          .from("user_itineraries")
-          .select("id, city, plan_date")
-          .in("id", itineraryIds)
-      : Promise.resolve({
-          data: [] as Array<{
-            id: string;
-            city: string;
-            plan_date: string | null;
           }>,
         }),
     recIds.length
@@ -134,16 +117,6 @@ export async function getNotifications(limit = 50): Promise<NotificationRow[]> {
       },
     ]),
   );
-  const itineraries = new Map(
-    (itinerariesRes.data ?? []).map((i) => [
-      i.id,
-      {
-        id: i.id,
-        city: i.city,
-        date: (i.plan_date as string | null) ?? null,
-      },
-    ]),
-  );
   const recs = new Map((recsRes.data ?? []).map((r) => [r.id, r]));
 
   return rows.map((r) => ({
@@ -151,9 +124,6 @@ export async function getNotifications(limit = 50): Promise<NotificationRow[]> {
     actor: r.actor_id ? actors.get(r.actor_id) ?? null : null,
     spot: r.spot_id ? spots.get(r.spot_id) ?? null : null,
     event: r.event_id ? events.get(r.event_id) ?? null : null,
-    itinerary: r.itinerary_id
-      ? itineraries.get(r.itinerary_id) ?? null
-      : null,
     recommendation: r.recommendation_id
       ? recs.get(r.recommendation_id) ?? null
       : null,

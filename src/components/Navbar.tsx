@@ -166,9 +166,6 @@ export default function Navbar() {
                 Profile
               </Link>
               <div className="border-t border-neutral-200 dark:border-neutral-700" />
-              <Link href="/plans" onClick={() => setMenuOpen(false)} className={menuLinkClass}>
-                Plans
-              </Link>
               <Link href="/notifications" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400 hover:bg-ink-100 transition-colors">
                 Notifications
                 {(unreadNotifs > 0 || mockJewel) && (

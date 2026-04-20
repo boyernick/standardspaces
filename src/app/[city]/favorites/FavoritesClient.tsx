@@ -6,7 +6,6 @@ import { CATEGORY_LABELS, CATEGORY_ORDER, Category, Spot } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
 import ImageCarousel from "@/components/ImageCarousel";
 import FavoriteButton from "@/components/FavoriteButton";
-import AddToPlanButton from "@/components/itinerary/AddToPlanButton";
 import { NewBadge } from "@/lib/new-badge";
 import { Heart, Search, X, ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -128,14 +127,6 @@ export default function FavoritesClient({ spots, citySlug }: { spots: Spot[]; ci
                       <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5">
                         {spot.neighborhood} · {spot.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
                       </p>
-                    </div>
-                    {/* Bottom-right "Add to plan" floating over the card. */}
-                    <div className="absolute bottom-2 right-2 z-10">
-                      <AddToPlanButton
-                        spotId={spot.id}
-                        citySlug={citySlugFromName(spot.city)}
-                        variant="card"
-                      />
                     </div>
                   </div>
                 ))}

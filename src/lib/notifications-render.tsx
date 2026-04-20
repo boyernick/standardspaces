@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import type { NotificationType } from "@/lib/notifications";
-import { citySlugFromName } from "@/lib/cities";
 
 /**
  * Raw notification row shape as returned from the db. Kept loose on purpose —
@@ -14,7 +13,6 @@ export interface NotificationRow {
   actor_id: string | null;
   spot_id: string | null;
   event_id: string | null;
-  itinerary_id: string | null;
   recommendation_id: string | null;
   metadata: Record<string, unknown>;
   read_at: string | null;
@@ -41,11 +39,6 @@ export interface NotificationRow {
     city: string;
     neighborhood?: string | null;
     image?: string | null;
-  } | null;
-  itinerary?: {
-    id: string;
-    city: string;
-    date: string | null;
   } | null;
   recommendation?: {
     id: string;
@@ -128,24 +121,6 @@ function spotHref(row: NotificationRow): string {
 function eventHref(row: NotificationRow): string {
   if (row.event) return `/events/${row.event.id}`;
   return "/events";
-}
-
-function itineraryHref(row: NotificationRow): string {
-  if (row.itinerary) {
-    const slug = citySlugFromName(row.itinerary.city);
-    return `/${slug}/itinerary/${row.itinerary.id}`;
-  }
-  return "/plans";
-}
-
-// "Fri, Apr 25". Plan dates are stored as ISO yyyy-mm-dd; append a local-
-// midnight time so the browser doesn't roll back a day in behind-UTC zones.
-function formatPlanDate(iso: string): string {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 /**
@@ -357,24 +332,6 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
         actorName: null,
         coverImage: row.event?.image ?? null,
       };
-
-    case "plan_invited": {
-      const cityName = row.itinerary?.city ?? "your city";
-      return {
-        icon: "calendar",
-        title: (
-          <>
-            {bold(name)} invited you to a plan in {cityName}
-          </>
-        ),
-        body: row.itinerary?.date
-          ? formatPlanDate(row.itinerary.date)
-          : "Tap to view",
-        href: itineraryHref(row),
-        actorAvatar: avatar,
-        actorName: name,
-      };
-    }
 
     case "recommendation_published": {
       // Celebrates the user's contribution — the space they recommended is
