@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useMemo, useTransition } from "react";
 import { getReferrals, approveReferral, denyReferral, resendReferralInvite, deleteReferral } from "@/app/actions/referrals";
 import { Check, X, UserPlus } from "lucide-react";
 import PageShell from "@/components/ui/PageShell";
 import PageHeader from "@/components/ui/PageHeader";
+import Tabs from "@/components/ui/Tabs";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 
@@ -22,12 +23,15 @@ type Referral = {
   } | null;
 };
 
+type Tab = "pending" | "invited" | "past";
+
 export default function ReferralsPage() {
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [rowBusy, setRowBusy] = useState<string | null>(null);
   const [justResent, setJustResent] = useState<Set<string>>(new Set());
+  const [tab, setTab] = useState<Tab>("pending");
 
   useEffect(() => {
     getReferrals().then((data) => {
@@ -92,9 +96,36 @@ export default function ReferralsPage() {
     }
   }
 
-  const pending = referrals.filter((r) => r.status === "pending_approval");
-  const waitingToApply = referrals.filter((r) => r.status === "pending_apply");
-  const resolved = referrals.filter((r) => r.status === "approved" || r.status === "denied");
+  const grouped = useMemo(() => {
+    const out: Record<Tab, Referral[]> = { pending: [], invited: [], past: [] };
+    for (const r of referrals) {
+      if (r.status === "pending_approval") out.pending.push(r);
+      else if (r.status === "pending_apply") out.invited.push(r);
+      else if (r.status === "approved" || r.status === "denied") out.past.push(r);
+    }
+    return out;
+  }, [referrals]);
+
+  const tabs: { id: Tab; label: string; count: number }[] = [
+    { id: "pending", label: "Pending", count: grouped.pending.length },
+    { id: "invited", label: "Invited", count: grouped.invited.length },
+    { id: "past", label: "Past", count: grouped.past.length },
+  ];
+
+  const emptyByTab: Record<Tab, { title: string; body: string }> = {
+    pending: {
+      title: "No referrals to approve",
+      body: "When someone applies with your name, they'll show up here.",
+    },
+    invited: {
+      title: "No invites out",
+      body: "Invite a friend from the Refer page — you'll see them here once the SMS lands.",
+    },
+    past: {
+      title: "No past referrals",
+      body: "Approved or denied referrals will live here.",
+    },
+  };
 
   return (
     <PageShell maxWidth="md">
@@ -112,12 +143,15 @@ export default function ReferralsPage() {
           body="Invite a friend you'd love to see around the community."
         />
       ) : (
-        <div className="space-y-8">
-          {pending.length > 0 && (
-            <section>
-              <h2 className="eyebrow mb-3">Needs your approval</h2>
+        <>
+          <Tabs tabs={tabs} value={tab} onChange={setTab} />
+
+          {tab === "pending" && (
+            grouped.pending.length === 0 ? (
+              <EmptyState icon={UserPlus} title={emptyByTab.pending.title} body={emptyByTab.pending.body} />
+            ) : (
               <div className="space-y-2">
-                {pending.map((r) => (
+                {grouped.pending.map((r) => (
                   <div key={r.id} className="flex items-center justify-between p-4 border border-neutral-200 dark:border-neutral-800 rounded-xl">
                     <div>
                       <p className="text-sm font-medium text-neutral-900 dark:text-white">
@@ -150,14 +184,15 @@ export default function ReferralsPage() {
                   </div>
                 ))}
               </div>
-            </section>
+            )
           )}
 
-          {waitingToApply.length > 0 && (
-            <section>
-              <h2 className="eyebrow mb-3">Invited</h2>
+          {tab === "invited" && (
+            grouped.invited.length === 0 ? (
+              <EmptyState icon={UserPlus} title={emptyByTab.invited.title} body={emptyByTab.invited.body} />
+            ) : (
               <div className="space-y-2">
-                {waitingToApply.map((r) => (
+                {grouped.invited.map((r) => (
                   <div key={r.id} className="flex items-center justify-between gap-3 p-4 border border-neutral-200 dark:border-neutral-800 rounded-xl">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">
@@ -188,14 +223,15 @@ export default function ReferralsPage() {
                   </div>
                 ))}
               </div>
-            </section>
+            )
           )}
 
-          {resolved.length > 0 && (
-            <section>
-              <h2 className="eyebrow mb-3">Past referrals</h2>
+          {tab === "past" && (
+            grouped.past.length === 0 ? (
+              <EmptyState icon={UserPlus} title={emptyByTab.past.title} body={emptyByTab.past.body} />
+            ) : (
               <div className="space-y-2">
-                {resolved.map((r) => (
+                {grouped.past.map((r) => (
                   <div key={r.id} className="flex items-center justify-between p-4 border border-neutral-200 dark:border-neutral-800 rounded-xl opacity-60">
                     <div>
                       <p className="text-sm font-medium text-neutral-900 dark:text-white">
@@ -204,7 +240,7 @@ export default function ReferralsPage() {
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       r.status === "approved"
-                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                        ? "bg-ink-100 text-neutral-700 dark:text-neutral-300"
                         : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
                     }`}>
                       {r.status === "approved" ? "Approved" : "Denied"}
@@ -212,9 +248,9 @@ export default function ReferralsPage() {
                   </div>
                 ))}
               </div>
-            </section>
+            )
           )}
-        </div>
+        </>
       )}
     </PageShell>
   );
