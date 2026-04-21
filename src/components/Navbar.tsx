@@ -3,11 +3,12 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Menu, Search, CircleUserRound } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getPendingReferralCount } from "@/app/actions/referrals";
 import { getUnreadNotificationCount } from "@/app/actions/notifications";
 import { getAdminPendingCount } from "@/app/actions/admin";
+import { getInitials } from "@/lib/initials";
 
 export default function Navbar() {
   const router = useRouter();
@@ -24,8 +25,10 @@ export default function Navbar() {
   // state on the profile button without writing to the real db.
   const [mockJewel, setMockJewel] = useState(false);
   // Tri-state: undefined = unknown (don't render anything yet), null = signed
-  // out / no avatar (render default icon), string = avatar URL.
+  // out / no avatar (render initials fallback), string = avatar URL.
   const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(undefined);
+  // Display name drives the initials fallback when no avatar is set.
+  const [displayName, setDisplayName] = useState<string | null>(null);
   // Drives the soft shadow beneath the sticky navbar once the page has
   // scrolled away from the top. Lets the nav read as a floating layer over
   // content without adding visual weight when it sits flush at the top.
@@ -42,6 +45,8 @@ export default function Navbar() {
     try {
       const cached = localStorage.getItem("navAvatarUrl");
       if (cached) setAvatarUrl(cached);
+      const cachedName = localStorage.getItem("navDisplayName");
+      if (cachedName) setDisplayName(cachedName);
       const cachedUnread = localStorage.getItem("navUnreadCount");
       if (cachedUnread) setUnreadNotifs(parseInt(cachedUnread, 10) || 0);
       const cachedAdminPending = localStorage.getItem("navAdminPending");
@@ -70,21 +75,30 @@ export default function Navbar() {
       if (cancelled) return;
       if (!user) {
         setAvatarUrl(null);
-        try { localStorage.removeItem("navAvatarUrl"); } catch {}
+        setDisplayName(null);
+        try {
+          localStorage.removeItem("navAvatarUrl");
+          localStorage.removeItem("navDisplayName");
+        } catch {}
         return;
       }
       const { data } = await supabase
         .from("profiles")
-        .select("role, avatar_url")
+        .select("role, avatar_url, first_name, last_name")
         .eq("id", user.id)
         .single();
       if (cancelled) return;
       if (data?.role === "admin") setIsAdmin(true);
       const nextAvatar = data?.avatar_url ?? null;
+      const nextName =
+        [data?.first_name, data?.last_name].filter(Boolean).join(" ") || null;
       setAvatarUrl(nextAvatar);
+      setDisplayName(nextName);
       try {
         if (nextAvatar) localStorage.setItem("navAvatarUrl", nextAvatar);
         else localStorage.removeItem("navAvatarUrl");
+        if (nextName) localStorage.setItem("navDisplayName", nextName);
+        else localStorage.removeItem("navDisplayName");
       } catch {}
     })();
 
@@ -185,8 +199,11 @@ export default function Navbar() {
             {avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
             ) : avatarUrl === null ? (
-              <div className="w-7 h-7 rounded-full bg-neutral-900 dark:bg-white flex items-center justify-center">
-                <CircleUserRound size={16} strokeWidth={1.5} className="text-white dark:text-neutral-900" />
+              <div
+                className="w-7 h-7 rounded-full bg-surface-dark dark:bg-[#F7F7F3] border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-[11px] text-[#F7F7F3] dark:text-surface-dark"
+                style={{ fontFamily: "var(--font-martina), Georgia, serif" }}
+              >
+                {getInitials(displayName)}
               </div>
             ) : (
               // Avatar status unknown — render an invisible placeholder of the

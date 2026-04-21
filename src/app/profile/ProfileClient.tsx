@@ -3,7 +3,8 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Camera, CircleUserRound, ChevronRight } from "lucide-react";
+import { Camera, ChevronRight } from "lucide-react";
+import { getInitials } from "@/lib/initials";
 import { updateProfile } from "@/app/actions/profile";
 import { toggleFollow } from "@/app/actions/follows";
 import { citySlugFromName, CITIES } from "@/lib/cities";
@@ -198,8 +199,11 @@ export default function ProfileClient({
               {avatarPreview ? (
                 <img src={avatarPreview} alt={displayName} className="w-20 h-20 rounded-full object-cover" />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-neutral-900 dark:bg-white flex items-center justify-center">
-                  <CircleUserRound size={32} strokeWidth={1.5} className="text-white dark:text-neutral-900" />
+                <div
+                  className="w-20 h-20 rounded-full bg-surface-dark dark:bg-[#F7F7F3] border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-3xl text-[#F7F7F3] dark:text-surface-dark"
+                  style={fontMartina}
+                >
+                  {getInitials(displayName)}
                 </div>
               )}
               <button
@@ -359,8 +363,11 @@ export default function ProfileClient({
               {profile.avatar_url ? (
                 <img src={profile.avatar_url} alt={displayName} className="w-20 h-20 rounded-full object-cover" />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-neutral-900 dark:bg-white flex items-center justify-center">
-                  <CircleUserRound size={32} strokeWidth={1.5} className="text-white dark:text-neutral-900" />
+                <div
+                  className="w-20 h-20 rounded-full bg-surface-dark dark:bg-[#F7F7F3] border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-3xl text-[#F7F7F3] dark:text-surface-dark"
+                  style={fontMartina}
+                >
+                  {getInitials(displayName)}
                 </div>
               )}
             </div>
