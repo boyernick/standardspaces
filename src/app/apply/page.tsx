@@ -224,6 +224,39 @@ function ApplyForm() {
             >
               {loading ? "Sending..." : "Send verification code"}
             </button>
+            {/* SMS consent disclosure — required copy for Twilio toll-free
+                verification (reason code 30509). Must be visible on the page
+                where users opt in (here, by entering their phone). Covers:
+                opt-in mechanism, sample messages, frequency, rates,
+                STOP/HELP, and a link to the privacy policy. */}
+            <p
+              id="sms-consent"
+              className="pt-2 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400"
+              style={fontCalibre}
+            >
+              By tapping &ldquo;Send verification code&rdquo; you agree to
+              receive account-related SMS messages from Standard Spaces at
+              the number above — sign-in codes, application updates, event
+              reminders, and referrals you initiate (e.g. &ldquo;Your
+              Standard Spaces code is 123456&rdquo; or &ldquo;Your
+              application was approved — sign in at thestandardspaces.com&rdquo;).
+              Message frequency varies. Msg &amp; data rates may apply.
+              Reply HELP for help or STOP to opt out. See our{" "}
+              <Link
+                href="/privacy"
+                className="underline underline-offset-2 hover:text-neutral-700 dark:hover:text-neutral-300"
+              >
+                Privacy Policy
+              </Link>
+              {" "}and{" "}
+              <Link
+                href="/terms"
+                className="underline underline-offset-2 hover:text-neutral-700 dark:hover:text-neutral-300"
+              >
+                Terms
+              </Link>
+              .
+            </p>
           </form>
         )}
 

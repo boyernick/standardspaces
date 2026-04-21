@@ -51,6 +51,21 @@ export default function TermsPage() {
           </section>
 
           <section>
+            <h2 className="text-lg font-medium text-black dark:text-white">SMS messaging</h2>
+            <p className="mt-2">
+              By submitting your phone number on the apply or sign-in pages you agree to receive
+              account-related SMS from Standard Spaces: sign-in codes, application updates,
+              event reminders, and referral invitations you initiate. Message frequency varies
+              (typically a few messages per month). Message and data rates may apply. Reply
+              HELP for help or STOP to opt out at any time. Full details in our{" "}
+              <Link href="/privacy#sms-consent" className="underline underline-offset-2">
+                privacy policy
+              </Link>
+              .
+            </p>
+          </section>
+
+          <section>
             <h2 className="text-lg font-medium text-black dark:text-white">Acceptable use</h2>
             <p className="mt-2">
               Use the service in good faith. Don&apos;t scrape, resell, or redistribute the
