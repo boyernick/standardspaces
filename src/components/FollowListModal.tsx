@@ -16,8 +16,9 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { X, CircleUserRound } from "lucide-react";
+import { X } from "lucide-react";
 import { getFollowList, type FollowListMember } from "@/app/actions/follows";
+import { getInitials } from "@/lib/initials";
 
 type Kind = "followers" | "following";
 
@@ -145,12 +146,11 @@ export default function FollowListModal({
                           className="w-10 h-10 rounded-full object-cover shrink-0"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-neutral-900 dark:bg-white flex items-center justify-center shrink-0">
-                          <CircleUserRound
-                            size={20}
-                            strokeWidth={1.5}
-                            className="text-white dark:text-neutral-900"
-                          />
+                        <div
+                          className="w-10 h-10 rounded-full bg-surface-dark dark:bg-[#F7F7F3] border border-neutral-200 dark:border-neutral-800 flex items-center justify-center shrink-0 text-sm text-[#F7F7F3] dark:text-surface-dark"
+                          style={{ fontFamily: "var(--font-martina), Georgia, serif" }}
+                        >
+                          {getInitials(name)}
                         </div>
                       )}
                       <div className="min-w-0 flex-1">

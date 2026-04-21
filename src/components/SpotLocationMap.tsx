@@ -179,7 +179,7 @@ export default function SpotLocationMap({ spot, nearby, address }: SpotLocationM
           href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm rounded-full border border-neutral-200 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors"
         >
           <MapPin size={14} strokeWidth={1.5} />
           {streetAddress}

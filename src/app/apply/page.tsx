@@ -224,6 +224,27 @@ function ApplyForm() {
             >
               {loading ? "Sending..." : "Send verification code"}
             </button>
+            {/* SMS consent — kept brief (Airbnb-style) with the key
+                disclosures at the opt-in moment: what you're agreeing to,
+                rates notice, STOP, and a link to /privacy#sms-consent
+                where the full Twilio-required detail lives (message
+                types, frequency, HELP, sample messages). */}
+            <p
+              id="sms-consent"
+              className="pt-1 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400"
+              style={fontCalibre}
+            >
+              We&apos;ll text a sign-in code and occasional account
+              updates (application status, event reminders, referrals).
+              Msg &amp; data rates may apply. Reply STOP to opt out.{" "}
+              <Link
+                href="/privacy#sms-consent"
+                className="underline underline-offset-2 hover:text-neutral-700 dark:hover:text-neutral-300"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </form>
         )}
 

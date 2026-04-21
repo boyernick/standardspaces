@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { LocateFixed, Plus, Minus } from "lucide-react";
@@ -89,44 +89,15 @@ interface MapProps {
    */
   hoverSpotId?: string | null;
   /**
-   * Ordered list of spot ids currently in the user's plan draft (first
-   * stop at index 0). Markers whose ids appear here render a numbered
-   * corner pin in the top-left of the image card, matching the plan-tray
-   * list. Plan edits only toggle/retext the pin — they never rebuild the
-   * marker. Pass an empty array (or omit) to render no pins.
-   */
-  planStopIds?: readonly string[];
-  /**
-   * Draw a dashed polyline connecting the `planStopIds` in order. Used by
-   * the itinerary planner + share view to render the visual trail between
-   * stops. No-op when fewer than 2 plan stops exist. Off by default —
-   * city-browse surfaces don't want a route line.
-   */
-  showPlanRoute?: boolean;
-  /**
-   * Imperative fitBounds request. When the `focusBounds` value changes
-   * to a non-null bounds, the map eases to fit that box. Used by the
-   * itinerary planner to pan to a chosen neighborhood (or the
-   * intersection of neighborhood + activity categories) without having
-   * to filter out non-matching spots from the marker layer. Paired with
-   * `focusBounds` tracked by reference identity — pass a fresh tuple
-   * only when you mean to re-fit, otherwise the same-reference bail-out
-   * keeps the effect from refitting on every render.
-   */
-  focusBounds?: LngLatBounds | null;
-  /**
    * When true, hide the locate-me / zoom-in / zoom-out control cluster
-   * in the lower right. Used by polish surfaces (saved-plan hero map)
-   * where the map is a decorative context strip, not a panning tool.
+   * in the lower right. Used by surfaces where the map is a decorative
+   * context strip, not a panning tool.
    */
   hideControls?: boolean;
 }
 
-const PLAN_ROUTE_SOURCE_ID = "plan-route";
-const PLAN_ROUTE_LAYER_ID = "plan-route";
-
 export default function SpotMap(props: MapProps) {
-  const { spots = [], activeSpot = null, onSpotSelect = () => {}, onViewChange, initialView, focusSpot = null, focusToken, hoverSpotId = null, planStopIds, showPlanRoute = false, focusBounds = null, hideControls = false } = props ?? {};
+  const { spots = [], activeSpot = null, onSpotSelect = () => {}, onViewChange, initialView, focusSpot = null, focusToken, hoverSpotId = null, hideControls = false } = props ?? {};
   const onViewChangeRef = useRef(onViewChange);
   onViewChangeRef.current = onViewChange;
   // Latch the initialView at first render so later prop changes (e.g. after
@@ -155,18 +126,6 @@ export default function SpotMap(props: MapProps) {
   onSpotSelectRef.current = onSpotSelect;
   activeIdRef.current = activeSpot?.id ?? null;
   hoverIdRef.current = hoverSpotId;
-
-  // Plan-index lookup for the numbered corner pin on card-mode markers.
-  // Built from `planStopIds` — memoized so effect deps stay stable when
-  // callers pass a fresh array of the same ids. Stored in a ref too so
-  // the marker-creation path can read the current index synchronously
-  // without waiting for the plan-sync effect to flush.
-  const planIndexById = useMemo<globalThis.Map<string, number>>(
-    () => new globalThis.Map((planStopIds ?? []).map((id, i) => [id, i])),
-    [planStopIds],
-  );
-  const planIndexByIdRef = useRef(planIndexById);
-  planIndexByIdRef.current = planIndexById;
 
   // Request user location. Cache in sessionStorage so a sign-out/sign-in
   // remount doesn't re-prompt or re-fetch.
@@ -275,10 +234,6 @@ export default function SpotMap(props: MapProps) {
     );
     // Hovered list-card spot should always render as an image card too.
     if (hoverIdRef.current) cardSet.add(hoverIdRef.current);
-    // Plan members are always rendered as image cards regardless of
-    // zoom budget — a plan is a visual trail the user is building, and
-    // demoting stops to 8-px dots at lower zooms erases that trail.
-    planIndexByIdRef.current.forEach((_, id) => cardSet.add(id));
     markers.current.forEach((entry, id) => {
       const next: MarkerMode = cardSet.has(id) ? "card" : "dot";
       if (entry.mode !== next) applyMarkerMode(id, next);
@@ -337,29 +292,6 @@ export default function SpotMap(props: MapProps) {
         // Click on empty map area deselects
         m.on("click", () => {
           onSpotSelectRef.current(null);
-        });
-
-        // Plan-route source + layer. Always mounted (empty
-        // FeatureCollection by default) so the route-sync effect can just
-        // `setData` without racing style load; the line only renders when
-        // we push ≥2 coordinates and `showPlanRoute` is on.
-        m.addSource(PLAN_ROUTE_SOURCE_ID, {
-          type: "geojson",
-          data: { type: "FeatureCollection", features: [] },
-        });
-        m.addLayer({
-          id: PLAN_ROUTE_LAYER_ID,
-          type: "line",
-          source: PLAN_ROUTE_SOURCE_ID,
-          layout: { "line-cap": "round", "line-join": "round" },
-          paint: {
-            // Neutral — inverse of surface so it reads on either theme
-            // without reaching for the brand color.
-            "line-color": dark ? THEME.white : THEME.light.text,
-            "line-width": 2.5,
-            "line-opacity": 0.7,
-            "line-dasharray": [1.5, 2],
-          },
         });
 
         // Track manual pan/zoom so late-arriving geolocation doesn't
@@ -495,13 +427,9 @@ export default function SpotMap(props: MapProps) {
     });
 
     // Decide initial card/dot mode for this render based on current view.
-    // Plan members always get card mode so they stay visible as image
-    // cards at any zoom — mirrors the `recomputeModes` behavior applied
-    // on every pan/zoom and plan change.
     const center = m.getCenter();
     const budget = computeBudget(m.getZoom());
     const cardSet = computeCardSet(spots, [center.lng, center.lat], budget, activeId);
-    planIndexByIdRef.current.forEach((_, id) => cardSet.add(id));
 
     // Compute offsets so no two markers (cards or dots) sit at the same point.
     // Existing markers seed `placed` so newly-added markers respect their positions.
@@ -603,37 +531,6 @@ export default function SpotMap(props: MapProps) {
       img.dataset.img = "1";
       imgWrap.appendChild(img);
 
-      // Plan pin — always mounted, hidden until this spot enters the
-      // draft plan. Styling mirrors the corner badge on the itinerary
-      // tray's stop rows so the two surfaces read as one vocabulary.
-      // The surface-colored ring (via boxShadow) lets the pin separate
-      // from the image when it overhangs the border.
-      const planPin = document.createElement("div");
-      planPin.dataset.planPin = "1";
-      planPin.style.position = "absolute";
-      planPin.style.top = "-6px";
-      planPin.style.left = "-6px";
-      planPin.style.width = "20px";
-      planPin.style.height = "20px";
-      planPin.style.borderRadius = "9999px";
-      planPin.style.display = "none";
-      planPin.style.alignItems = "center";
-      planPin.style.justifyContent = "center";
-      planPin.style.fontSize = "11px";
-      planPin.style.fontWeight = "700";
-      planPin.style.fontFamily = "var(--font-calibre), system-ui, sans-serif";
-      planPin.style.backgroundColor = dark ? "#ffffff" : "#111111";
-      planPin.style.color = dark ? "#111111" : "#ffffff";
-      planPin.style.boxShadow = `0 0 0 2px ${THEME.light.surface}`;
-      planPin.style.pointerEvents = "none";
-      planPin.style.zIndex = "2";
-      const initialPlanIdx = planIndexByIdRef.current.get(s.id);
-      if (initialPlanIdx != null) {
-        planPin.style.display = "flex";
-        planPin.textContent = String(initialPlanIdx + 1);
-      }
-      imgWrap.appendChild(planPin);
-
       card.appendChild(imgWrap);
 
       const label = document.createElement("div");
@@ -717,68 +614,6 @@ export default function SpotMap(props: MapProps) {
     if (!mapReady) return;
     recomputeModes();
   }, [hoverSpotId, mapReady, recomputeModes]);
-
-  // Sync plan-pin overlays + force card mode for plan members whenever
-  // the plan changes. Toggles each marker's pin visibility, updates its
-  // number, then recomputes the card/dot mix so newly-added stops pop
-  // up as image cards and removed stops fall back to dots (if they're
-  // outside the zoom budget). Markers that don't exist yet pick up
-  // their pin state at creation via `planIndexByIdRef`.
-  useEffect(() => {
-    if (!mapReady) return;
-    markers.current.forEach((entry, id) => {
-      const pin = entry.el.querySelector("[data-plan-pin]") as HTMLDivElement | null;
-      if (!pin) return;
-      const idx = planIndexById.get(id);
-      if (idx == null) {
-        pin.style.display = "none";
-        pin.textContent = "";
-      } else {
-        pin.style.display = "flex";
-        pin.textContent = String(idx + 1);
-      }
-    });
-    recomputeModes();
-  }, [planIndexById, mapReady, recomputeModes]);
-
-  // Sync the plan route line. Resolves each plan stop id to its spot
-  // coords (via the passed `spots` array) and writes a LineString into
-  // the source added at load time. When `showPlanRoute` is false or the
-  // plan has fewer than 2 valid stops, we push an empty FeatureCollection
-  // so any prior line is cleared without rebuilding the layer.
-  useEffect(() => {
-    if (!mapReady || !map.current) return;
-    const src = map.current.getSource(PLAN_ROUTE_SOURCE_ID) as
-      | mapboxgl.GeoJSONSource
-      | undefined;
-    if (!src) return;
-
-    if (!showPlanRoute || !planStopIds || planStopIds.length < 2) {
-      src.setData({ type: "FeatureCollection", features: [] });
-      return;
-    }
-
-    const spotById = new globalThis.Map(spots.map((s) => [s.id, s]));
-    const coords: [number, number][] = [];
-    for (const id of planStopIds) {
-      const s = spotById.get(id);
-      if (s) coords.push([s.lng, s.lat]);
-    }
-    if (coords.length < 2) {
-      src.setData({ type: "FeatureCollection", features: [] });
-      return;
-    }
-    src.setData({
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          properties: {},
-          geometry: { type: "LineString", coordinates: coords },
-        },
-      ],
-    });
-  }, [planStopIds, spots, showPlanRoute, mapReady]);
 
   // Fit bounds — wait for geolocation to resolve before deciding
   useEffect(() => {
@@ -904,48 +739,6 @@ export default function SpotMap(props: MapProps) {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusToken, mapReady]);
-
-  // Imperative fitBounds triggered by `focusBounds` identity changes.
-  // Caller is expected to pass a fresh tuple only when they mean to
-  // re-fit (e.g. the itinerary planner when the user picks a
-  // neighborhood). Same tuple identity on subsequent renders → no-op.
-  useEffect(() => {
-    if (!map.current || !mapReady || !focusBounds) return;
-    const [[swLng, swLat], [neLng, neLat]] = focusBounds;
-    // Guard against degenerate or inverted boxes; mapbox throws on those.
-    if (
-      !Number.isFinite(swLng) ||
-      !Number.isFinite(swLat) ||
-      !Number.isFinite(neLng) ||
-      !Number.isFinite(neLat) ||
-      swLng > neLng ||
-      swLat > neLat
-    ) {
-      return;
-    }
-    const isNarrow =
-      typeof window !== "undefined" && window.innerWidth < 640;
-    const pad = isNarrow ? 32 : 80;
-    // Single-point bounds (e.g. one spot in the neighborhood) — easeTo
-    // that coordinate so we don't ask fitBounds to fit a 0-area box.
-    if (swLng === neLng && swLat === neLat) {
-      map.current.easeTo({
-        center: [swLng, swLat],
-        zoom: Math.max(map.current.getZoom(), 14),
-        duration: 900,
-        easing: EASE_OUT_QUART,
-        essential: true,
-      });
-      return;
-    }
-    map.current.fitBounds(focusBounds, {
-      padding: { top: pad, bottom: pad, left: pad, right: pad },
-      maxZoom: 15,
-      duration: 900,
-      easing: EASE_OUT_QUART,
-      essential: true,
-    });
-  }, [focusBounds, mapReady]);
 
   const handleRecenter = useCallback(() => {
     const m = map.current;

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-5 py-12 md:px-8 md:py-20">
+    <main className="flex-1 overflow-y-auto bg-[var(--background)] text-[var(--foreground)] px-5 py-12 md:px-8 md:py-20">
       <div className="mx-auto max-w-2xl">
         <Link
           href="/"
@@ -63,13 +63,42 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          <section>
+          <section id="sms-consent">
             <h2 className="text-lg font-medium text-black dark:text-white">SMS consent</h2>
             <p className="mt-2">
-              By providing your phone number you consent to receive occasional SMS messages
-              related to your account — sign-in codes, application updates, event reminders, and
-              referrals you initiate. Message and data rates may apply. Reply STOP to opt out at
-              any time.
+              You opt in to receive SMS from Standard Spaces by submitting your phone number on
+              our{" "}
+              <Link href="/apply" className="underline underline-offset-2">
+                apply
+              </Link>{" "}
+              or{" "}
+              <Link href="/login" className="underline underline-offset-2">
+                sign-in
+              </Link>{" "}
+              pages, or by tapping &ldquo;Resend&rdquo; on a referral you send from within the
+              product. We do not share your mobile information with third parties or affiliates
+              for their own marketing or promotional purposes.
+            </p>
+            <p className="mt-3">
+              The messages you may receive are account-related and transactional: one-time
+              sign-in codes, application status updates, event reminders for events you RSVP to,
+              and invitation texts for referrals you personally initiate. Examples:
+            </p>
+            <ul className="mt-2 list-disc pl-5 space-y-1">
+              <li>&ldquo;Your Standard Spaces code is 123456.&rdquo;</li>
+              <li>&ldquo;Your application was approved — sign in at thestandardspaces.com.&rdquo;</li>
+              <li>&ldquo;Reminder: [Event name] is tomorrow at 7pm.&rdquo;</li>
+              <li>&ldquo;[Your friend] invited you to Standard Spaces: thestandardspaces.com/apply?ref=…&rdquo;</li>
+            </ul>
+            <p className="mt-3">
+              Message frequency varies based on your activity (typically a few messages per
+              month). Message and data rates may apply. Reply HELP for help or STOP at any time
+              to opt out — you will receive a confirmation message and no further texts.
+              Carriers are not liable for delayed or undelivered messages. For support, email{" "}
+              <a href="mailto:hello@standardspaces.com" className="underline underline-offset-2">
+                hello@standardspaces.com
+              </a>
+              .
             </p>
           </section>
 

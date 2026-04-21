@@ -256,13 +256,13 @@ export default function ReviewForm({
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <button
             onClick={() => router.push(`/${citySlug}/${spotId}`)}
-            className="px-5 py-2.5 text-sm font-medium rounded-full bg-black text-white dark:bg-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
+            className="px-5 py-2.5 text-sm font-medium rounded-lg bg-black text-white dark:bg-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
           >
             View space
           </button>
           <button
             onClick={() => router.push("/admin/recommendations")}
-            className="px-5 py-2.5 text-sm font-medium rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
+            className="px-5 py-2.5 text-sm font-medium rounded-lg border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
           >
             Review more spaces
           </button>
@@ -288,7 +288,7 @@ export default function ReviewForm({
             type="button"
             onClick={handleRescrape}
             disabled={rescraping || !sourceUrl.trim()}
-            className="shrink-0 px-4 py-2.5 text-sm font-medium rounded-xl border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+            className="shrink-0 px-4 py-2.5 text-sm font-medium rounded-lg border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
           >
             {rescraping ? <><Loader2 size={14} className="animate-spin" /> Scraping...</> : "Re-scrape"}
           </button>
@@ -458,7 +458,7 @@ export default function ReviewForm({
           <button
             onClick={handlePublish}
             disabled={publishing || deleting}
-            className="px-8 py-2.5 text-sm font-medium rounded-xl bg-black text-white dark:bg-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-60 transition-colors flex items-center gap-2 shrink-0"
+            className="px-8 py-2.5 text-sm font-medium rounded-lg bg-black text-white dark:bg-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-60 transition-colors flex items-center gap-2 shrink-0"
           >
             {publishing ? <><Loader2 size={16} className="animate-spin" /> Publishing...</> : "Publish"}
           </button>

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-5 py-12 md:px-8 md:py-20">
+    <main className="flex-1 overflow-y-auto bg-[var(--background)] text-[var(--foreground)] px-5 py-12 md:px-8 md:py-20">
       <div className="mx-auto max-w-2xl">
         <Link
           href="/"
@@ -47,6 +47,21 @@ export default function TermsPage() {
               You are responsible for activity on your account and for keeping your sign-in
               credentials (email, phone) secure. Don&apos;t share your account, and let us know
               right away if you suspect it&apos;s been accessed without your permission.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-medium text-black dark:text-white">SMS messaging</h2>
+            <p className="mt-2">
+              By submitting your phone number on the apply or sign-in pages you agree to receive
+              account-related SMS from Standard Spaces: sign-in codes, application updates,
+              event reminders, and referral invitations you initiate. Message frequency varies
+              (typically a few messages per month). Message and data rates may apply. Reply
+              HELP for help or STOP to opt out at any time. Full details in our{" "}
+              <Link href="/privacy#sms-consent" className="underline underline-offset-2">
+                privacy policy
+              </Link>
+              .
             </p>
           </section>
 

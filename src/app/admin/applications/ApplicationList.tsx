@@ -115,7 +115,7 @@ export default function ApplicationList({ applications: initial }: { application
                   <button
                     onClick={() => handleAction(app.id, "approve")}
                     disabled={processing === app.id}
-                    className="px-3 py-1.5 text-xs font-medium text-white bg-black dark:bg-white dark:text-black rounded-full hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors disabled:opacity-50"
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-black dark:bg-white dark:text-black rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors disabled:opacity-50"
                     style={fontCalibre}
                   >
                     {processing === app.id ? "..." : "Approve & send SMS"}
@@ -123,7 +123,7 @@ export default function ApplicationList({ applications: initial }: { application
                   <button
                     onClick={() => handleAction(app.id, "reject")}
                     disabled={processing === app.id}
-                    className="px-3 py-1.5 text-xs font-medium text-black/60 dark:text-white/60 border border-black/15 dark:border-white/15 rounded-full hover:border-black/30 dark:hover:border-white/30 transition-colors disabled:opacity-50"
+                    className="px-3 py-1.5 text-xs font-medium text-black/60 dark:text-white/60 border border-black/15 dark:border-white/15 rounded-lg hover:border-black/30 dark:hover:border-white/30 transition-colors disabled:opacity-50"
                     style={fontCalibre}
                   >
                     Reject

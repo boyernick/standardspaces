@@ -176,7 +176,7 @@ export function PhotoManager({
           type="button"
           onClick={() => triggerFileInput(null)}
           disabled={uploading !== null}
-          className="flex items-center gap-2 px-4 py-2.5 text-sm border border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2.5 text-sm border border-dashed border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors disabled:opacity-50"
         >
           {uploading === "add" ? (
             <>
@@ -193,7 +193,7 @@ export function PhotoManager({
             type="button"
             onClick={onCurate}
             disabled={uploading !== null || images.length === 0}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm border border-neutral-300 dark:border-neutral-700 rounded-xl text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2.5 text-sm border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors disabled:opacity-50"
             title={images.length === 0 ? "Add or re-scrape photos first" : "Score and auto-select the best representative photos"}
           >
             Curate photos

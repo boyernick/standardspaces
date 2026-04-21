@@ -506,14 +506,14 @@ export default function EventClient({
                 <button
                   onClick={handleCancelRsvp}
                   disabled={pending}
-                  className="px-6 py-2.5 rounded-full text-sm font-medium border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-lg text-sm font-medium border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 disabled:opacity-50"
                 >
                   {myRsvp.status === "going" ? "Going" : "Waitlisted"}
                 </button>
               ) : isPaid ? (
                 <button
                   disabled
-                  className="px-6 py-2.5 rounded-full text-sm font-medium bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 opacity-50"
+                  className="px-6 py-2.5 rounded-lg text-sm font-medium bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 opacity-50"
                   title="Paid checkout coming soon"
                 >
                   Buy ticket · ${(event.price_cents / 100).toFixed(0)}
@@ -522,7 +522,7 @@ export default function EventClient({
                 <button
                   onClick={handleRsvp}
                   disabled={pending}
-                  className="px-6 py-2.5 rounded-full text-sm font-medium bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-lg text-sm font-medium bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors disabled:opacity-50"
                 >
                   {isFull ? "Join waitlist" : "Attend"}
                 </button>
