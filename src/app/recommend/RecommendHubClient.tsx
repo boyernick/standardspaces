@@ -81,8 +81,8 @@ export default function RecommendHubClient({
         <EmptyState icon={Compass} title={empty.title} body={empty.body} />
       ) : (
         <ul className="space-y-2">
-          {active.map((r) => (
-            <RecommendationRow key={r.id} rec={r} />
+          {active.map((r, i) => (
+            <RecommendationRow key={r.id} rec={r} index={i} />
           ))}
         </ul>
       )}
@@ -90,7 +90,7 @@ export default function RecommendHubClient({
   );
 }
 
-function RecommendationRow({ rec }: { rec: MyRecommendation }) {
+function RecommendationRow({ rec, index }: { rec: MyRecommendation; index: number }) {
   // Prefer the admin-set `name`; fall back to whatever the scraper extracted;
   // last resort is the bare host so the row never reads as empty.
   const scrapedName =
@@ -105,7 +105,10 @@ function RecommendationRow({ rec }: { rec: MyRecommendation }) {
   if (rec.category) secondary.push(rec.category);
 
   return (
-    <li>
+    <li
+      className="list-item-in"
+      style={{ animationDelay: `${Math.min(index, 6) * 60}ms` }}
+    >
       <div className="flex items-center justify-between gap-3 p-4 border border-neutral-200 dark:border-neutral-800 rounded-xl">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">

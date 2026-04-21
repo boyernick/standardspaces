@@ -4,7 +4,7 @@ import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import AnalyticsIdentity from "@/components/AnalyticsIdentity";
-import CommandMenu from "@/components/CommandMenu";
+import CommandMenuGate from "@/components/CommandMenuGate";
 import ThemeSync from "@/components/ThemeSync";
 import "@/lib/env"; // fail fast at boot if required env vars are missing
 import "./globals.css";
@@ -95,7 +95,7 @@ export default function RootLayout({
       </head>
       <body className="h-full flex flex-col overflow-hidden">
         <ThemeSync />
-        <CommandMenu />
+        <CommandMenuGate />
         {children}
         <Analytics />
         <SpeedInsights />

@@ -151,8 +151,8 @@ export default function ReferralsPage() {
               <EmptyState icon={UserPlus} title={emptyByTab.pending.title} body={emptyByTab.pending.body} />
             ) : (
               <div className="space-y-2">
-                {grouped.pending.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between p-4 border border-neutral-200 dark:border-neutral-800 rounded-xl">
+                {grouped.pending.map((r, i) => (
+                  <div key={r.id} className="flex items-center justify-between p-4 border border-neutral-200 dark:border-neutral-800 rounded-xl list-item-in" style={{ animationDelay: `${Math.min(i, 6) * 60}ms` }}>
                     <div>
                       <p className="text-sm font-medium text-neutral-900 dark:text-white">
                         {r.applications ? `${r.applications.first_name} ${r.applications.last_name}` : r.referred_name}
@@ -192,8 +192,8 @@ export default function ReferralsPage() {
               <EmptyState icon={UserPlus} title={emptyByTab.invited.title} body={emptyByTab.invited.body} />
             ) : (
               <div className="space-y-2">
-                {grouped.invited.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between gap-3 p-4 border border-neutral-200 dark:border-neutral-800 rounded-xl">
+                {grouped.invited.map((r, i) => (
+                  <div key={r.id} className="flex items-center justify-between gap-3 p-4 border border-neutral-200 dark:border-neutral-800 rounded-xl list-item-in" style={{ animationDelay: `${Math.min(i, 6) * 60}ms` }}>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">
                         {r.referred_name}

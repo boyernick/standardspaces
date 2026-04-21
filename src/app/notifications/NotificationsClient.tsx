@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Award, Bell, Calendar, Compass, MapPin, Sparkles, Star, User } from "lucide-react";
 import { getInitials } from "@/lib/initials";
 import {
@@ -161,8 +162,8 @@ export default function NotificationsClient({ initialRows, mock = false }: Props
             <EmptyState icon={Bell} title={emptyByTab[tab].title} body={emptyByTab[tab].body} />
           ) : (
             <ul>
-              {active.map((row) => (
-                <NotificationItem key={row.id} row={row} unread={unreadOnMount.has(row.id)} />
+              {active.map((row, i) => (
+                <NotificationItem key={row.id} row={row} unread={unreadOnMount.has(row.id)} index={i} />
               ))}
             </ul>
           )}
@@ -172,10 +173,13 @@ export default function NotificationsClient({ initialRows, mock = false }: Props
   );
 }
 
-function NotificationItem({ row, unread }: { row: NotificationRow; unread: boolean }) {
+function NotificationItem({ row, unread, index }: { row: NotificationRow; unread: boolean; index: number }) {
   const r = renderNotification(row);
   return (
-    <li>
+    <li
+      className="list-item-in"
+      style={{ animationDelay: `${Math.min(index, 6) * 60}ms` }}
+    >
       <Link
         href={r.href}
         className="group relative flex items-start gap-3 px-3 py-3 rounded-xl transition-colors hover:bg-ink-100/40 dark:hover:bg-neutral-100/[0.04]"
@@ -187,17 +191,21 @@ function NotificationItem({ row, unread }: { row: NotificationRow; unread: boole
           // Sized larger than the avatar / icon variants (48 vs 40) so the
           // photo has room to read; `rounded-lg` is a deliberate step softer
           // than the actor avatar's full circle without going too boxy.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={r.coverImage}
             alt=""
+            width={48}
+            height={48}
+            sizes="48px"
             className="w-12 h-12 rounded-lg object-cover shrink-0 bg-ink-100 dark:bg-neutral-800 border border-neutral-400 dark:border-neutral-500"
           />
         ) : r.actorAvatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={r.actorAvatar}
             alt=""
+            width={40}
+            height={40}
+            sizes="40px"
             className="w-10 h-10 rounded-full object-cover shrink-0"
           />
         ) : r.actorName ? (

@@ -70,6 +70,9 @@ html, body {
   background-color: var(--color-surface);
   color: var(--color-text);
   font-family: var(--font-calibre), system-ui, sans-serif;
+  /* Equal-width digits so numbers don't reflow when they change
+     (timers, counters, prices, map coordinates, etc.). */
+  font-variant-numeric: tabular-nums;
 }
 
 /* Ensure safe area background matches on iOS. color-scheme is required
@@ -115,6 +118,14 @@ html.dark {
    haven't been swept yet keep their existing sizing; swept pages omit
    those utilities and inherit these defaults. */
 @layer base {
+  h1, h2, h3 {
+    /* Distribute words evenly across lines — no short dangling last line. */
+    text-wrap: balance;
+  }
+  p {
+    /* Prevent single-word orphans on the final line of paragraphs. */
+    text-wrap: pretty;
+  }
   h1 {
     font-family: var(--font-martina), Georgia, serif;
     font-size: 28px;
@@ -169,9 +180,44 @@ a, button, select, [role="button"] {
   cursor: pointer;
 }
 
+/* Layered shadow used in place of a 1px neutral border. Gives cards a
+   softer, grounded edge that adapts across light/dark surfaces: a hairline
+   inset outline (the "border") + a faint ambient drop (the "depth"). Pair
+   with .card-edge-hover for a gentle lift on interactive cards. */
+.card-edge {
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.06),
+    0 1px 2px rgb(0 0 0 / 0.03);
+}
+.dark .card-edge {
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.08),
+    0 1px 2px rgb(0 0 0 / 0.3);
+}
+.card-edge-hover {
+  transition: box-shadow var(--duration-base) var(--ease-out);
+}
+.card-edge-hover:hover {
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.08),
+    0 4px 16px -6px rgb(0 0 0 / 0.08);
+}
+.dark .card-edge-hover:hover {
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.12),
+    0 4px 16px -6px rgb(0 0 0 / 0.5);
+}
+
 /* Consistent photo treatment across all spot images */
 .spot-img {
   filter: brightness(0.95) contrast(1.02) saturate(0.9);
+  /* Hairline inset outline so photos feel grounded on any surface —
+     black in light mode, white in dark. Inset so it doesn't add layout. */
+  outline: 1px solid rgb(0 0 0 / 0.1);
+  outline-offset: -1px;
+}
+.dark .spot-img {
+  outline-color: rgb(255 255 255 / 0.1);
 }
 
 input[type="time"]::-webkit-calendar-picker-indicator {
@@ -192,6 +238,58 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Softer variant used for staggered list rows. Small y-travel and a touch
+   of blur so items settle in rather than snap. Pair with an inline
+   animation-delay based on row index (cap delay around 5–6 rows so the
+   last item doesn't lag noticeably). */
+@keyframes listItemIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+.list-item-in {
+  animation: listItemIn var(--duration-slow) var(--ease-out) both;
+}
+
+/* Skeleton shimmer. Animates `background-position` only — stays on the
+   compositor and doesn't trigger layout. The base color matches --color-ink-100
+   so skeletons read as "one notch off surface" the same way empty-state
+   containers do. */
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+.shimmer {
+  background-color: var(--color-ink-100);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.5) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: shimmer 1.6s linear infinite;
+}
+.dark .shimmer {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.05) 50%,
+    transparent 100%
+  );
+}
+@media (prefers-reduced-motion: reduce) {
+  .shimmer { animation: none; }
 }
 
 /* Page-enter animation. Applied by PageShell so every standard page

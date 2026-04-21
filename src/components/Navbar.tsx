@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { Menu, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -197,7 +198,7 @@ export default function Navbar() {
             )}
             <Menu size={14} strokeWidth={2} className="text-neutral-600 dark:text-neutral-400" />
             {avatarUrl ? (
-              <img src={avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
+              <Image src={avatarUrl} alt="" width={28} height={28} sizes="28px" className="w-7 h-7 rounded-full object-cover" />
             ) : avatarUrl === null ? (
               <div
                 className="w-7 h-7 rounded-full bg-surface-dark dark:bg-[#F7F7F3] border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-[11px] text-[#F7F7F3] dark:text-surface-dark"

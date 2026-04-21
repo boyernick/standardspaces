@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Lock, Calendar, CalendarPlus, Clock, Users, Shirt, Globe, AtSign, Smartphone } from "lucide-react";
 import { FadeIn, GalleryReveal, SectionReveal } from "@/components/ListingAnimations";
@@ -225,9 +226,9 @@ export default function EventClient({
           return (
             <>
               {/* Mobile: full-bleed 4:3 */}
-              <div className="md:hidden w-full aspect-[4/3] bg-neutral-100 dark:bg-neutral-900 overflow-hidden">
+              <div className="md:hidden relative w-full aspect-[4/3] bg-neutral-100 dark:bg-neutral-900 overflow-hidden">
                 {single ? (
-                  <img src={single} alt={event.title} className="w-full h-full object-cover spot-img" />
+                  <Image src={single} alt={event.title} fill sizes="100vw" priority className="object-cover spot-img" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Calendar size={64} className="text-neutral-300 dark:text-neutral-700" />
@@ -236,9 +237,9 @@ export default function EventClient({
               </div>
               {/* Desktop: rounded card matching the spot 3-photo strip width */}
               <div className="hidden md:block px-2">
-                <div className="aspect-[3/1] overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
+                <div className="relative aspect-[3/1] overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
                   {single ? (
-                    <img src={single} alt={event.title} className="w-full h-full object-cover spot-img" />
+                    <Image src={single} alt={event.title} fill sizes="(min-width: 1024px) 960px, 100vw" priority className="object-cover spot-img" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Calendar size={64} className="text-neutral-300 dark:text-neutral-700" />
@@ -355,7 +356,7 @@ export default function EventClient({
                         style={{ marginLeft: i === 0 ? 0 : -10, zIndex: 8 - i }}
                       >
                         {a.avatar_url && (
-                          <img src={a.avatar_url} alt="" className="w-full h-full object-cover" />
+                          <Image src={a.avatar_url} alt="" width={36} height={36} sizes="36px" className="w-full h-full object-cover" />
                         )}
                       </div>
                     ))}
@@ -381,7 +382,7 @@ export default function EventClient({
                           className="flex items-center gap-3 py-2.5 group"
                         >
                           {a.avatar_url ? (
-                            <img src={a.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                            <Image src={a.avatar_url} alt="" width={40} height={40} sizes="40px" className="w-10 h-10 rounded-full object-cover" />
                           ) : (
                             <div className="w-10 h-10 rounded-full bg-neutral-200 dark:bg-neutral-800" />
                           )}
@@ -417,7 +418,7 @@ export default function EventClient({
                   {waitlistAttendees.map((a) => (
                     <li key={a.id} className="flex items-center gap-3 py-2.5 opacity-60">
                       {a.avatar_url ? (
-                        <img src={a.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                        <Image src={a.avatar_url} alt="" width={40} height={40} sizes="40px" className="w-10 h-10 rounded-full object-cover" />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-neutral-200 dark:bg-neutral-800" />
                       )}
@@ -459,7 +460,7 @@ export default function EventClient({
               className="inline-flex items-center gap-3 group"
             >
               {host.avatar_url ? (
-                <img src={host.avatar_url} alt="" className="w-11 h-11 rounded-full object-cover" />
+                <Image src={host.avatar_url} alt="" width={44} height={44} sizes="44px" className="w-11 h-11 rounded-full object-cover" />
               ) : (
                 <div className="w-11 h-11 rounded-full bg-neutral-200 dark:bg-neutral-800" />
               )}

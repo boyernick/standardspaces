@@ -112,14 +112,37 @@ export default function CheckInButton({
           aria-label={isChecked ? "Visited" : "Mark as visited"}
           data-tooltip={isChecked ? "Visited" : "Check in"}
         >
-          {isChecked ? (
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <span className="relative inline-block w-4 h-4">
+            <CircleCheck
+              size={16}
+              strokeWidth={2}
+              className="absolute inset-0 text-neutral-600 dark:text-neutral-300 transition-all duration-[var(--duration-base)] ease-[var(--ease-out)]"
+              style={{
+                opacity: isChecked ? 0 : 1,
+                transform: isChecked ? "scale(0.7)" : "scale(1)",
+                filter: isChecked ? "blur(2px)" : "blur(0)",
+              }}
+            />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="absolute inset-0 transition-all duration-[var(--duration-base)] ease-[var(--ease-out)]"
+              style={{
+                opacity: isChecked ? 1 : 0,
+                transform: isChecked ? "scale(1)" : "scale(0.7)",
+                filter: isChecked ? "blur(0)" : "blur(2px)",
+              }}
+            >
               <circle cx="12" cy="12" r="10" fill="currentColor" className="text-neutral-900 dark:text-white" />
               <path d="m9 12 2 2 4-4" stroke="var(--color-surface)" strokeWidth="2" />
             </svg>
-          ) : (
-            <CircleCheck size={16} strokeWidth={2} className="text-neutral-600 dark:text-neutral-300" />
-          )}
+          </span>
         </button>
 
         {/* Wishlist → Favorite prompt */}

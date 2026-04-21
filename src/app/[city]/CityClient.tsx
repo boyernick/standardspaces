@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { CATEGORY_LABELS, CATEGORY_ORDER, SUBCATEGORIES, SUBCATEGORY_GROUPS, Category, Spot, EventRecord } from "@/lib/types";
 import { isSpotNew } from "@/lib/new-badge";
@@ -15,7 +16,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import WishlistButton from "@/components/WishlistButton";
 import { NewBadge } from "@/lib/new-badge";
 import { ChevronDown, Map as MapIcon, List, X, MapPin, Search, Calendar, SlidersHorizontal, Maximize2, Minimize2 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   squaredDistance,
@@ -139,6 +140,23 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
   // toggle (`mobileView`) so this flag only takes effect at the `split:`
   // breakpoint — the expand button below is hidden under `split:` as well.
   const [mapExpanded, setMapExpanded] = useState(false);
+  // Lazy-mount Mapbox on mobile: don't boot a WebGL context + tile fetches
+  // for users who only browse the list. Defaults to `false` during SSR and
+  // the first client render, then flips true on mount if the viewport is at
+  // or above the `split:` breakpoint. Also flips true (and stays true) the
+  // first time a mobile user taps the Map toggle, so switching back to the
+  // list doesn't tear down the map and lose its state.
+  const [mapMounted, setMapMounted] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mql = window.matchMedia("(min-width: 56rem)");
+    if (mql.matches) setMapMounted(true);
+    const onChange = (e: MediaQueryListEvent) => {
+      if (e.matches) setMapMounted(true);
+    };
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -845,17 +863,17 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                         <Link
                           key={event.id}
                           href={`/events/${event.id}`}
-                          className="group block rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors"
+                          className="group block rounded-2xl overflow-hidden card-edge card-edge-hover"
                         >
                           <div className="aspect-[16/10] bg-neutral-100 dark:bg-neutral-900 relative rounded-2xl overflow-hidden">
                             {event.cover_image_url ? (
-                              <img src={event.cover_image_url} alt={event.title} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform" />
+                              <Image src={event.cover_image_url} alt={event.title} fill sizes="(min-width: 1024px) 40vw, (min-width: 640px) 50vw, 100vw" className="object-cover group-hover:scale-[1.02] transition-transform" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-4xl font-semibold text-neutral-300 dark:text-neutral-700">
                                 {day}
                               </div>
                             )}
-                            <div className="absolute top-2 left-2 bg-white/95 dark:bg-neutral-900/95 backdrop-blur rounded-md px-2 pt-1.5 pb-1 flex flex-col items-center leading-none">
+                            <div className="absolute top-2 left-2 bg-white/95 dark:bg-neutral-900/95 backdrop-blur rounded-lg px-2 pt-1.5 pb-1 flex flex-col items-center leading-none">
                               <span className="text-[9px] font-medium text-neutral-500">{month}</span>
                               <span className="text-sm font-semibold">{day}</span>
                             </div>
@@ -906,9 +924,9 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
                 We&apos;re curating the best spaces in {cityName}.<br />Know a place that belongs here?
               </p>
-              <Link href="/recommend/new" className="inline-block mt-4 text-sm font-medium text-brand-500 hover:underline">
+              <ButtonLink href="/recommend/new" variant="secondary" className="mt-4">
                 Recommend a space
-              </Link>
+              </ButtonLink>
             </div>
           ) : !hydrated ? (
             // Pre-commit window: map hasn't emitted its first viewport yet.
@@ -965,7 +983,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                       <Link
                         key={spot.id}
                         href={`/${citySlug}/${spot.id}`}
-                        className="cursor-pointer group block rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors"
+                        className="cursor-pointer group block rounded-2xl overflow-hidden card-edge card-edge-hover"
                         onMouseEnter={() => focusOnNearby(spot)}
                         onMouseLeave={() => setActiveSpot(null)}
                       >
@@ -1001,7 +1019,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                     // curve (easeOutQuart-ish) — lands smoothly instead of snapping
                     // into place. Stagger capped so the last card isn't waiting.
                     transition={{ duration: 0.45, delay: Math.min(i, 5) * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                    className="cursor-pointer group block rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors relative"
+                    className="cursor-pointer group block rounded-2xl overflow-hidden card-edge card-edge-hover relative"
                     onMouseEnter={() => setHoveredSpotId(spot.id)}
                     onMouseLeave={() => setHoveredSpotId((prev) => (prev === spot.id ? null : prev))}
                   >
@@ -1023,7 +1041,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                     </Link>
                     {/* Top-left badge overlay on the image. pointer-events-none
                         so it doesn't steal the card's Link click. */}
-                    <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                    <div className="absolute top-2 left-3 z-10 pointer-events-none">
                       <NewBadge spot={spot} />
                     </div>
                   </motion.div>
@@ -1044,20 +1062,22 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
             className="w-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 relative split:h-full"
             style={mapHeight && mobileView === "map" ? { height: mapHeight } : undefined}
           >
-            <SpotMap
-              spots={filteredRaw}
-              activeSpot={activeSpot}
-              onSpotSelect={handleSpotSelect}
-              onViewChange={handleViewChange}
-              focusSpot={focusSpot}
-              focusToken={focusToken}
-              hoverSpotId={hoveredSpotId}
-              initialView={
-                initialViewport
-                  ? { center: initialViewport.center, zoom: initialViewport.zoom }
-                  : undefined
-              }
-            />
+            {mapMounted && (
+              <SpotMap
+                spots={filteredRaw}
+                activeSpot={activeSpot}
+                onSpotSelect={handleSpotSelect}
+                onViewChange={handleViewChange}
+                focusSpot={focusSpot}
+                focusToken={focusToken}
+                hoverSpotId={hoveredSpotId}
+                initialView={
+                  initialViewport
+                    ? { center: initialViewport.center, zoom: initialViewport.zoom }
+                    : undefined
+                }
+              />
+            )}
 
             {/* Expand / collapse side panel — desktop only. Shares the center
                 button's translucent pill style. */}
@@ -1089,7 +1109,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                         onClick={() => setActiveSpot(null)}
                         className="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800"
                       >
-                        <img src={activeSpot.images[0]} alt={activeSpot.name} loading="lazy" className="w-full h-full object-cover" />
+                        <Image src={activeSpot.images[0]} alt={activeSpot.name} width={80} height={80} sizes="80px" className="w-full h-full object-cover" />
                       </Link>
                     )}
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -1149,14 +1169,17 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
         <div className="flex items-center gap-2">
           <button
             onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
-            className="flex-1 flex items-center gap-2 px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-400 dark:text-neutral-500"
+            className="flex-1 flex items-center gap-2 px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-full text-neutral-400 dark:text-neutral-500"
           >
             <Search size={15} strokeWidth={2} />
             Search
           </button>
           <button
-            onClick={() => setMobileView(mobileView === "list" ? "map" : "list")}
-            className="flex items-center justify-center w-[70px] py-2.5 border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 text-neutral-600 dark:text-neutral-400 text-sm font-medium rounded-lg shrink-0 transition-colors"
+            onClick={() => {
+              setMapMounted(true);
+              setMobileView(mobileView === "list" ? "map" : "list");
+            }}
+            className="flex items-center justify-center w-[70px] py-2.5 border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 text-neutral-600 dark:text-neutral-400 text-sm font-medium rounded-full shrink-0 transition-colors"
           >
             {mobileView === "list" ? "Map" : "List"}
           </button>

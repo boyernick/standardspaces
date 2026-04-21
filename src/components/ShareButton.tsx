@@ -234,7 +234,28 @@ function ShareModal({
           <ShareTile
             onClick={onCopy}
             label={copied ? "Copied" : "Copy link"}
-            icon={copied ? <Check size={22} /> : <Link2 size={22} />}
+            icon={
+              <span className="relative inline-block w-[22px] h-[22px]">
+                <Link2
+                  size={22}
+                  className="absolute inset-0 transition-all duration-[var(--duration-base)] ease-[var(--ease-out)]"
+                  style={{
+                    opacity: copied ? 0 : 1,
+                    transform: copied ? "scale(0.7)" : "scale(1)",
+                    filter: copied ? "blur(2px)" : "blur(0)",
+                  }}
+                />
+                <Check
+                  size={22}
+                  className="absolute inset-0 transition-all duration-[var(--duration-base)] ease-[var(--ease-out)]"
+                  style={{
+                    opacity: copied ? 1 : 0,
+                    transform: copied ? "scale(1)" : "scale(0.7)",
+                    filter: copied ? "blur(0)" : "blur(2px)",
+                  }}
+                />
+              </span>
+            }
           />
         </div>
       </div>

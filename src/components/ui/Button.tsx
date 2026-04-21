@@ -37,7 +37,7 @@ function composeClasses({
   className = "",
 }: Pick<CommonProps, "variant" | "size" | "className">) {
   return [
-    "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium",
+    "inline-flex items-center justify-center gap-1.5 rounded-md font-medium",
     "transition-[background-color,border-color,opacity,transform] duration-[var(--duration-fast)]",
     "active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none",
     variants[variant],

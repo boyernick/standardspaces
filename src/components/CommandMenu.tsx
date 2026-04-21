@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { CATEGORY_LABELS, CATEGORY_ORDER, TOP_VIBES, Category, Spot, EventRecord } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
@@ -35,8 +36,14 @@ type Member = {
 
 type SemanticHit = { id: string; similarity: number };
 
-export default function CommandMenu() {
-  const [open, setOpen] = useState(false);
+interface CommandMenuProps {
+  /** Start the menu already open. Used by CommandMenuGate so the very first
+   *  ⌘K (which triggered the lazy-mount) still feels like an instant open. */
+  initialOpen?: boolean;
+}
+
+export default function CommandMenu({ initialOpen = false }: CommandMenuProps = {}) {
+  const [open, setOpen] = useState(initialOpen);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [spots, setSpots] = useState<Spot[]>([]);
@@ -407,8 +414,8 @@ export default function CommandMenu() {
                         className="w-full text-left px-5 py-2.5 flex items-center gap-3 hover:bg-ink-100 transition-colors"
                       >
                         {spot.images?.[0] && (
-                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
-                            <img src={spot.images[0]} alt="" className="w-full h-full object-cover spot-img" />
+                          <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                            <Image src={spot.images[0]} alt="" fill sizes="40px" className="object-cover spot-img" />
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
@@ -461,7 +468,7 @@ export default function CommandMenu() {
                         }`}
                       >
                         {member.avatar_url ? (
-                          <img src={member.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                          <Image src={member.avatar_url} alt="" width={32} height={32} sizes="32px" className="w-8 h-8 rounded-full object-cover shrink-0" />
                         ) : (
                           <div
                             className="w-8 h-8 rounded-full bg-surface-dark dark:bg-[#F7F7F3] border border-neutral-200 dark:border-neutral-800 flex items-center justify-center shrink-0 text-xs text-[#F7F7F3] dark:text-surface-dark"
@@ -509,8 +516,8 @@ export default function CommandMenu() {
                         }`}
                       >
                         {thumb ? (
-                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
-                            <img src={thumb} alt="" className="w-full h-full object-cover spot-img" />
+                          <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                            <Image src={thumb} alt="" fill sizes="40px" className="object-cover spot-img" />
                           </div>
                         ) : (
                           <div className="w-10 h-10 rounded-lg bg-neutral-900 dark:bg-white flex items-center justify-center shrink-0">
@@ -669,8 +676,8 @@ export default function CommandMenu() {
                         }`}
                       >
                         {spot.images?.[0] && (
-                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
-                            <img src={spot.images[0]} alt="" className="w-full h-full object-cover spot-img opacity-90" />
+                          <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
+                            <Image src={spot.images[0]} alt="" fill sizes="40px" className="object-cover spot-img opacity-90" />
                           </div>
                         )}
                         <div className="min-w-0 flex-1">

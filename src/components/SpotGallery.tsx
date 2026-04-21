@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, memo } from "react";
+import Image from "next/image";
 import { Grid2x2 } from "lucide-react";
 import Lightbox from "./Lightbox";
 
@@ -9,7 +10,7 @@ interface SpotGalleryProps {
   name: string;
 }
 
-const GalleryImage = memo(function GalleryImage({ src, alt, onClick }: { src: string; alt: string; onClick?: () => void }) {
+const GalleryImage = memo(function GalleryImage({ src, alt, onClick, priority }: { src: string; alt: string; onClick?: () => void; priority?: boolean }) {
   if (src === "/placeholder.jpg") {
     return <div className="w-full h-full bg-neutral-100 dark:bg-neutral-800" />;
   }
@@ -19,10 +20,13 @@ const GalleryImage = memo(function GalleryImage({ src, alt, onClick }: { src: st
       className={`relative w-full h-full bg-neutral-100 dark:bg-neutral-800 ${onClick ? "cursor-pointer" : ""}`}
       onClick={onClick}
     >
-      <img
+      <Image
         src={src}
         alt={alt}
-        className="w-full h-full object-cover spot-img"
+        fill
+        sizes="(min-width: 768px) 33vw, 100vw"
+        priority={priority}
+        className="object-cover spot-img"
       />
     </div>
   );
@@ -67,6 +71,7 @@ export default function SpotGallery({ images, name }: SpotGalleryProps) {
               <GalleryImage
                 src={src}
                 alt={`${name} ${i + 1}`}
+                priority={i === 0}
                 onClick={src !== "/placeholder.jpg" ? () => openLightbox(i) : undefined}
               />
             </div>
@@ -84,7 +89,7 @@ export default function SpotGallery({ images, name }: SpotGalleryProps) {
         <div className="relative">
           <div className="grid grid-cols-3 gap-2 px-2">
             <div className="aspect-square overflow-hidden rounded-lg">
-              <GalleryImage src={imgs[0]} alt={`${name} 1`} onClick={() => openLightbox(0)} />
+              <GalleryImage src={imgs[0]} alt={`${name} 1`} priority onClick={() => openLightbox(0)} />
             </div>
             <div className="aspect-square overflow-hidden rounded-lg">
               <GalleryImage src={imgs[1]} alt={`${name} 2`} onClick={() => openLightbox(1)} />

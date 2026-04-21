@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { EventRecord } from "@/lib/types";
 
 interface Props {
@@ -17,21 +18,23 @@ export default function EventCard({ event, spotName }: Props) {
   return (
     <Link
       href={`/events/${event.id}`}
-      className="group block w-[260px] shrink-0 rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 shadow-sm hover:shadow-md hover:border-neutral-300 dark:hover:border-neutral-700 transition-[box-shadow,border-color] duration-[var(--duration-base)] ease-[var(--ease-out)]"
+      className="group block w-[260px] shrink-0 rounded-2xl overflow-hidden card-edge card-edge-hover"
     >
       <div className="aspect-[16/10] bg-neutral-100 dark:bg-neutral-900 relative">
         {event.cover_image_url ? (
-          <img
+          <Image
             src={event.cover_image_url}
             alt={event.title}
-            className="w-full h-full object-cover spot-img group-hover:scale-[1.02] transition-transform duration-[var(--duration-base)] ease-[var(--ease-out)]"
+            fill
+            sizes="260px"
+            className="object-cover spot-img group-hover:scale-[1.02] transition-transform duration-[var(--duration-base)] ease-[var(--ease-out)]"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-neutral-700">
             <div className="text-4xl font-semibold">{day}</div>
           </div>
         )}
-        <div className="absolute top-2 left-2 bg-white/95 dark:bg-neutral-900/95 backdrop-blur rounded-md px-2 pt-1.5 pb-1 flex flex-col items-center leading-none">
+        <div className="absolute top-2 left-2 bg-white/95 dark:bg-neutral-900/95 backdrop-blur rounded-lg px-2 pt-1.5 pb-1 flex flex-col items-center leading-none">
           <span className="text-[9px] font-medium text-neutral-500">{month}</span>
           <span className="text-sm font-semibold">{day}</span>
         </div>
