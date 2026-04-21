@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-5 py-12 md:px-8 md:py-20">
+    <main className="flex-1 overflow-y-auto bg-[var(--background)] text-[var(--foreground)] px-5 py-12 md:px-8 md:py-20">
       <div className="mx-auto max-w-2xl">
         <Link
           href="/"

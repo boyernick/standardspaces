@@ -224,36 +224,24 @@ function ApplyForm() {
             >
               {loading ? "Sending..." : "Send verification code"}
             </button>
-            {/* SMS consent disclosure — required copy for Twilio toll-free
-                verification (reason code 30509). Must be visible on the page
-                where users opt in (here, by entering their phone). Covers:
-                opt-in mechanism, sample messages, frequency, rates,
-                STOP/HELP, and a link to the privacy policy. */}
+            {/* SMS consent — kept brief (Airbnb-style) with the key
+                disclosures at the opt-in moment: what you're agreeing to,
+                rates notice, STOP, and a link to /privacy#sms-consent
+                where the full Twilio-required detail lives (message
+                types, frequency, HELP, sample messages). */}
             <p
               id="sms-consent"
-              className="pt-2 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400"
+              className="pt-1 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400"
               style={fontCalibre}
             >
-              By tapping &ldquo;Send verification code&rdquo; you agree to
-              receive account-related SMS messages from Standard Spaces at
-              the number above — sign-in codes, application updates, event
-              reminders, and referrals you initiate (e.g. &ldquo;Your
-              Standard Spaces code is 123456&rdquo; or &ldquo;Your
-              application was approved — sign in at thestandardspaces.com&rdquo;).
-              Message frequency varies. Msg &amp; data rates may apply.
-              Reply HELP for help or STOP to opt out. See our{" "}
+              We&apos;ll text a sign-in code and occasional account
+              updates (application status, event reminders, referrals).
+              Msg &amp; data rates may apply. Reply STOP to opt out.{" "}
               <Link
-                href="/privacy"
+                href="/privacy#sms-consent"
                 className="underline underline-offset-2 hover:text-neutral-700 dark:hover:text-neutral-300"
               >
                 Privacy Policy
-              </Link>
-              {" "}and{" "}
-              <Link
-                href="/terms"
-                className="underline underline-offset-2 hover:text-neutral-700 dark:hover:text-neutral-300"
-              >
-                Terms
               </Link>
               .
             </p>
