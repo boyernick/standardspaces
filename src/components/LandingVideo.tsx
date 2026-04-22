@@ -11,7 +11,10 @@ export default function LandingVideo() {
 
   return (
     <div
-      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] md:w-[65vw] aspect-[6/4] overflow-hidden"
+      // pointer-events-none so the masked rectangle doesn't swallow clicks
+      // meant for the absolutely-positioned footer / CTA sitting beneath it
+      // in the stacking order.
+      className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] md:w-[65vw] aspect-[6/4] overflow-hidden"
       style={{ mask: "radial-gradient(ellipse at center, black 30%, transparent 80%)", WebkitMask: "radial-gradient(ellipse at center, black 30%, transparent 80%)" }}
     >
       <video

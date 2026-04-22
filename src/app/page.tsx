@@ -47,7 +47,9 @@ export default function Home() {
         </Link>
       </div>
 
-      {/* Mobile fixed bottom apply CTA */}
+      {/* Mobile fixed bottom apply CTA. Descriptor + policy links are
+          desktop-only (see below) — on mobile the apply button carries
+          the whole bottom area so it stays thumb-reachable. */}
       <div className="absolute bottom-0 inset-x-0 z-10 md:hidden px-5 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.75rem))] pt-3">
         <Link
           href="/apply"
@@ -56,6 +58,37 @@ export default function Home() {
         >
           Apply to join
         </Link>
+      </div>
+
+      {/* Desktop footer. Three-column row: copyright left, service
+          descriptor centered, policy links right. Uses a grid (not
+          justify-between) so the middle column stays optically centered
+          regardless of how the side columns' text widths change. */}
+      <div
+        className="hidden md:grid absolute bottom-0 inset-x-0 z-10 px-5 py-4 grid-cols-3 items-center text-[11px] leading-relaxed text-black/50"
+        style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}
+      >
+        <span>&copy; {new Date().getFullYear()} Standard Spaces</span>
+        <p className="text-center">
+          A members-only, curated guide to Miami&apos;s best spaces.
+        </p>
+        <div className="flex items-center justify-end gap-2">
+          <Link href="/contact" className="underline underline-offset-2 hover:text-black/80">
+            Contact
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href="/privacy#sms-consent" className="underline underline-offset-2 hover:text-black/80">
+            SMS consent
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href="/privacy" className="underline underline-offset-2 hover:text-black/80">
+            Privacy
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href="/terms" className="underline underline-offset-2 hover:text-black/80">
+            Terms
+          </Link>
+        </div>
       </div>
 
       {/* Video overlay — covers viewport */}

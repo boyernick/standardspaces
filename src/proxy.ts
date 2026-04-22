@@ -2,7 +2,18 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const publicPaths = ["/", "/apply", "/login", "/auth/callback"];
+const publicPaths = [
+  "/",
+  "/apply",
+  "/login",
+  "/auth/callback",
+  // Legal + support pages. Must be reachable unauthenticated so crawlers
+  // and compliance reviewers (e.g. Twilio toll-free verification) can
+  // read the opt-in / policy content without a session.
+  "/privacy",
+  "/terms",
+  "/contact",
+];
 
 // Link-preview / unfurler user agents. These have no user session, so
 // without a bypass they'd be redirected to `/` on every protected path and
