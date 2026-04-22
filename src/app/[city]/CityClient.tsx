@@ -345,13 +345,6 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
   // nearest matching spots overall (Airbnb's `location_search=NEARBY`
   // pattern) so the panel never goes blank.
   const { filtered, nearby, hydrated } = useMemo(() => {
-    if (!committedBounds || !committedCenter) {
-      return {
-        filtered: [] as Spot[],
-        nearby: [] as Spot[],
-        hydrated: false,
-      };
-    }
     // Strict viewport scoping — the panel should mirror exactly what's
     // visible on the map, no padding, no fudge factor.
     //
@@ -366,6 +359,22 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
       if (cats.length > 0 && cats.every((c) => DEPRIORITY_CATS.has(c))) return 2;
       return 1;
     };
+    // Mobile list view before the map has booted: no viewport to scope
+    // against, so show every matching spot sorted by tier + is_new only.
+    // Without this, `hydrated` would stay false forever and the skeleton
+    // would never resolve (mapMounted only flips true on the split:
+    // breakpoint or after the user taps Map).
+    if (!mapMounted || !committedBounds || !committedCenter) {
+      const sorted = [...filteredRaw].sort((a, b) => {
+        const at = categoryTier(a.category);
+        const bt = categoryTier(b.category);
+        if (at !== bt) return at - bt;
+        const an = isSpotNew(a) ? 1 : 0;
+        const bn = isSpotNew(b) ? 1 : 0;
+        return bn - an;
+      });
+      return { filtered: sorted, nearby: [] as Spot[], hydrated: true };
+    }
     const sortFn = (a: Spot, b: Spot): number => {
       const at = categoryTier(a.category);
       const bt = categoryTier(b.category);
@@ -397,7 +406,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
       )
       .slice(0, 6);
     return { filtered: [] as Spot[], nearby: fallback, hydrated: true };
-  }, [filteredRaw, committedBounds, committedCenter]);
+  }, [filteredRaw, committedBounds, committedCenter, mapMounted]);
 
 
   // Reset the visible window whenever the filtered list identity changes
@@ -988,7 +997,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                     aria-hidden="true"
                     fill
                     sizes="480px"
-                    className="object-contain select-none pointer-events-none dark:opacity-70"
+                    className="object-contain select-none pointer-events-none dark:opacity-40 dark:mix-blend-screen"
                     style={{
                       WebkitMaskImage:
                         "radial-gradient(ellipse at center, black 35%, transparent 78%)",

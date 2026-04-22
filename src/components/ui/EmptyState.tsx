@@ -36,7 +36,7 @@ export default function EmptyState({
             aria-hidden={!image.alt}
             fill
             sizes="480px"
-            className="object-contain select-none pointer-events-none dark:opacity-70"
+            className="object-contain select-none pointer-events-none dark:opacity-40 dark:mix-blend-screen"
             style={{
               WebkitMaskImage:
                 "radial-gradient(ellipse at center, black 35%, transparent 78%)",
