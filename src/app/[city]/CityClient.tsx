@@ -920,9 +920,25 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                   </div>
                 </div>
               ) : (
-                <div className="px-6 py-24 text-center">
-                  <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-5 bg-ink-100">
-                    <Calendar size={22} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
+                <div className="px-6 pt-4 pb-10 text-center">
+                  {/* Watercolor illustration — same composition / mask as the
+                      "No spaces in this area" state so the two empty states
+                      feel cohesive across the Events and Spaces filters. */}
+                  <div className="mx-auto mb-2 w-full max-w-[480px] aspect-[16/9] relative">
+                    <Image
+                      src="/empty-states/events-nullstate.png"
+                      alt=""
+                      aria-hidden="true"
+                      fill
+                      sizes="480px"
+                      className="object-contain select-none pointer-events-none dark:opacity-40 dark:mix-blend-screen"
+                      style={{
+                        WebkitMaskImage:
+                          "radial-gradient(ellipse at center, black 35%, transparent 78%)",
+                        maskImage:
+                          "radial-gradient(ellipse at center, black 35%, transparent 78%)",
+                      }}
+                    />
                   </div>
                   <h3 className="text-base font-medium">No upcoming events</h3>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
@@ -931,7 +947,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                       : `Nothing on the calendar in ${cityName} yet.`}
                   </p>
                   <div className="mt-6">
-                    <Button onClick={() => { setEventsOnly(false); setActiveEventTypes(new Set()); setEventTypesOpen(false); }}>Clear all filters</Button>
+                    <Button onClick={() => { setEventsOnly(false); setActiveEventTypes(new Set()); setEventTypesOpen(false); }}>Clear filters</Button>
                   </div>
                 </div>
               )}
@@ -979,7 +995,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                 Nothing in {cityName} fits this combination.
               </p>
               <div className="mt-6">
-                <Button onClick={clearAll}>Clear all filters</Button>
+                <Button onClick={clearAll}>Clear filters</Button>
               </div>
             </div>
           ) : filtered.length === 0 ? (
@@ -993,9 +1009,9 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                     only — the text below carries the meaning. Served through
                     next/image so the 2MB PNG source ships as a right-sized
                     WebP/AVIF on mobile. */}
-                <div className="mx-auto mb-2 w-full max-w-[480px] aspect-[8/5] relative">
+                <div className="mx-auto mb-2 w-full max-w-[480px] aspect-[16/9] relative">
                   <Image
-                    src="/empty-states/cityscape.png"
+                    src="/empty-states/nospaces-nullstate.png"
                     alt=""
                     aria-hidden="true"
                     fill

@@ -235,11 +235,13 @@ export default function EventClient({
                   </div>
                 )}
               </div>
-              {/* Desktop: rounded card matching the spot 3-photo strip width */}
-              <div className="hidden md:block px-2">
-                <div className="relative aspect-[3/1] overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
+              {/* Desktop: rounded card constrained to the content column's
+                  max-w-3xl rail (matches the body below for a clean vertical
+                  spine; previously full-bleed minus 8px). */}
+              <div className="hidden md:block max-w-3xl mx-auto px-4 md:px-6 w-full">
+                <div className="relative aspect-[16/9] overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-900">
                   {single ? (
-                    <Image src={single} alt={event.title} fill sizes="(min-width: 1024px) 960px, 100vw" priority className="object-cover spot-img" />
+                    <Image src={single} alt={event.title} fill sizes="(min-width: 1024px) 720px, 100vw" priority className="object-cover spot-img" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Calendar size={64} className="text-neutral-300 dark:text-neutral-700" />

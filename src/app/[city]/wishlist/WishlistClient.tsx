@@ -102,7 +102,7 @@ export default function WishlistClient({ spots, citySlug }: { spots: Spot[]; cit
                 Nothing on your wishlist fits this combination.
               </p>
               <div className="mt-6">
-                <Button onClick={() => { setActiveCategory(null); setQuery(""); setPage(1); }}>Clear all filters</Button>
+                <Button onClick={() => { setActiveCategory(null); setQuery(""); setPage(1); }}>Clear filters</Button>
               </div>
             </div>
           ) : (

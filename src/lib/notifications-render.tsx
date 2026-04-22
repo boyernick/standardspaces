@@ -144,13 +144,9 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
       };
 
     case "follower_checkin": {
-      const score = typeof row.metadata?.score === "number"
-        ? (row.metadata.score as number)
-        : null;
       const spotTitle = row.spot?.name ?? "a space";
       // Two subjects in one sentence (person + space) — only bold the actor
-      // so one "headline" stays dominant. Score moves to body to keep the
-      // title a clean single-clause sentence.
+      // so one "headline" stays dominant.
       return {
         icon: "pin",
         title: (
@@ -158,10 +154,7 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
             {bold(name)} checked in at {spotTitle}
           </>
         ),
-        body:
-          score !== null
-            ? `${score.toFixed(1)} · See where they've been`
-            : "See where they've been",
+        body: "They liked it",
         href: spotHref(row),
         actorAvatar: avatar,
         actorName: name,
@@ -254,7 +247,7 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
             {bold(row.event?.title ?? "An event")} was cancelled
           </>
         ),
-        body: "The host called it off",
+        body: "The host canceled the event",
         href: eventHref(row),
         actorAvatar: null,
         actorName: null,

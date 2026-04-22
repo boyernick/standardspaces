@@ -104,7 +104,7 @@ export default function FavoritesClient({ spots, citySlug }: { spots: Spot[]; ci
                 Nothing in your favorites fits this combination.
               </p>
               <div className="mt-6">
-                <Button onClick={() => { setActiveCategory(null); setQuery(""); setPage(1); }}>Clear all filters</Button>
+                <Button onClick={() => { setActiveCategory(null); setQuery(""); setPage(1); }}>Clear filters</Button>
               </div>
             </div>
           ) : (

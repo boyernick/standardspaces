@@ -53,10 +53,15 @@ export default async function CityPage({
   const wishlistedSpotIds = (wishData ?? []).map((r) => r.spot_id);
   const checkedInSpotIds = (checkinData ?? []).map((r) => r.spot_id);
 
-  // Merge in events the user hosts in this city (including private/own events not in public list)
+  // Merge in events the user hosts in this city (including private/own events not in public list).
+  // `hosting` comes from getEventsByHost, which only excludes `hidden` status so the Hosting tab
+  // on /events can still surface cancellations — exclude them here so the city feed doesn't.
   const now = Date.now();
   const myHostedInCity = hosting.filter(
-    (e) => e.city.toLowerCase() === cityName.toLowerCase() && new Date(e.starts_at).getTime() >= now
+    (e) =>
+      e.city.toLowerCase() === cityName.toLowerCase() &&
+      new Date(e.starts_at).getTime() >= now &&
+      e.status !== "cancelled"
   );
   const seen = new Set(publicEvents.map((e) => e.id));
   const merged = [...publicEvents];

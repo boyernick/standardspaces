@@ -101,7 +101,7 @@ export default function CheckinsClient({ spots, citySlug, ratings = {} }: { spot
                 Nothing in your check-ins fits this combination.
               </p>
               <div className="mt-6">
-                <Button onClick={() => { setActiveCategory(null); setQuery(""); setPage(1); }}>Clear all filters</Button>
+                <Button onClick={() => { setActiveCategory(null); setQuery(""); setPage(1); }}>Clear filters</Button>
               </div>
             </div>
           ) : (
