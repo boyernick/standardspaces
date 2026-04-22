@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getSpotById, getSpotsByCity, getAllSpotIds } from "@/lib/data";
+import { getSpotById, getSpotsByCity } from "@/lib/data";
 import { getVisibleEventsForSpot } from "@/lib/events";
 import { CATEGORY_LABELS } from "@/lib/types";
 import EventCard from "@/components/EventCard";
@@ -18,10 +18,12 @@ import { FadeIn, GalleryReveal, SectionReveal } from "@/components/ListingAnimat
 import { NewBadge } from "@/lib/new-badge";
 import TrackView from "@/components/TrackView";
 
-export async function generateStaticParams() {
-  const ids = await getAllSpotIds();
-  return ids.map((id) => ({ id }));
-}
+// Force dynamic rendering — cannot statically prerender because <Navbar />
+// reads cookies via next/headers for the per-user avatar + badge counts.
+// With generateStaticParams still declared, Next would try to SSG each
+// spot page at build time and crash with "Page changed from static to
+// dynamic at runtime" → 500 in production on every /miami/[id] URL.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
