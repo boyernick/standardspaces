@@ -1,12 +1,14 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { checkApplicationByPhone, requestApplyOtp, submitApplication } from "@/app/actions/apply";
 import Link from "next/link";
 
 type Step = "phone" | "verify" | "details" | "submitted" | "approved";
+
+const PHONE_PLACEHOLDER = "(555) 123 - 4567";
 
 function ApplyForm() {
   const searchParams = useSearchParams();
@@ -52,6 +54,61 @@ function ApplyForm() {
     if (digits.length <= 3) return `(${digits}`;
     if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
     return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)} - ${digits.slice(6, 10)}`;
+  }
+
+  // Measure placeholder width so the empty-state caret sits at the left
+  // edge of the centered placeholder rather than in the middle of it.
+  const phoneMeasureRef = useRef<HTMLSpanElement>(null);
+  const [phonePlaceholderWidth, setPhonePlaceholderWidth] = useState(0);
+  const [phoneFocused, setPhoneFocused] = useState(true);
+  const useIsomorphicLayoutEffect =
+    typeof window !== "undefined" ? useLayoutEffect : useEffect;
+  useIsomorphicLayoutEffect(() => {
+    if (phoneMeasureRef.current) {
+      setPhonePlaceholderWidth(phoneMeasureRef.current.getBoundingClientRect().width);
+    }
+  }, []);
+
+  // Six-box OTP input refs + helpers — typing auto-advances, Backspace
+  // steps back (clearing the previous digit), arrow keys navigate, and
+  // paste / iOS SMS autofill fills all boxes.
+  const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
+
+  function applyOtpDigits(index: number, digits: string) {
+    const clean = digits.replace(/\D/g, "");
+    if (clean.length === 0) {
+      const next = otp.slice(0, index) + otp.slice(index + 1);
+      setOtp(next);
+      return;
+    }
+    const merged = (otp.slice(0, index) + clean + otp.slice(index + clean.length)).slice(0, 6);
+    setOtp(merged);
+    const nextFocus = Math.min(index + clean.length, 5);
+    requestAnimationFrame(() => otpRefs.current[nextFocus]?.focus());
+  }
+
+  function handleOtpKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace") {
+      if (!otp[index] && index > 0) {
+        e.preventDefault();
+        const next = otp.slice(0, index - 1) + otp.slice(index);
+        setOtp(next);
+        otpRefs.current[index - 1]?.focus();
+      }
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      e.preventDefault();
+      otpRefs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowRight" && index < 5) {
+      e.preventDefault();
+      otpRefs.current[index + 1]?.focus();
+    }
+  }
+
+  function handleOtpPaste(index: number, e: React.ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData("text");
+    if (!pasted) return;
+    e.preventDefault();
+    applyOtpDigits(index, pasted);
   }
 
   const rawDigits = phone.replace(/\D/g, "");
@@ -188,7 +245,8 @@ function ApplyForm() {
             <>
               <h1 className="text-xl font-medium mb-1" style={fontMartina}>Enter your code</h1>
               <p className="text-sm text-neutral-500 dark:text-neutral-400" style={fontCalibre}>
-                6-digit code sent to {fullPhone}
+                6-digit code sent to{" "}
+                <span className="font-medium">+1 {formatPhone(rawDigits)}</span>
               </p>
             </>
           ) : (
@@ -203,17 +261,40 @@ function ApplyForm() {
 
         {step === "phone" && (
           <form onSubmit={handleSendCode} className="space-y-3">
-            <div>
+            <div className="relative">
               <input
                 type="tel"
+                inputMode="numeric"
+                autoComplete="tel"
                 value={formatPhone(rawDigits)}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                placeholder="(555) 123 - 4567"
+                onFocus={() => setPhoneFocused(true)}
+                onBlur={() => setPhoneFocused(false)}
+                placeholder={PHONE_PLACEHOLDER}
                 required
-                className={`${inputStyle} text-center`}
+                className={`${inputStyle} text-center ${rawDigits.length === 0 ? "caret-transparent" : "caret-brand-500"}`}
                 style={fontCalibre}
                 autoFocus
               />
+              <span
+                ref={phoneMeasureRef}
+                aria-hidden
+                className="invisible absolute top-0 left-0 whitespace-pre text-sm"
+                style={fontCalibre}
+              >
+                {PHONE_PLACEHOLDER}
+              </span>
+              {rawDigits.length === 0 && phoneFocused && phonePlaceholderWidth > 0 && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute top-1/2 -translate-y-1/2 w-px h-4 bg-brand-500"
+                  style={{
+                    left: `calc(50% - ${phonePlaceholderWidth / 2}px)`,
+                    animation: "caret-blink 1s step-start infinite",
+                  }}
+                />
+              )}
+              <style>{`@keyframes caret-blink { 50% { opacity: 0; } }`}</style>
             </div>
             {error && <p className="text-xs text-red-600" style={fontCalibre}>{error}</p>}
             <button
@@ -250,18 +331,29 @@ function ApplyForm() {
 
         {step === "verify" && (
           <form onSubmit={handleVerifyCode} className="space-y-3">
-            <input
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="000000"
-              required
-              className={`${inputStyle} text-center tracking-[0.3em]`}
-              style={fontCalibre}
-              autoFocus
-            />
+            <div className="flex items-center justify-center gap-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <input
+                  key={i}
+                  ref={(el) => { otpRefs.current[i] = el; }}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete={i === 0 ? "one-time-code" : "off"}
+                  maxLength={6}
+                  value={otp[i] ?? ""}
+                  onChange={(e) => applyOtpDigits(i, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                  onPaste={(e) => handleOtpPaste(i, e)}
+                  onFocus={(e) => e.currentTarget.select()}
+                  placeholder="•"
+                  required
+                  className="w-11 h-12 text-center text-base border border-neutral-200 dark:border-neutral-700 rounded-lg bg-transparent text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors caret-brand-500"
+                  style={fontCalibre}
+                  autoFocus={i === 0}
+                  aria-label={`Digit ${i + 1} of 6`}
+                />
+              ))}
+            </div>
             {error && <p className="text-xs text-red-600" style={fontCalibre}>{error}</p>}
             <button
               type="submit"

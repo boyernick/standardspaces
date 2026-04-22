@@ -955,7 +955,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
             // Render a skeleton grid so we never flash alphabetical content.
             <div className="p-4 pt-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 split:grid-cols-1 lg:grid-cols-2 gap-x-5 gap-y-6 split:gap-x-3 split:gap-y-4">
-                {Array.from({ length: 4 }).map((_, i) => (
+                {Array.from({ length: 8 }).map((_, i) => (
                   <div
                     key={i}
                     className="rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800"
