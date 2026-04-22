@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import PageShell from "@/components/ui/PageShell";
+import Navbar from "@/components/Navbar";
 import PageHeader from "@/components/ui/PageHeader";
 import { ButtonLink } from "@/components/ui/Button";
 import { requireAuth } from "@/lib/auth";
@@ -13,7 +14,7 @@ export default async function RecommendPage() {
   const recommendations = await getMyRecommendations();
 
   return (
-    <PageShell maxWidth="md">
+    <PageShell navbar={<Navbar />} maxWidth="md">
       <PageHeader
         title="Recommendations"
         action={<ButtonLink href="/recommend/new">Recommend a space</ButtonLink>}

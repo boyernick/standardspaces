@@ -8,6 +8,7 @@ import { getProfileStats } from "@/app/actions/profile";
 import { getUserRatingsMap } from "@/app/actions/ratings";
 import { getPastAttendedEvents } from "@/lib/events";
 import PageShell from "@/components/ui/PageShell";
+import Navbar from "@/components/Navbar";
 import ProfileClient from "./ProfileClient";
 
 export default async function ProfilePage() {
@@ -59,7 +60,7 @@ export default async function ProfilePage() {
   }
 
   return (
-    <PageShell maxWidth="md">
+    <PageShell navbar={<Navbar />} maxWidth="md">
       <ProfileClient
         profile={profile}
         stats={stats}

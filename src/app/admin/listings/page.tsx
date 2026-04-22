@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import PageShell from "@/components/ui/PageShell";
+import Navbar from "@/components/Navbar";
 import PageHeader from "@/components/ui/PageHeader";
 import ListingsTable from "./ListingsTable";
 
@@ -14,7 +15,7 @@ export default async function AdminListingsPage() {
     .order("name");
 
   return (
-    <PageShell maxWidth="lg">
+    <PageShell navbar={<Navbar />} maxWidth="lg">
       <PageHeader title="Listings" />
       <ListingsTable spots={spots ?? []} />
     </PageShell>

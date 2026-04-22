@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { List, Users, Sparkles, UserRound } from "lucide-react";
 import PageShell from "@/components/ui/PageShell";
+import Navbar from "@/components/Navbar";
 
 export default async function AdminPage() {
   await requireAdmin();
@@ -48,7 +49,7 @@ export default async function AdminPage() {
   ];
 
   return (
-    <PageShell maxWidth="md">
+    <PageShell navbar={<Navbar />} maxWidth="md">
       <h1 className="mb-10 text-center">Admin</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

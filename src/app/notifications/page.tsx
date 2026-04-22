@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getNotifications } from "@/app/actions/notifications";
 import PageShell from "@/components/ui/PageShell";
+import Navbar from "@/components/Navbar";
 import NotificationsClient from "./NotificationsClient";
 
 export const metadata: Metadata = { title: "Notifications" };
@@ -38,7 +39,7 @@ export default async function NotificationsPage({
   }
 
   return (
-    <PageShell maxWidth="md">
+    <PageShell navbar={<Navbar />} maxWidth="md">
       <NotificationsClient initialRows={rows} mock={isMock} />
     </PageShell>
   );

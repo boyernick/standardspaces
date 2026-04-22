@@ -6,6 +6,7 @@ import { getProfileStats } from "@/app/actions/profile";
 import { getFollowStatus } from "@/app/actions/follows";
 import { getPastAttendedEvents } from "@/lib/events";
 import PageShell from "@/components/ui/PageShell";
+import Navbar from "@/components/Navbar";
 import ProfileClient from "@/app/profile/ProfileClient";
 
 export default async function MemberProfilePage({ params }: { params: Promise<{ id: string }> }) {
@@ -60,7 +61,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
   }
 
   return (
-    <PageShell maxWidth="md">
+    <PageShell navbar={<Navbar />} maxWidth="md">
       <ProfileClient
         profile={profile}
         stats={stats}

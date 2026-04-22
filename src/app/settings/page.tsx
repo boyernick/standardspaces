@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import PageShell from "@/components/ui/PageShell";
+import Navbar from "@/components/Navbar";
 import SettingsClient from "./SettingsClient";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -20,7 +21,7 @@ export default async function SettingsPage() {
   const notificationPrefs = { ...defaultPrefs, ...(profile?.notification_prefs ?? {}) };
 
   return (
-    <PageShell maxWidth="md">
+    <PageShell navbar={<Navbar />} maxWidth="md">
       <SettingsClient
         phone={profile?.phone || ""}
         city={profile?.city || "Miami"}

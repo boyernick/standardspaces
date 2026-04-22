@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import PageShell from "@/components/ui/PageShell";
+import Navbar from "@/components/Navbar";
 import PageHeader from "@/components/ui/PageHeader";
 import RecommendationList from "./RecommendationList";
 
@@ -16,7 +17,7 @@ export default async function AdminRecommendationsPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <PageShell maxWidth="md">
+    <PageShell navbar={<Navbar />} maxWidth="md">
       <PageHeader title="Recommendations" />
       <RecommendationList recommendations={recommendations ?? []} />
     </PageShell>

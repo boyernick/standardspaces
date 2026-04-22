@@ -10,7 +10,6 @@ import UpcomingEventsStrip from "@/components/UpcomingEventsStrip";
 import dynamic from "next/dynamic";
 const SpotMap = dynamic(() => import("@/components/Map"), { ssr: false });
 import ImageCarousel from "@/components/ImageCarousel";
-import Navbar from "@/components/Navbar";
 import CheckInButton from "@/components/CheckInButton";
 import FavoriteButton from "@/components/FavoriteButton";
 import WishlistButton from "@/components/WishlistButton";
@@ -85,9 +84,13 @@ interface CityClientProps {
   invitedEvents?: EventRecord[];
   eventSpotNames?: Record<string, string>;
   eventSpotCategories?: Record<string, Category[]>;
+  // Rendered on the server (with the user's avatar + badge counts
+  // prefetched) and passed in as JSX so this client boundary can embed it
+  // without importing the server-only module.
+  navbar: React.ReactNode;
 }
 
-export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wishlistedSpotIds = [], checkedInSpotIds = [], cityName, citySlug, userCitySlug, upcomingEvents = [], invitedEvents = [], eventSpotNames = {}, eventSpotCategories = {} }: CityClientProps) {
+export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wishlistedSpotIds = [], checkedInSpotIds = [], cityName, citySlug, userCitySlug, upcomingEvents = [], invitedEvents = [], eventSpotNames = {}, eventSpotCategories = {}, navbar }: CityClientProps) {
   const favoritedSet = useMemo(() => new Set(favoritedSpotIds), [favoritedSpotIds]);
   const wishlistedSet = useMemo(() => new Set(wishlistedSpotIds), [wishlistedSpotIds]);
   const checkedInSet = useMemo(() => new Set(checkedInSpotIds), [checkedInSpotIds]);
@@ -472,7 +475,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
 
   return (
     <div className="h-[100dvh] flex flex-col bg-surface">
-      <Navbar />
+      {navbar}
 
       <motion.div
         initial={{ opacity: 0, y: 6 }}

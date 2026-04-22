@@ -1,5 +1,3 @@
-import Navbar from "@/components/Navbar";
-
 type MaxWidth = "sm" | "md" | "lg";
 
 const widthClass: Record<MaxWidth, string> = {
@@ -9,8 +7,10 @@ const widthClass: Record<MaxWidth, string> = {
 };
 
 /**
- * Canonical authenticated-page wrapper. Renders Navbar, sets the surface
- * background, and constrains content to one of three widths.
+ * Canonical authenticated-page wrapper. Sets the surface background and
+ * constrains content to one of three widths. The caller renders the
+ * Navbar and passes it in as `navbar`, so this component stays free of
+ * server-only imports and can be used from both server and client pages.
  *
  * Prior to this component the same shell was written 4 different ways
  * across the app (`bg-surface` class, inline CSS var, `min-h-screen`,
@@ -20,9 +20,11 @@ const widthClass: Record<MaxWidth, string> = {
  */
 export default function PageShell({
   children,
+  navbar,
   maxWidth = "md",
 }: {
   children: React.ReactNode;
+  navbar: React.ReactNode;
   maxWidth?: MaxWidth;
 }) {
   return (
@@ -30,7 +32,7 @@ export default function PageShell({
       className="h-full overflow-y-auto"
       style={{ backgroundColor: "var(--color-surface)" }}
     >
-      <Navbar />
+      {navbar}
       <div className={`${widthClass[maxWidth]} mx-auto px-4 md:px-6 py-8 page-enter`}>
         {children}
       </div>

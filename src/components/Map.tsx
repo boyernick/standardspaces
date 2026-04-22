@@ -127,37 +127,74 @@ export default function SpotMap(props: MapProps) {
   activeIdRef.current = activeSpot?.id ?? null;
   hoverIdRef.current = hoverSpotId;
 
-  // Request user location. Cache in sessionStorage so a sign-out/sign-in
-  // remount doesn't re-prompt or re-fetch.
+  // Request user location. Cache in localStorage so repeat visits don't
+  // re-trigger the browser's permission prompt on platforms with
+  // session-scoped permissions (notably iOS Safari). Once we have any
+  // cached coords, we never call getCurrentPosition again unless the
+  // Permissions API says the state is 'granted' (in which case the call
+  // is silent — no prompt). The cache never expires for prompt-avoidance
+  // purposes; it only controls whether we silently refresh in the
+  // background.
   useEffect(() => {
     if (!navigator.geolocation) { setGeoResolved(true); return; }
 
-    // Use cached location if it's fresh (< 10 minutes old)
+    const REFRESH_AFTER_MS = 24 * 60 * 60 * 1000;
+    let cached: { lng: number; lat: number; ts: number } | null = null;
     try {
-      const raw = sessionStorage.getItem("userLocation");
-      if (raw) {
-        const parsed = JSON.parse(raw) as { lng: number; lat: number; ts: number };
-        if (Date.now() - parsed.ts < 10 * 60 * 1000) {
-          setUserLocation([parsed.lng, parsed.lat]);
-          setGeoResolved(true);
-          return;
-        }
-      }
+      const raw = localStorage.getItem("userLocation");
+      if (raw) cached = JSON.parse(raw) as { lng: number; lat: number; ts: number };
     } catch {}
+    const cacheIsStale = !!cached && Date.now() - cached.ts > REFRESH_AFTER_MS;
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lng = pos.coords.longitude;
-        const lat = pos.coords.latitude;
-        setUserLocation([lng, lat]);
-        setGeoResolved(true);
-        try {
-          sessionStorage.setItem("userLocation", JSON.stringify({ lng, lat, ts: Date.now() }));
-        } catch {}
-      },
-      () => { setGeoResolved(true); },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 }
-    );
+    if (cached) {
+      // Use cached coords immediately so the map centers without waiting
+      // on a (possibly slow) geolocation round trip.
+      setUserLocation([cached.lng, cached.lat]);
+      setGeoResolved(true);
+    }
+
+    const fetchFresh = () => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lng = pos.coords.longitude;
+          const lat = pos.coords.latitude;
+          setUserLocation([lng, lat]);
+          setGeoResolved(true);
+          try {
+            localStorage.setItem("userLocation", JSON.stringify({ lng, lat, ts: Date.now() }));
+          } catch {}
+        },
+        () => { setGeoResolved(true); },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 }
+      );
+    };
+
+    // Permissions API: lets us know the state without triggering a prompt.
+    // Safari added support in 16; older browsers fall back to the legacy
+    // "just call getCurrentPosition" path.
+    const perms = navigator.permissions;
+    if (perms?.query) {
+      perms.query({ name: "geolocation" as PermissionName }).then((status) => {
+        if (status.state === "granted") {
+          // Silent refresh, but only if coords are actually stale — no
+          // point hitting the GPS API on every nav if we just fetched.
+          if (!cached || cacheIsStale) fetchFresh();
+        } else if (status.state === "denied") {
+          setGeoResolved(true);
+        } else if (!cached) {
+          // First visit ever: trigger the one-time prompt. If the user
+          // later returns with permission expired (iOS Safari session
+          // scope), we'll still have `cached` and skip this branch —
+          // no re-prompt.
+          fetchFresh();
+        }
+      }).catch(() => {
+        if (!cached) fetchFresh();
+      });
+    } else if (!cached) {
+      fetchFresh();
+    }
+
     // Fallback timeout in case geolocation hangs
     const t = setTimeout(() => setGeoResolved(true), 6000);
     return () => clearTimeout(t);
@@ -796,7 +833,7 @@ export default function SpotMap(props: MapProps) {
         setUserLocation([lng, lat]);
         setGeoResolved(true);
         try {
-          sessionStorage.setItem("userLocation", JSON.stringify({ lng, lat, ts: Date.now() }));
+          localStorage.setItem("userLocation", JSON.stringify({ lng, lat, ts: Date.now() }));
         } catch {}
         flyTo(lng, lat);
       },

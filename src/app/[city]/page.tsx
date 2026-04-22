@@ -6,6 +6,7 @@ import { getUpcomingEventsByCity, getInvitesForUser, getEventsByHost } from "@/l
 import { requireAuth, getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { cityNameFromSlug, isValidCitySlug, citySlugFromName } from "@/lib/cities";
+import Navbar from "@/components/Navbar";
 import CityClient from "./CityClient";
 
 export async function generateMetadata({
@@ -89,6 +90,7 @@ export default async function CityPage({
         invitedEvents={invites}
         eventSpotNames={eventSpotNames}
         eventSpotCategories={eventSpotCategories}
+        navbar={<Navbar />}
       />
     </Suspense>
   );
