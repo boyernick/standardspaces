@@ -385,7 +385,17 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     if (inside.length > 0) {
       return { filtered: inside, nearby: [] as Spot[], hydrated: true };
     }
-    const fallback = [...filteredRaw].sort(sortFn).slice(0, 6);
+    // Nearby fallback: pure proximity to the current map center. We
+    // deliberately skip the category/is_new priority here because the
+    // user's intent ("what's close to where I'm looking?") outranks any
+    // editorial ranking the feed uses inside the viewport.
+    const fallback = [...filteredRaw]
+      .sort(
+        (a, b) =>
+          squaredDistance([a.lng, a.lat], committedCenter) -
+          squaredDistance([b.lng, b.lat], committedCenter),
+      )
+      .slice(0, 6);
     return { filtered: [] as Spot[], nearby: fallback, hydrated: true };
   }, [filteredRaw, committedBounds, committedCenter]);
 
@@ -964,9 +974,28 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
             // Filters match real spots, but none of them are in the current
             // viewport. Show "Nearby" fallback (Airbnb's NEARBY mode).
             <div className="p-4 pt-2">
-              <div className="px-6 py-20 text-center">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-[#eceae2] dark:bg-[#0e0d07]">
-                  <MapPin size={20} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
+              <div className="px-6 pt-4 pb-10 text-center">
+                {/* Cityscape watercolor faded into the page. Masked with a
+                    radial gradient so the edges dissolve into the surface
+                    rather than sitting as a hard-edged rectangle. Decorative
+                    only — the text below carries the meaning. Served through
+                    next/image so the 2MB PNG source ships as a right-sized
+                    WebP/AVIF on mobile. */}
+                <div className="mx-auto mb-2 w-full max-w-[480px] aspect-[8/5] relative">
+                  <Image
+                    src="/empty-states/cityscape.png"
+                    alt=""
+                    aria-hidden="true"
+                    fill
+                    sizes="480px"
+                    className="object-contain select-none pointer-events-none dark:opacity-70"
+                    style={{
+                      WebkitMaskImage:
+                        "radial-gradient(ellipse at center, black 35%, transparent 78%)",
+                      maskImage:
+                        "radial-gradient(ellipse at center, black 35%, transparent 78%)",
+                    }}
+                  />
                 </div>
                 <h3 className="text-base font-medium">No spaces in this area</h3>
                 <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
