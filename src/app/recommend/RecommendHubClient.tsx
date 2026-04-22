@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Compass, Globe } from "lucide-react";
 import Tabs from "@/components/ui/Tabs";
 import EmptyState from "@/components/ui/EmptyState";
-import type { MyRecommendation } from "@/app/actions/recommendations";
+import {
+  deleteRecommendation,
+  type MyRecommendation,
+} from "@/app/actions/recommendations";
 
 type Tab = "pending" | "approved";
 
@@ -33,28 +36,29 @@ function hostOf(url: string): string {
   }
 }
 
-function formatDate(ts: string): string {
-  return new Date(ts).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
-
 export default function RecommendHubClient({
   recommendations,
 }: {
   recommendations: MyRecommendation[];
 }) {
   const [tab, setTab] = useState<Tab>("pending");
+  // Locally drop deleted rows so the UI updates instantly; the server
+  // action revalidates /recommend to keep the source of truth aligned.
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+
+  const visibleRecommendations = useMemo(
+    () => recommendations.filter((r) => !deletedIds.has(r.id)),
+    [recommendations, deletedIds],
+  );
 
   const grouped = useMemo(() => {
     const out: Record<Tab, MyRecommendation[]> = {
       pending: [],
       approved: [],
     };
-    for (const r of recommendations) out[bucketFor(r.status)].push(r);
+    for (const r of visibleRecommendations) out[bucketFor(r.status)].push(r);
     return out;
-  }, [recommendations]);
+  }, [visibleRecommendations]);
 
   const tabs: { id: Tab; label: string; count: number }[] = [
     { id: "pending", label: "Pending", count: grouped.pending.length },
@@ -73,6 +77,13 @@ export default function RecommendHubClient({
           body: "When one of your submissions is added to the guide, it'll live here.",
         };
 
+  const markDeleted = (id: string) =>
+    setDeletedIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+
   return (
     <>
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
@@ -82,7 +93,12 @@ export default function RecommendHubClient({
       ) : (
         <ul className="space-y-2">
           {active.map((r, i) => (
-            <RecommendationRow key={r.id} rec={r} index={i} />
+            <RecommendationRow
+              key={r.id}
+              rec={r}
+              index={i}
+              onDeleted={() => markDeleted(r.id)}
+            />
           ))}
         </ul>
       )}
@@ -90,7 +106,15 @@ export default function RecommendHubClient({
   );
 }
 
-function RecommendationRow({ rec, index }: { rec: MyRecommendation; index: number }) {
+function RecommendationRow({
+  rec,
+  index,
+  onDeleted,
+}: {
+  rec: MyRecommendation;
+  index: number;
+  onDeleted: () => void;
+}) {
   // Prefer the admin-set `name`; fall back to whatever the scraper extracted;
   // last resort is the bare host so the row never reads as empty.
   const scrapedName =
@@ -103,6 +127,24 @@ function RecommendationRow({ rec, index }: { rec: MyRecommendation; index: numbe
   const secondary: string[] = [];
   if (rec.neighborhood) secondary.push(rec.neighborhood);
   if (rec.category) secondary.push(rec.category);
+
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  // Only pending-bucket rows are deletable; published ones are tied to
+  // a live spot and the server action also rejects them defensively.
+  const canDelete = rec.status !== "published";
+
+  const handleDelete = () => {
+    setError(null);
+    startTransition(async () => {
+      const res = await deleteRecommendation(rec.id);
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
+      onDeleted();
+    });
+  };
 
   return (
     <li
@@ -130,13 +172,20 @@ function RecommendationRow({ rec, index }: { rec: MyRecommendation; index: numbe
               </span>
             )}
           </p>
+          {error && (
+            <p className="text-xs text-red-500 mt-1">{error}</p>
+          )}
         </div>
-        <span
-          className="text-xs text-neutral-400 dark:text-neutral-500 shrink-0 tabular-nums"
-          title={new Date(rec.created_at).toLocaleString()}
-        >
-          {formatDate(rec.created_at)}
-        </span>
+        {canDelete && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={isPending}
+            className="shrink-0 text-xs text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+          >
+            {isPending ? "Deleting…" : "Delete"}
+          </button>
+        )}
       </div>
     </li>
   );

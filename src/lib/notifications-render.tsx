@@ -154,7 +154,7 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
             {bold(name)} checked in at {spotTitle}
           </>
         ),
-        body: "They liked it",
+        body: "Liked it",
         href: spotHref(row),
         actorAvatar: avatar,
         actorName: name,
@@ -342,7 +342,7 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
         icon: "award",
         title: (
           <>
-            {bold(recName)} is live — thanks for the recommendation
+            {bold(recName)} is live
           </>
         ),
         body: "Tap to view in the guide",

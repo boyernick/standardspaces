@@ -224,7 +224,7 @@ function NotificationItem({ row, unread, index }: { row: NotificationRow; unread
           <p
             className={`text-sm line-clamp-2 ${
               unread
-                ? "text-neutral-900 dark:text-white font-medium"
+                ? "text-neutral-900 dark:text-white"
                 : "text-neutral-700 dark:text-neutral-200"
             }`}
           >

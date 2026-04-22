@@ -1,12 +1,18 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { track } from "@/lib/analytics";
-import { Globe, CheckCircle, Loader2, Plus, X } from "lucide-react";
+import { Globe, CheckCircle, Loader2, Plus, X, Info } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
+import {
+  checkDuplicateRecommendation,
+  type DuplicateCheckResult,
+} from "@/app/actions/recommendations";
 
-type Step = "form" | "success";
+type Step = "form" | "success" | "duplicate";
 
 export default function RecommendForm() {
   const [step, setStep] = useState<Step>("form");
@@ -14,6 +20,7 @@ export default function RecommendForm() {
   const [additionalUrls, setAdditionalUrls] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [duplicate, setDuplicate] = useState<DuplicateCheckResult | null>(null);
 
   const urlType = detectUrlType(url);
 
@@ -49,12 +56,32 @@ export default function RecommendForm() {
     setSubmitting(true);
     setError("");
 
+    // Duplicate check — hits the server before we burn an insert + scrape
+    // cycle. If the URL matches a live spot or someone's open submission,
+    // short-circuit to the duplicate screen instead of writing another row.
+    const dupe = await checkDuplicateRecommendation(url.trim(), cleanedExtras);
+    if (dupe.kind !== "none") {
+      setSubmitting(false);
+      setDuplicate(dupe);
+      setStep("duplicate");
+      track("recommend_duplicate_blocked", {
+        kind: dupe.kind,
+        url_type: urlType ?? "unknown",
+      });
+      return;
+    }
+
     const supabase = createClient();
+    const { data: userRes } = await supabase.auth.getUser();
     const { data: insertData, error: insertError } = await supabase
       .from("recommendations")
       .insert({
         url: url.trim(),
         additional_urls: cleanedExtras,
+        // Stamp user_id explicitly. Before this, user_id was nullable with
+        // no DB default, so submissions were orphaned and the /recommend
+        // hub (filtered to .eq("user_id", user.id)) never saw them.
+        user_id: userRes.user?.id,
       })
       .select("id")
       .single();
@@ -82,6 +109,103 @@ export default function RecommendForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ recommendationId: insertData.id }),
     }).catch(() => {});
+  }
+
+  if (step === "duplicate" && duplicate) {
+    const resetForm = () => {
+      setStep("form");
+      setUrl("");
+      setAdditionalUrls([]);
+      setDuplicate(null);
+    };
+
+    if (duplicate.kind === "published") {
+      const { spot } = duplicate;
+      const subtitle = [spot.neighborhood, (spot.category ?? []).join(" · ")]
+        .filter(Boolean)
+        .join(" · ");
+      return (
+        <div className="py-16 sm:py-20 text-center">
+          <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-ink-100">
+            <CheckCircle size={24} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
+          </div>
+          <h2>Already in the guide</h2>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2 max-w-sm mx-auto">
+            This space is already on Standard Spaces.
+          </p>
+
+          <Link
+            href={`/${spot.citySlug}/${spot.id}`}
+            className="mt-8 mx-auto max-w-sm flex items-center gap-3 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-surface overflow-hidden text-left hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
+          >
+            {/* Concentric radii: outer = inner + padding. Outer is
+                rounded-2xl (16px), image sits inset by m-2 (8px), so
+                inner is rounded-lg (8px). 16 = 8 + 8 → parallel curves
+                with a uniform gap all the way around. */}
+            <div className="relative w-16 h-16 shrink-0 bg-neutral-100 dark:bg-neutral-800 rounded-lg overflow-hidden m-2 mr-0">
+              {spot.image ? (
+                <Image
+                  src={spot.image}
+                  alt={spot.name}
+                  fill
+                  sizes="64px"
+                  className="object-cover"
+                />
+              ) : null}
+            </div>
+            <div className="flex-1 min-w-0 py-3 pr-4">
+              <div className="text-sm font-medium text-neutral-900 dark:text-white truncate">
+                {spot.name}
+              </div>
+              {subtitle && (
+                <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
+                  {subtitle}
+                </div>
+              )}
+            </div>
+          </Link>
+
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+            <ButtonLink href={`/${spot.citySlug}/${spot.id}`} variant="primary">
+              View space
+            </ButtonLink>
+            <button
+              onClick={resetForm}
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
+            >
+              Recommend another
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // kind === "pending"
+    return (
+      <div className="py-16 sm:py-20 text-center">
+        <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-ink-100">
+          <Info size={24} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
+        </div>
+        <h2>Already recommended</h2>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2 max-w-sm mx-auto">
+          {duplicate.mine
+            ? "You've already submitted this space. We're reviewing it now."
+            : "Someone already submitted this space. We're reviewing it now."}
+        </p>
+
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+          <ButtonLink href="/recommend" variant="primary">
+            View recommendations
+          </ButtonLink>
+          <button
+            onClick={resetForm}
+            className="px-4 py-2 text-sm font-medium rounded-lg border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
+          >
+            Recommend another
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (step === "success") {
