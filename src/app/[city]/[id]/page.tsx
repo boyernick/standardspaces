@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSpotById, getSpotsByCity } from "@/lib/data";
 import { getVisibleEventsForSpot } from "@/lib/events";
@@ -12,6 +14,7 @@ import FavoriteButtonClient from "@/components/FavoriteButtonClient";
 import WishlistButtonClient from "@/components/WishlistButtonClient";
 import CheckInButton from "@/components/CheckInButton";
 import SpotRatingInline from "@/components/SpotRatingInline";
+import { createClient } from "@/lib/supabase/server";
 import { getSpotAggregate } from "@/app/actions/ratings";
 import { Clock, Shirt, Car, MapPin, Newspaper, Smartphone, Globe, AtSign, CalendarCheck } from "lucide-react";
 import { FadeIn, GalleryReveal, SectionReveal } from "@/components/ListingAnimations";
@@ -314,6 +317,15 @@ export default async function SpotPage({
     notFound();
   }
 
+  // Spot pages are shareable — an unauthenticated visitor opening a link
+  // from a friend sees the full content with public CTAs in place of the
+  // authed toolbar (Wishlist / Favorite / Check-in) and member Navbar.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isAuthenticated = !!user;
+
   const [allCitySpots, spotEvents, ratingAggregate] = await Promise.all([
     getSpotsByCity(spot.city),
     getVisibleEventsForSpot(spot.id),
@@ -358,7 +370,36 @@ export default async function SpotPage({
   return (
     <div className="h-[100dvh] flex flex-col bg-surface">
       <TrackView kind="spot" spotId={spot.id} city={spot.city} />
-      <Navbar />
+      {isAuthenticated ? (
+        <Navbar />
+      ) : (
+        // Lightweight public header for shared-link viewers — logo only.
+        // Sign in / Apply to join live in the bottom action bar so the
+        // header stays quiet and the CTAs are thumb-reachable.
+        <header className="shrink-0 bg-surface sticky top-0 z-40">
+          <div className="px-4 py-2.5 flex items-center">
+            {/* h-10 matches the signed-in Navbar's profile pill so the
+                unauth header lands at the same 60px total height as the
+                member Navbar — no layout shift between the two states. */}
+            <Link href="/" className="flex items-center gap-1 h-10">
+              <Image
+                src="/logo.svg"
+                alt="Standard Spaces"
+                width={20}
+                height={20}
+                priority
+                className="h-5 w-5 nav-logo dark:invert"
+              />
+              <span
+                className="text-lg tracking-tight whitespace-nowrap text-neutral-900 dark:text-white nav-title"
+                style={{ fontFamily: "var(--font-martina), Georgia, serif" }}
+              >
+                Standard Spaces
+              </span>
+            </Link>
+          </div>
+        </header>
+      )}
       <div className="flex-1 overflow-y-auto relative">
         <GalleryReveal>
           <SpotGallery images={spot.images} name={spot.name} />
@@ -499,19 +540,43 @@ export default async function SpotPage({
               spotSubtitle={[spot.neighborhood, spot.city].filter(Boolean).join(" · ")}
               variant="icon"
             />
-            <WishlistButtonClient spotId={spot.id} size="icon" />
-            <FavoriteButtonClient spotId={spot.id} size="icon" />
-            <CheckInButton spotId={spot.id} spotName={spot.name} variant="icon" />
+            {isAuthenticated && (
+              <>
+                <WishlistButtonClient spotId={spot.id} size="icon" />
+                <FavoriteButtonClient spotId={spot.id} size="icon" />
+                <CheckInButton spotId={spot.id} spotName={spot.name} variant="icon" />
+              </>
+            )}
           </div>
-          {primaryAction && (
-            <a
-              href={primaryAction.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white hover:border-neutral-400 dark:hover:border-neutral-600 transition-[border-color] duration-[var(--duration-fast)] active:scale-[0.98]"
-            >
-              {primaryAction.label}
-            </a>
+          {isAuthenticated ? (
+            primaryAction && (
+              <a
+                href={primaryAction.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white hover:border-neutral-400 dark:hover:border-neutral-600 transition-[border-color] duration-[var(--duration-fast)] active:scale-[0.98]"
+              >
+                {primaryAction.label}
+              </a>
+            )
+          ) : (
+            // Shared-link viewer: replace the member toolbar buttons with
+            // the two conversion CTAs. Sign-in preserves where they were
+            // going via `?next=` so they land back on this spot page.
+            <div className="ml-auto flex items-center gap-2">
+              <Link
+                href={`/login?next=${encodeURIComponent(`/${spot.city.toLowerCase().replace(/ /g, "-")}/${spot.id}`)}`}
+                className="inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/apply"
+                className="inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white hover:border-neutral-400 dark:hover:border-neutral-600 transition-[border-color] duration-[var(--duration-fast)] active:scale-[0.98]"
+              >
+                Apply to join
+              </Link>
+            </div>
           )}
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { isValidCitySlug } from "@/lib/cities";
 
 const publicPaths = [
   "/",
@@ -15,6 +16,19 @@ const publicPaths = [
   "/contact",
 ];
 
+// Individual spot detail pages (e.g. /miami/kaona-room) are shareable —
+// an unauthenticated visitor arriving from a friend's link should see the
+// page with public-facing CTAs (Sign in / Apply). Matches `/<city>/<slug>`
+// but not `/<city>` (the member feed) or `/<city>/favorites|wishlist|checkins`
+// (user-scoped lists).
+const RESERVED_CITY_SUBPATHS = new Set(["favorites", "wishlist", "checkins"]);
+function isPublicSpotPath(pathname: string): boolean {
+  const m = pathname.match(/^\/([^/]+)\/([^/]+)\/?$/);
+  if (!m) return false;
+  if (!isValidCitySlug(m[1])) return false;
+  return !RESERVED_CITY_SUBPATHS.has(m[2]);
+}
+
 // Link-preview / unfurler user agents. These have no user session, so
 // without a bypass they'd be redirected to `/` on every protected path and
 // shared space URLs would always unfurl with the landing watercolor instead
@@ -26,7 +40,8 @@ const LINK_PREVIEW_BOT_UA =
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isPublic = publicPaths.some((p) => pathname === p);
+  const isPublic =
+    publicPaths.some((p) => pathname === p) || isPublicSpotPath(pathname);
   const isLinkPreviewBot = LINK_PREVIEW_BOT_UA.test(
     request.headers.get("user-agent") || ""
   );

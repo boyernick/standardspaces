@@ -178,7 +178,15 @@ function LoginForm() {
       }
     }
 
-    router.push(`/${citySlugFromName(userCity)}`);
+    // Honor `?next=` when present so the shared-link flow (someone opens
+    // a spot URL without an account and taps Sign in) lands back on that
+    // spot after auth. Restrict to internal paths to prevent open redirects.
+    const nextParam = searchParams.get("next");
+    const safeNext =
+      nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
+        ? nextParam
+        : null;
+    router.push(safeNext ?? `/${citySlugFromName(userCity)}`);
   }
 
   const inputStyle = "w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-transparent text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors";
