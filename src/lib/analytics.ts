@@ -31,6 +31,11 @@ import { track as vercelTrackServer } from "@vercel/analytics/server";
 export type AnalyticsEvent =
   // Recommendation flow
   | { name: "recommend_submit"; props: { url_type: string; extras_count: number } }
+  // Fires when the form short-circuits on a duplicate match (either an
+  // already-published spot or another open recommendation). Tracks what
+  // kind of collision happened so we can see how often the submit flow
+  // is catching dupes vs. inserting fresh rows.
+  | { name: "recommend_duplicate_blocked"; props: { kind: "published" | "pending"; url_type: string } }
   // Events
   | { name: "rsvp_create"; props: { event_id: string; status: "going" | "waitlist" } }
   | { name: "rsvp_cancel"; props: { event_id: string; was_going: boolean } }

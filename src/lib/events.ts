@@ -80,7 +80,10 @@ export async function getEventsByAttendee(userId: string): Promise<EventRecord[]
     .from("events")
     .select("*")
     .in("id", eventIds)
-    .neq("status", "hidden")
+    // Only surface events that are still live — previously we merely
+    // excluded `hidden`, which let cancelled events leak into the
+    // Going tab even after the host called them off.
+    .eq("status", "published")
     .order("starts_at", { ascending: false });
   return (data ?? []) as EventRecord[];
 }

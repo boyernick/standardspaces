@@ -180,7 +180,13 @@ export default function RecommendForm() {
       );
     }
 
-    // kind === "pending"
+    // duplicate.kind can narrow to "none" here per the DuplicateCheckResult
+    // union, but handleSubmit only enters the duplicate step when kind is
+    // "published" or "pending". Guard so TS is happy and, if a future
+    // caller ever violates that contract, we render nothing instead of
+    // blowing up on a missing `.mine`.
+    if (duplicate.kind !== "pending") return null;
+
     return (
       <div className="py-16 sm:py-20 text-center">
         <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-ink-100">

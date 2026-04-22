@@ -135,7 +135,34 @@ export default function ReferralsClient({ navbar }: { navbar: React.ReactNode })
       />
 
       {loading ? (
-        <p className="text-sm text-neutral-400 dark:text-neutral-500">Loading...</p>
+        // Skeleton mirrors the loaded shape (tab bar + referral rows) so
+        // there's no layout shift when data arrives. Route-level
+        // loading.tsx can't trigger here because page.tsx is synchronous
+        // (fetch happens client-side), so the skeleton lives inline.
+        <div aria-hidden="true">
+          <div className="flex gap-6 border-b border-neutral-200 dark:border-neutral-800 mb-6">
+            <div className="shimmer h-4 w-16 rounded-sm mb-3" />
+            <div className="shimmer h-4 w-16 rounded-sm mb-3" />
+            <div className="shimmer h-4 w-12 rounded-sm mb-3" />
+          </div>
+          <div className="space-y-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-4 border border-neutral-200 dark:border-neutral-800 rounded-xl"
+              >
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="shimmer h-4 w-36 rounded-sm" />
+                  <div className="shimmer h-3 w-20 rounded-sm" />
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="shimmer w-8 h-8 rounded-md" />
+                  <div className="shimmer w-8 h-8 rounded-md" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : referrals.length === 0 ? (
         <EmptyState
           icon={UserPlus}

@@ -119,7 +119,7 @@ export default function SettingsClient({ phone, city, smsNotifications, notifica
               <button
                 onClick={row.onToggle}
                 className={`relative w-10 h-6 rounded-full transition-colors ${
-                  row.value ? "bg-brand-500" : "bg-neutral-200 dark:bg-neutral-700"
+                  row.value ? "bg-neutral-900 dark:bg-white" : "bg-neutral-200 dark:bg-neutral-700"
                 }`}
               >
                 <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${

@@ -127,7 +127,15 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
     [neighborhoodCount],
   );
 
-  const [eventsOnly, setEventsOnly] = useState(false);
+  // `?events=1` deep-links the city feed with the Events filter already
+  // toggled — used from empty states on /events so a user with nothing
+  // on their calendar can tap straight into the city's open events.
+  // Read from window.location here (not useSearchParams, which runs
+  // later in this component) so the initial useState value is correct.
+  const [eventsOnly, setEventsOnly] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("events") === "1";
+  });
   const [activeCategory, setActiveCategory] = useState<Category | null>(null);
   const [activeSubcategories, setActiveSubcategories] = useState<Set<string>>(new Set());
   const [categoryDropdown, setCategoryDropdown] = useState<Category | null>(null);

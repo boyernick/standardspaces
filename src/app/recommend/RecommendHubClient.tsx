@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Compass, Globe } from "lucide-react";
 import Tabs from "@/components/ui/Tabs";
 import EmptyState from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
 import {
   deleteRecommendation,
   type MyRecommendation,
@@ -177,14 +178,16 @@ function RecommendationRow({
           )}
         </div>
         {canDelete && (
-          <button
+          <Button
             type="button"
+            variant="danger"
+            size="sm"
             onClick={handleDelete}
             disabled={isPending}
-            className="shrink-0 text-xs text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+            className="shrink-0"
           >
             {isPending ? "Deleting…" : "Delete"}
-          </button>
+          </Button>
         )}
       </div>
     </li>

@@ -59,11 +59,11 @@ function HostedEventCard({ event, spotName }: { event: EventRecord; spotName?: s
 }
 
 export default function EventsHubClient({ invitations, going, hosting, pastHosting, spotNames }: Props) {
-  const [tab, setTab] = useState<Tab>("invitations");
+  const [tab, setTab] = useState<Tab>("going");
 
   const tabs: { id: Tab; label: string; count: number }[] = [
-    { id: "invitations", label: "Invitations", count: invitations.length },
     { id: "going", label: "Going", count: going.length },
+    { id: "invitations", label: "Invitations", count: invitations.length },
     { id: "hosting", label: "Hosting", count: hosting.length },
   ];
 
@@ -73,7 +73,14 @@ export default function EventsHubClient({ invitations, going, hosting, pastHosti
     tab === "invitations"
       ? { icon: Mail, title: "No pending invitations", body: "You'll see event invitations here when hosts add you." }
       : tab === "going"
-      ? { icon: Calendar, title: "Nothing on your calendar", body: "You haven't RSVP'd to any upcoming events." }
+      ? {
+          icon: Calendar,
+          title: "Nothing on your calendar",
+          body: "Browse what's happening around the city and RSVP to fill it up.",
+          // Deep-links to the city feed with the Events filter already
+          // toggled so the user lands on an events-only view.
+          cta: { label: "Explore events", href: "/miami?events=1" },
+        }
       : { icon: CalendarPlus, title: "No events", body: "You haven't created any events." };
 
   return (
@@ -81,7 +88,12 @@ export default function EventsHubClient({ invitations, going, hosting, pastHosti
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
 
       {active.length === 0 ? (
-        <EmptyState icon={emptyState.icon} title={emptyState.title} body={emptyState.body} />
+        <EmptyState
+          icon={emptyState.icon}
+          title={emptyState.title}
+          body={emptyState.body}
+          cta={"cta" in emptyState ? emptyState.cta : undefined}
+        />
       ) : (
         <div className="flex flex-wrap gap-4">
           {active.map((e) =>
