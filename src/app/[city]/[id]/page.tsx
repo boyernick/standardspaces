@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getSpotById, getSpotsByCity } from "@/lib/data";
+import { getSpotById, getSpotsByCity, getChildSpots } from "@/lib/data";
 import { getVisibleEventsForSpot } from "@/lib/events";
 import { CATEGORY_LABELS } from "@/lib/types";
 import EventCard from "@/components/EventCard";
@@ -326,15 +326,19 @@ export default async function SpotPage({
   } = await supabase.auth.getUser();
   const isAuthenticated = !!user;
 
-  const [allCitySpots, spotEvents, ratingAggregate] = await Promise.all([
-    getSpotsByCity(spot.city),
-    getVisibleEventsForSpot(spot.id),
-    getSpotAggregate(spot.id),
-  ]);
+  const [allCitySpots, spotEvents, ratingAggregate, childSpots, parentSpot] =
+    await Promise.all([
+      getSpotsByCity(spot.city),
+      getVisibleEventsForSpot(spot.id),
+      getSpotAggregate(spot.id),
+      getChildSpots(spot.id),
+      spot.parentSpotId ? getSpotById(spot.parentSpotId) : Promise.resolve(null),
+    ]);
   const nearby = allCitySpots
     .filter((s) => s.neighborhood === spot.neighborhood && s.id !== spot.id)
     .slice(0, 3);
   const spotNamesMap = { [spot.id]: spot.name };
+  const citySlug = spot.city.toLowerCase().replace(/ /g, "-");
 
   const hasPlanVisit = spot.hours || spot.dressCode || spot.parking || spot.reservations || spot.menuUrl || spot.instagram || spot.website || spot.phone;
 
@@ -422,6 +426,18 @@ export default async function SpotPage({
                 <h1 className="text-[26px] font-semibold tracking-tight">{spot.name}</h1>
                 <NewBadge spot={spot} />
               </div>
+              {/* Parent-spot cross-link: surface the containing venue as
+                  an inline "Inside X →" chip right under the title so the
+                  relationship is immediately legible (e.g. La Selva →
+                  Amazónico). Clicks take the visitor to the parent page. */}
+              {parentSpot && (
+                <Link
+                  href={`/${citySlug}/${parentSpot.id}`}
+                  className="inline-flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+                >
+                  Inside <span className="font-medium text-neutral-700 dark:text-neutral-200 group-hover:underline">{parentSpot.name}</span>
+                </Link>
+              )}
               <p className="text-[15px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
                 {spot.description}
               </p>
@@ -510,6 +526,46 @@ export default async function SpotPage({
                       <p className="text-sm font-medium">{spot.parking}</p>
                     </div>
                   )}
+                </div>
+              </div>
+            </SectionReveal>
+          )}
+
+          {/* Venues inside — rendered on the *parent*'s detail page and
+              lists every child spot pointing at this one. Carousel of
+              compact cards so a hotel lobby + a bar + a speakeasy can
+              all sit in the same row without dominating the layout. */}
+          {childSpots.length > 0 && (
+            <SectionReveal>
+              <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Venues inside</h2>
+                <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x scrollbar-hide">
+                  {childSpots.map((child) => (
+                    <Link
+                      key={child.id}
+                      href={`/${citySlug}/${child.id}`}
+                      className="snap-start w-[220px] shrink-0 block rounded-2xl overflow-hidden card-edge card-edge-hover group"
+                    >
+                      <div className="aspect-[16/10] bg-neutral-100 dark:bg-neutral-800 relative">
+                        {child.images[0] ? (
+                          <Image
+                            src={child.images[0]}
+                            alt={child.name}
+                            fill
+                            sizes="220px"
+                            className="object-cover group-hover:scale-[1.02] transition-transform"
+                          />
+                        ) : null}
+                      </div>
+                      <div className="p-3 bg-surface">
+                        <h3 className="text-sm font-semibold line-clamp-1">{child.name}</h3>
+                        <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">
+                          {child.category.map((c) => CATEGORY_LABELS[c]).join(" · ")}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </div>
             </SectionReveal>

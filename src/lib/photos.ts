@@ -1,10 +1,30 @@
 import { createAdminClient } from "./supabase/admin";
 
+/**
+ * Where inside the `spot-photos` storage bucket this upload lives.
+ * Recommendations and spots get separate prefixes so a re-scrape of a
+ * published listing doesn't clobber the staging rec's folder.
+ */
+type StorageScope =
+  | { kind: "recommendation"; id: string }
+  | { kind: "spot"; id: string };
+
+function pathFor(scope: StorageScope, index: number, ext: string): string {
+  const prefix =
+    scope.kind === "recommendation" ? "recommendations" : "spots";
+  return `${prefix}/${scope.id}/${index}.${ext}`;
+}
+
 export async function downloadAndUploadPhoto(
   imageUrl: string,
-  recommendationId: string,
+  scopeOrRecId: StorageScope | string,
   index: number
 ): Promise<string | null> {
+  // Back-compat: older callers pass a bare `recommendationId` string.
+  const scope: StorageScope =
+    typeof scopeOrRecId === "string"
+      ? { kind: "recommendation", id: scopeOrRecId }
+      : scopeOrRecId;
   try {
     // Download the image
     const res = await fetch(imageUrl, {
@@ -25,7 +45,7 @@ export async function downloadAndUploadPhoto(
     // photos from icons and tracking pixels in practice.
     if (buffer.byteLength < 30000) return null;
 
-    const path = `recommendations/${recommendationId}/${index}.${ext}`;
+    const path = pathFor(scope, index, ext);
 
     const { error } = await createAdminClient().storage
       .from("spot-photos")
@@ -53,11 +73,15 @@ export async function downloadAndUploadPhoto(
 
 export async function processPhotos(
   imageUrls: string[],
-  recommendationId: string
+  scopeOrRecId: StorageScope | string
 ): Promise<string[]> {
+  const scope: StorageScope =
+    typeof scopeOrRecId === "string"
+      ? { kind: "recommendation", id: scopeOrRecId }
+      : scopeOrRecId;
   const results = await Promise.allSettled(
     imageUrls.slice(0, 10).map((url, i) =>
-      downloadAndUploadPhoto(url, recommendationId, i)
+      downloadAndUploadPhoto(url, scope, i)
     )
   );
 

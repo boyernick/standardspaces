@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Eye, GripVertical, Loader2, Plus, Trash2, Upload } from "lucide-react";
+import { GripVertical, Loader2, Lock, Plus, Trash2, Unlock, Upload } from "lucide-react";
 import Lightbox from "@/components/Lightbox";
 
 // Photo grid used by both admin forms. Uploads go through the shared
@@ -15,6 +15,8 @@ export function PhotoManager({
   spotId,
   uploadFn,
   onCurate,
+  lockedImages,
+  onLockedChange,
 }: {
   images: string[];
   onChange: (images: string[]) => void;
@@ -27,6 +29,12 @@ export function PhotoManager({
   // to "Add photos" that delegates to the parent (which typically opens
   // the CuratePhotosModal). Only the review form uses this today.
   onCurate?: () => void;
+  // Optional lock state. When both are provided, the per-photo overlay
+  // shows a Lock/Unlock toggle in place of the old View-photo (eye)
+  // button — locked URLs are preserved through re-scrape. The form at
+  // the parent level persists `lockedImages` alongside `images`.
+  lockedImages?: string[];
+  onLockedChange?: (locked: string[]) => void;
 }) {
   const [uploading, setUploading] = useState<number | "add" | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -86,7 +94,24 @@ export function PhotoManager({
   }
 
   function removeImage(index: number) {
+    const url = images[index];
     onChange(images.filter((_, i) => i !== index));
+    // Removing a locked image also releases its lock — otherwise the
+    // next rescrape would "resurrect" a photo the admin just deleted.
+    if (onLockedChange && lockedImages && url && lockedImages.includes(url)) {
+      onLockedChange(lockedImages.filter((u) => u !== url));
+    }
+  }
+
+  const lockEnabled = !!onLockedChange && !!lockedImages;
+  const lockedSet = new Set(lockedImages ?? []);
+
+  function toggleLock(url: string) {
+    if (!onLockedChange) return;
+    const current = lockedImages ?? [];
+    onLockedChange(
+      lockedSet.has(url) ? current.filter((u) => u !== url) : [...current, url],
+    );
   }
 
   function handleDragStart(index: number) {
@@ -130,7 +155,7 @@ export function PhotoManager({
                   {slots[0] ? (
                     <>
                       <img src={slots[0]} alt="Photo 1" className="w-full h-full object-cover" />
-                      <PhotoOverlay index={0} onView={() => setLightboxIndex(0)} onReplace={() => triggerFileInput(0)} onRemove={() => removeImage(0)} uploading={uploading === 0} draggable onDragStart={() => handleDragStart(0)} onDragOver={(e) => handleDragOver(e, 0)} onDrop={() => handleDrop(0)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === 0} />
+                      <PhotoOverlay index={0} onView={() => setLightboxIndex(0)} onReplace={() => triggerFileInput(0)} onRemove={() => removeImage(0)} uploading={uploading === 0} draggable onDragStart={() => handleDragStart(0)} onDragOver={(e) => handleDragOver(e, 0)} onDrop={() => handleDrop(0)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === 0} locked={lockEnabled ? lockedSet.has(slots[0]) : undefined} onToggleLock={lockEnabled ? () => toggleLock(slots[0]) : undefined} />
                     </>
                   ) : (
                     <EmptySlot onClick={() => triggerFileInput(null)} />
@@ -143,7 +168,7 @@ export function PhotoManager({
                       {url ? (
                         <>
                           <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                          <PhotoOverlay index={idx} onView={() => setLightboxIndex(idx)} onReplace={() => triggerFileInput(idx)} onRemove={() => removeImage(idx)} uploading={uploading === idx} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDrop={() => handleDrop(idx)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === idx} />
+                          <PhotoOverlay index={idx} onView={() => setLightboxIndex(idx)} onReplace={() => triggerFileInput(idx)} onRemove={() => removeImage(idx)} uploading={uploading === idx} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDrop={() => handleDrop(idx)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === idx} locked={lockEnabled ? lockedSet.has(url) : undefined} onToggleLock={lockEnabled ? () => toggleLock(url) : undefined} />
                         </>
                       ) : (
                         <EmptySlot onClick={() => triggerFileInput(null)} />
@@ -164,7 +189,7 @@ export function PhotoManager({
             return (
               <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                 <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                <PhotoOverlay index={idx} onView={() => setLightboxIndex(idx)} onReplace={() => triggerFileInput(idx)} onRemove={() => removeImage(idx)} uploading={uploading === idx} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDrop={() => handleDrop(idx)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === idx} />
+                <PhotoOverlay index={idx} onView={() => setLightboxIndex(idx)} onReplace={() => triggerFileInput(idx)} onRemove={() => removeImage(idx)} uploading={uploading === idx} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDrop={() => handleDrop(idx)} onDragEnd={handleDragEnd} isDragOver={dragOverIndex === idx} locked={lockEnabled ? lockedSet.has(url) : undefined} onToggleLock={lockEnabled ? () => toggleLock(url) : undefined} />
               </div>
             );
           })}
@@ -188,6 +213,15 @@ export function PhotoManager({
             </>
           )}
         </button>
+        <button
+          type="button"
+          onClick={() => setLightboxIndex(0)}
+          disabled={images.length === 0}
+          className="flex items-center gap-2 px-4 py-2.5 text-sm border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors disabled:opacity-50"
+          title={images.length === 0 ? "Add photos first" : "Open the carousel"}
+        >
+          View photos
+        </button>
         {onCurate && (
           <button
             type="button"
@@ -201,17 +235,36 @@ export function PhotoManager({
         )}
       </div>
 
-      {lightboxIndex !== null && images.length > 0 && (
-        <Lightbox
-          images={images}
-          name="Photo"
-          index={Math.min(lightboxIndex, images.length - 1)}
-          onClose={() => setLightboxIndex(null)}
-          onPrev={() => setLightboxIndex((i) => Math.max(0, (i ?? 0) - 1))}
-          onNext={() => setLightboxIndex((i) => Math.min(images.length - 1, (i ?? 0) + 1))}
-          onGoTo={(i) => setLightboxIndex(i)}
-        />
-      )}
+      {lightboxIndex !== null && images.length > 0 && (() => {
+        const currentIdx = Math.min(lightboxIndex, images.length - 1);
+        const currentUrl = images[currentIdx];
+        return (
+          <Lightbox
+            images={images}
+            name="Photo"
+            index={currentIdx}
+            onClose={() => setLightboxIndex(null)}
+            onPrev={() => setLightboxIndex((i) => Math.max(0, (i ?? 0) - 1))}
+            onNext={() => setLightboxIndex((i) => Math.min(images.length - 1, (i ?? 0) + 1))}
+            onGoTo={(i) => setLightboxIndex(i)}
+            // Wire the hover toolbar inside the carousel to the same
+            // actions the per-photo overlay exposes. Lock reflects the
+            // currently-visible photo's state; closures capture the
+            // current index so prev/next swap them out.
+            actions={{
+              locked: lockEnabled ? lockedSet.has(currentUrl) : undefined,
+              onToggleLock: lockEnabled ? () => toggleLock(currentUrl) : undefined,
+              onReplace: () => triggerFileInput(currentIdx),
+              onRemove: () => {
+                removeImage(currentIdx);
+                // Keep the viewer on the same slot (now the next photo),
+                // or close if we just removed the last one.
+                if (images.length <= 1) setLightboxIndex(null);
+              },
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -228,6 +281,8 @@ function PhotoOverlay({
   onDrop,
   onDragEnd,
   isDragOver,
+  locked,
+  onToggleLock,
 }: {
   index: number;
   onView: () => void;
@@ -240,6 +295,11 @@ function PhotoOverlay({
   onDrop?: () => void;
   onDragEnd?: () => void;
   isDragOver?: boolean;
+  // When both are provided, the overlay swaps its first action button
+  // from View (eye) to a Lock/Unlock toggle. Parents that don't wire
+  // the lock state through keep the old view-in-carousel behavior.
+  locked?: boolean;
+  onToggleLock?: () => void;
 }) {
   void index;
   return (
@@ -260,24 +320,44 @@ function PhotoOverlay({
             : "bg-black/0 hover:bg-black/40"
       }`}
     >
+      {/* 2×2 grid: rearrange · lock / upload · delete (left-to-right,
+          top-to-bottom). Fixed cell order regardless of whether the
+          draggable / lock features are wired — missing buttons render
+          as invisible placeholders so the grid stays balanced. */}
       {uploading ? (
         <Loader2 size={20} className="text-white animate-spin" />
       ) : (
-        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity">
-          <button type="button" onClick={onView} className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-neutral-700 dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-800 transition-colors" title="View photo">
-            <Eye size={14} />
-          </button>
+        <div className="opacity-0 group-hover:opacity-100 grid grid-cols-2 gap-1.5 transition-opacity">
+          {draggable ? (
+            <div className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-neutral-700 dark:text-neutral-300 cursor-grab active:cursor-grabbing" title="Drag to reorder">
+              <GripVertical size={14} />
+            </div>
+          ) : (
+            <div className="p-2 invisible" aria-hidden />
+          )}
+          {onToggleLock ? (
+            <button
+              type="button"
+              onClick={onToggleLock}
+              className={`p-2 rounded-lg transition-colors ${
+                locked
+                  ? "bg-neutral-900/90 text-white hover:bg-neutral-900"
+                  : "bg-white/90 dark:bg-neutral-900/90 text-neutral-700 dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-800"
+              }`}
+              title={locked ? "Unlock — allow re-scrape to replace this photo" : "Lock — preserve this photo through re-scrapes"}
+              aria-pressed={locked}
+            >
+              {locked ? <Lock size={14} /> : <Unlock size={14} />}
+            </button>
+          ) : (
+            <div className="p-2 invisible" aria-hidden />
+          )}
           <button type="button" onClick={onReplace} className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-neutral-700 dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-800 transition-colors" title="Replace photo">
             <Upload size={14} />
           </button>
           <button type="button" onClick={onRemove} className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-red-500 hover:bg-white dark:hover:bg-neutral-800 transition-colors" title="Remove photo">
             <Trash2 size={14} />
           </button>
-          {draggable && (
-            <div className="p-2 rounded-lg bg-white/90 dark:bg-neutral-900/90 text-neutral-700 dark:text-neutral-300 cursor-grab active:cursor-grabbing" title="Drag to reorder">
-              <GripVertical size={14} />
-            </div>
-          )}
         </div>
       )}
     </div>

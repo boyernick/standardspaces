@@ -14,11 +14,16 @@ export async function POST(req: NextRequest) {
   let recommendationId: string | undefined;
   try {
     let url: string | undefined;
-    ({ recommendationId, url } = await req.json());
+    let lockedImages: string[] | undefined;
+    ({ recommendationId, url, lockedImages } = await req.json());
 
     if (!recommendationId || !url) {
       return NextResponse.json({ error: "Missing recommendationId or url" }, { status: 400 });
     }
+
+    const sanitizedLocked = Array.isArray(lockedImages)
+      ? lockedImages.filter((u): u is string => typeof u === "string" && u.length > 0)
+      : [];
 
     // Look up the previous scrape for the city hint (used to anchor
     // Perplexity's neighborhood/address inference when the URL alone isn't
@@ -68,6 +73,11 @@ export async function POST(req: NextRequest) {
     // Download and upload photos
     const uploadedPhotos = await processPhotos(combinedImageUrls, recommendationId);
 
+    // Preserve locked photos: prepend them to the uploaded list so they
+    // keep their slots (and stay first for the primary cover). Dedupe in
+    // case a locked URL also came back from the scrape.
+    const mergedPhotos = Array.from(new Set([...sanitizedLocked, ...uploadedPhotos]));
+
     const mergedData = {
       name: scraped.name || "Unknown",
       description: scraped.description || null,
@@ -98,7 +108,8 @@ export async function POST(req: NextRequest) {
       .update({
         url,
         scraped_data: mergedData,
-        scraped_images: uploadedPhotos,
+        scraped_images: mergedPhotos,
+        locked_images: sanitizedLocked,
         name: mergedData.name,
         status: "scraped",
         processed_at: new Date().toISOString(),
@@ -108,7 +119,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       data: mergedData,
-      photos: uploadedPhotos,
+      photos: mergedPhotos,
     });
   } catch (err) {
     console.error("Re-scrape error:", err);

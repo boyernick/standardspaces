@@ -2,7 +2,21 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock, Trash2, Unlock, Upload, X } from "lucide-react";
+
+/**
+ * Optional admin-only affordances over the current photo. When `actions`
+ * is omitted (member spot gallery, event detail, etc.) the Lightbox
+ * renders as a pure viewer. When provided (admin PhotoManager), a
+ * hover-revealed toolbar floats over the image with Lock/Unlock,
+ * Replace, and Remove buttons keyed to the currently-visible photo.
+ */
+export interface LightboxActions {
+  locked?: boolean;
+  onToggleLock?: () => void;
+  onReplace?: () => void;
+  onRemove?: () => void;
+}
 
 export interface LightboxProps {
   images: string[];
@@ -12,6 +26,7 @@ export interface LightboxProps {
   onPrev: () => void;
   onNext: () => void;
   onGoTo: (index: number) => void;
+  actions?: LightboxActions;
 }
 
 /**
@@ -27,6 +42,7 @@ export default function Lightbox({
   onPrev,
   onNext,
   onGoTo,
+  actions,
 }: LightboxProps) {
   const [loaded, setLoaded] = useState(false);
   const [direction, setDirection] = useState<"left" | "right" | null>(null);
@@ -109,6 +125,50 @@ export default function Lightbox({
         {index + 1} / {images.length}
       </div>
 
+      {/* Admin action toolbar — sibling of the close button at z-20 so it
+          sits above the click-zone overlay (which otherwise intercepts
+          and dismisses). Keyed to the currently-visible photo by the
+          parent; prev/next swap the `actions` closures out each render. */}
+      {actions && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-black/60 backdrop-blur-md">
+          {actions.onToggleLock && (
+            <button
+              type="button"
+              onClick={actions.onToggleLock}
+              aria-pressed={actions.locked}
+              title={actions.locked ? "Unlock — allow re-scrape to replace" : "Lock — preserve through re-scrapes"}
+              className={`p-2 rounded-md transition-colors ${
+                actions.locked
+                  ? "bg-white text-neutral-900"
+                  : "text-white/80 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              {actions.locked ? <Lock size={16} /> : <Unlock size={16} />}
+            </button>
+          )}
+          {actions.onReplace && (
+            <button
+              type="button"
+              onClick={actions.onReplace}
+              title="Replace photo"
+              className="p-2 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <Upload size={16} />
+            </button>
+          )}
+          {actions.onRemove && (
+            <button
+              type="button"
+              onClick={actions.onRemove}
+              title="Remove photo"
+              className="p-2 rounded-md text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+        </div>
+      )}
+
       {index > 0 && (
         <button
           onClick={goPrev}
@@ -137,7 +197,7 @@ export default function Lightbox({
         onTouchEnd={handleTouchEnd}
       >
         <div
-          className={`relative max-w-5xl w-full h-full flex items-center justify-center transition-all duration-300 ease-out ${
+          className={`group/lb relative max-w-5xl w-full h-full flex items-center justify-center transition-all duration-300 ease-out ${
             direction === "left"
               ? "animate-slide-left"
               : direction === "right"
@@ -164,7 +224,10 @@ export default function Lightbox({
       </div>
 
       {images.length > 1 && (
-        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent pt-10 pb-4 px-4">
+        // z-20 puts the thumbnail strip above the z-10 click-zone; without
+        // this the big dismiss overlay covers the strip and swallows every
+        // thumbnail click as a backdrop dismiss.
+        <div className="absolute bottom-0 inset-x-0 z-20 bg-gradient-to-t from-black/60 to-transparent pt-10 pb-4 px-4">
           <div className="flex items-center justify-center gap-2">
             {thumbs.map((src, i) => {
               const realIdx = thumbStart + i;

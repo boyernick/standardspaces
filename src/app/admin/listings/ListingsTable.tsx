@@ -71,7 +71,16 @@ export default function ListingsTable({ spots }: { spots: SpotRow[] }) {
                   {spot.category.map((c) => CATEGORY_LABELS[c as Category] || c).join(" · ")} · {spot.neighborhood}
                 </p>
               </div>
-              <span className="text-xs text-black/30 dark:text-white/30 shrink-0" style={fontCalibre}>Edit</span>
+              {/* Styled as a secondary Button but kept as a span — the
+                  outer row is already a Link, and a nested <button> /
+                  <Button> would be invalid HTML. Clicks anywhere on the
+                  row still navigate to /admin/listings/[id]. */}
+              <span
+                className="shrink-0 inline-flex items-center justify-center rounded-md border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white px-3 py-1.5 text-xs font-medium"
+                style={fontCalibre}
+              >
+                Edit
+              </span>
             </Link>
           ))}
         </div>

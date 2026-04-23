@@ -229,13 +229,21 @@ export interface Spot {
   /**
    * ISO timestamp set when an admin flips the "Mark as new" toggle in the
    * listing edit form. The `<NewBadge />` renders iff this is within the
-   * `NEW_WINDOW_MS` window (7 days) of `Date.now()`. Null/undefined when
+   * `NEW_WINDOW_MS` window (30 days) of `Date.now()`. Null/undefined when
    * the spot has never been marked or the admin cleared the toggle.
    */
   markedNewAt?: string | null;
   /** ISO timestamp; sourced from `spots.created_at`. Used by the "Newest"
    * sort in the city sidebar. */
   createdAt?: string;
+  /**
+   * Optional pointer to a parent spot when this venue lives *inside*
+   * another one (e.g. La Selva nightclub inside Amazónico, Kaona Room
+   * speakeasy inside The Leinster Irish Pub). Children are discoverable
+   * as standalone spots in the feed; the detail pages cross-link so
+   * users understand the containment.
+   */
+  parentSpotId?: string | null;
 }
 
 export interface EventRecord {

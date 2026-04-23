@@ -30,7 +30,28 @@ function mapRow(row: Record<string, unknown>): Spot {
     vibes: row.vibes as string[] | undefined,
     markedNewAt: (row.marked_new_at as string | null) ?? null,
     createdAt: row.created_at as string | undefined,
+    parentSpotId: (row.parent_spot_id as string | null) ?? null,
   };
+}
+
+/**
+ * Fetch every child spot that points at `parentId`. Used on the parent's
+ * detail page to render the "Venues inside" cross-link section.
+ */
+export async function getChildSpots(parentId: string): Promise<Spot[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("spots")
+    .select("*")
+    .eq("parent_spot_id", parentId)
+    .order("name");
+
+  if (error) {
+    console.error("Error fetching child spots:", error);
+    return [];
+  }
+
+  return (data ?? []).map(mapRow);
 }
 
 export async function getSpotsByCity(city: string): Promise<Spot[]> {

@@ -1,12 +1,12 @@
 import type { Spot } from "./types";
 
 /**
- * A space stays "new" for 7 days from the moment an admin flips its
+ * A space stays "new" for 30 days from the moment an admin flips its
  * `markedNewAt` toggle. After the window elapses the badge auto-hides at
  * render time — no background job, no cron. Admin can re-toggle to restart
  * the clock.
  */
-export const NEW_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+export const NEW_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 export function isSpotNew(spot: Pick<Spot, "markedNewAt">): boolean {
   if (!spot.markedNewAt) return false;

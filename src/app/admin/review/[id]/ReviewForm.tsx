@@ -34,6 +34,7 @@ interface Recommendation {
   notes: string | null;
   scraped_data: Record<string, unknown> | null;
   scraped_images: string[] | null;
+  locked_images: string[] | null;
   status: string;
 }
 
@@ -82,12 +83,13 @@ export default function ReviewForm({
   const [lng] = useState(scraped.lng?.toString() || "");
   const [lat] = useState(scraped.lat?.toString() || "");
   const [images, setImages] = useState<string[]>(rec.scraped_images || []);
+  const [lockedImages, setLockedImages] = useState<string[]>(rec.locked_images || []);
   const [vibes, setVibes] = useState<string[]>(
     Array.isArray(scraped.vibes) ? scraped.vibes : []
   );
 
   // "Mark as new" toggle — defaults off; the admin opts in when they want
-  // the <NewBadge /> to surface on this space for 7 days after publishing.
+  // the <NewBadge /> to surface on this space for NEW_WINDOW_MS after publishing.
   const [markedNew, setMarkedNew] = useState(false);
 
   const [sourceUrl, setSourceUrl] = useState(rec.url);
@@ -107,7 +109,14 @@ export default function ReviewForm({
       const res = await fetch("/api/admin/rescrape", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recommendationId: rec.id, url: sourceUrl.trim() }),
+        // Send the current lockedImages so the server preserves them
+        // when merging in the new scrape result. Without this, locking
+        // a photo wouldn't survive a re-scrape.
+        body: JSON.stringify({
+          recommendationId: rec.id,
+          url: sourceUrl.trim(),
+          lockedImages,
+        }),
       });
 
       if (!res.ok) {
@@ -304,6 +313,8 @@ export default function ReviewForm({
         onChange={setImages}
         spotId={rec.id}
         onCurate={() => setCurateOpen(true)}
+        lockedImages={lockedImages}
+        onLockedChange={setLockedImages}
       />
       <CuratePhotosModal
         recommendationId={rec.id}
@@ -316,9 +327,6 @@ export default function ReviewForm({
       <div className="flex items-center justify-between gap-4 px-4 py-3 border border-neutral-200 dark:border-neutral-800 rounded-xl">
         <div className="min-w-0">
           <p className="text-sm font-medium">Mark as new</p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-            Shows a badge on this space for 7 days after publishing.
-          </p>
         </div>
         <button
           type="button"

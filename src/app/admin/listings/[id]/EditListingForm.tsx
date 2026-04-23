@@ -34,6 +34,7 @@ interface SpotData {
   description: string;
   address: string;
   images: string[];
+  locked_images: string[] | null;
   lng: number;
   lat: number;
   hours: string | null;
@@ -91,29 +92,79 @@ export default function EditListingForm({
   const lng = spot.lng?.toString() || "";
   const lat = spot.lat?.toString() || "";
   const [images, setImages] = useState<string[]>(spot.images || []);
+  const [lockedImages, setLockedImages] = useState<string[]>(spot.locked_images || []);
 
   // "Mark as new" toggle. Initial on-state reflects whether the badge is
-  // currently active (within the 7-day window), not just whether the column
-  // has ever been set. We preserve the existing timestamp on save so saving
-  // unrelated edits doesn't reset the clock.
+  // currently active (within the NEW_WINDOW_MS window), not just whether
+  // the column has ever been set. We preserve the existing timestamp on
+  // save so saving unrelated edits doesn't reset the clock.
   const initiallyNew =
     !!spot.marked_new_at &&
     Date.now() - new Date(spot.marked_new_at).getTime() < NEW_WINDOW_MS;
   const [markedNew, setMarkedNew] = useState(initiallyNew);
-  const remainingNewDays =
-    initiallyNew && spot.marked_new_at
-      ? Math.max(
-          0,
-          Math.ceil(
-            (new Date(spot.marked_new_at).getTime() + NEW_WINDOW_MS - Date.now()) /
-              (24 * 60 * 60 * 1000),
-          ),
-        )
-      : 0;
 
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  // Source URL + rescrape. Mirrors ReviewForm's source flow — paste a
+  // URL, hit Re-scrape, the form fields repopulate from the new research.
+  // Hits /api/admin/rescrape-spot which does research + photo upload
+  // scoped to `spots/<id>/…` and returns merged data without persisting
+  // to the DB; admin still has to click Save to commit.
+  const [sourceUrl, setSourceUrl] = useState(spot.website || "");
+  const [rescraping, setRescraping] = useState(false);
+
+  async function handleRescrape() {
+    if (!sourceUrl.trim()) return;
+    setRescraping(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/admin/rescrape-spot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          spotId: spot.id,
+          url: sourceUrl.trim(),
+          lockedImages,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(body?.error || "Re-scrape failed. Please try again.");
+        setRescraping(false);
+        return;
+      }
+
+      const { data, photos } = await res.json();
+
+      if (data.name) setName(data.name);
+      if (data.category) {
+        const cats = Array.isArray(data.category) ? data.category : [data.category];
+        setCategory(cats);
+      }
+      if (data.subcategory && Array.isArray(data.subcategory)) setSubcategory(data.subcategory);
+      if (data.neighborhood) setNeighborhood(data.neighborhood);
+      if (data.description) setDescription(data.description);
+      if (data.address) setAddress(data.address);
+      if (data.phone) setPhone(data.phone);
+      if (data.website) setWebsite(data.website);
+      if (data.instagram) setInstagram(data.instagram);
+      if (data.hours) setHours(parseHoursString(data.hours));
+      if (data.priceRange) setPriceRange(data.priceRange);
+      if (data.dressCode) setDressCode(data.dressCode);
+      if (data.parking) setParking(data.parking);
+      if (data.bookingUrl) setBookingUrl(data.bookingUrl);
+      if (data.menuUrl) setMenuUrl(data.menuUrl);
+      if (data.vibes && Array.isArray(data.vibes)) setVibes(data.vibes);
+      if (Array.isArray(photos) && photos.length > 0) setImages(photos);
+    } catch {
+      setError("Re-scrape failed. Please try again.");
+    }
+
+    setRescraping(false);
+  }
 
   async function handleSave() {
     if (!name.trim() || category.length === 0 || !neighborhood.trim() || !city.trim()) {
@@ -150,6 +201,7 @@ export default function EditListingForm({
           lng: lng ? parseFloat(lng) : null,
           lat: lat ? parseFloat(lat) : null,
           images,
+          locked_images: lockedImages,
           marked_new_at: markedNew
             ? (initiallyNew ? spot.marked_new_at : new Date().toISOString())
             : null,
@@ -193,18 +245,47 @@ export default function EditListingForm({
 
   return (
     <div className="space-y-6">
+      {/* Source URL + re-scrape — mirrors ReviewForm's source row so an
+          admin can refresh a listing's fields + photos from a new link
+          without copying the URL to a staging recommendation first. */}
+      <Field label="Source">
+        <div className="flex items-center gap-2">
+          <input
+            type="url"
+            value={sourceUrl}
+            onChange={(e) => setSourceUrl(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleRescrape(); } }}
+            placeholder="Paste a URL to re-scrape..."
+            className={inputClass + " flex-1 min-w-0"}
+          />
+          <button
+            type="button"
+            onClick={handleRescrape}
+            disabled={rescraping || !sourceUrl.trim()}
+            className="shrink-0 px-4 py-2.5 text-sm font-medium rounded-lg border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+          >
+            {rescraping ? (
+              <><Loader2 size={14} className="animate-spin" /> Scraping...</>
+            ) : (
+              "Re-scrape"
+            )}
+          </button>
+        </div>
+      </Field>
+
       {/* Photos */}
-      <PhotoManager images={images} onChange={setImages} spotId={spot.id} />
+      <PhotoManager
+        images={images}
+        onChange={setImages}
+        spotId={spot.id}
+        lockedImages={lockedImages}
+        onLockedChange={setLockedImages}
+      />
 
       {/* Mark as new — curation toggle, drives the <NewBadge /> on every card surface */}
       <div className="flex items-center justify-between gap-4 px-4 py-3 border border-neutral-200 dark:border-neutral-800 rounded-xl">
         <div className="min-w-0">
           <p className="text-sm font-medium">Mark as new</p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-            {markedNew && initiallyNew
-              ? `Shows a badge on this space for ${remainingNewDays} more day${remainingNewDays === 1 ? "" : "s"}.`
-              : "Shows a badge on this space for 7 days from now."}
-          </p>
         </div>
         <button
           type="button"
