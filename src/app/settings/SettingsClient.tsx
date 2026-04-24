@@ -25,10 +25,9 @@ export default function SettingsClient({ phone, city, smsNotifications, notifica
   const [currentCity, setCurrentCity] = useState(city);
   const [sms, setSms] = useState(smsNotifications);
   const [prefs, setPrefs] = useState<NotificationPrefs>(notificationPrefs);
-  const [themeMode, setThemeMode] = useState<"auto" | "light" | "dark">(() => {
-    if (typeof window === "undefined") return "auto";
-    const stored = localStorage.getItem("theme");
-    return stored === "dark" || stored === "light" ? stored : "auto";
+  const [themeMode, setThemeMode] = useState<"light" | "dark">(() => {
+    if (typeof window === "undefined") return "light";
+    return localStorage.getItem("theme") === "dark" ? "dark" : "light";
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -61,23 +60,11 @@ export default function SettingsClient({ phone, city, smsNotifications, notifica
   }
 
   function handleThemeChange() {
-    let nextMode: "auto" | "light" | "dark";
-    if (themeMode === "auto") nextMode = "light";
-    else if (themeMode === "light") nextMode = "dark";
-    else nextMode = "auto";
-
+    const nextMode = themeMode === "dark" ? "light" : "dark";
     setThemeMode(nextMode);
-
-    let dark: boolean;
-    if (nextMode === "auto") {
-      localStorage.removeItem("theme");
-      dark = typeof window !== "undefined" && window.matchMedia
-        ? window.matchMedia("(prefers-color-scheme: dark)").matches
-        : false;
-    } else {
-      localStorage.setItem("theme", nextMode);
-      dark = nextMode === "dark";
-    }
+    const dark = nextMode === "dark";
+    if (dark) localStorage.setItem("theme", "dark");
+    else localStorage.removeItem("theme");
     document.documentElement.classList.toggle("dark", dark);
     document.documentElement.style.backgroundColor = dark ? "#13120A" : "";
     const meta = document.querySelector('meta[name="theme-color"]');
@@ -151,15 +138,25 @@ export default function SettingsClient({ phone, city, smsNotifications, notifica
       <section className="mb-8">
         <h2 className="eyebrow mb-3">Appearance</h2>
         <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-4">
-          <button
-            onClick={handleThemeChange}
-            className="flex w-full items-center justify-between text-sm text-neutral-900 dark:text-white"
-          >
-            Theme
-            <span className="text-xs text-neutral-400 dark:text-neutral-500 capitalize">
-              {themeMode}
-            </span>
-          </button>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-neutral-900 dark:text-white">Dark mode</p>
+              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+                Off by default
+              </p>
+            </div>
+            <button
+              onClick={handleThemeChange}
+              aria-label="Toggle dark mode"
+              className={`relative w-10 h-6 rounded-full transition-colors ${
+                themeMode === "dark" ? "bg-neutral-900 dark:bg-white" : "bg-neutral-200 dark:bg-neutral-700"
+              }`}
+            >
+              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                themeMode === "dark" ? "left-[18px]" : "left-0.5"
+              }`} />
+            </button>
+          </div>
         </div>
       </section>
 

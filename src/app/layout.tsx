@@ -5,7 +5,6 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import AnalyticsIdentity from "@/components/AnalyticsIdentity";
 import CommandMenuGate from "@/components/CommandMenuGate";
-import ThemeSync from "@/components/ThemeSync";
 import "@/lib/env"; // fail fast at boot if required env vars are missing
 import "./globals.css";
 
@@ -89,12 +88,11 @@ export default function RootLayout({
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){try{var t=localStorage.getItem('theme');var d=false;if(t==='dark'){d=true;}else if(t==='light'){d=false;}else{d=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;}if(d){document.documentElement.classList.add('dark');document.documentElement.style.backgroundColor='#13120A';var m=document.querySelector('meta[name=\"theme-color\"]');if(m)m.setAttribute('content','#13120A');}}catch(e){}})();",
+              "(function(){try{if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');document.documentElement.style.backgroundColor='#13120A';var m=document.querySelector('meta[name=\"theme-color\"]');if(m)m.setAttribute('content','#13120A');}}catch(e){}})();",
           }}
         />
       </head>
       <body className="h-full flex flex-col overflow-hidden">
-        <ThemeSync />
         <CommandMenuGate />
         {children}
         <Analytics />
