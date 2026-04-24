@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Compass, Globe } from "lucide-react";
 import Tabs from "@/components/ui/Tabs";
 import EmptyState from "@/components/ui/EmptyState";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import {
   deleteRecommendation,
   type MyRecommendation,
@@ -177,7 +177,7 @@ function RecommendationRow({
             <p className="text-xs text-red-500 mt-1">{error}</p>
           )}
         </div>
-        {canDelete && (
+        {canDelete ? (
           <Button
             type="button"
             variant="danger"
@@ -188,7 +188,16 @@ function RecommendationRow({
           >
             {isPending ? "Deleting…" : "Delete"}
           </Button>
-        )}
+        ) : rec.spotId && rec.citySlug ? (
+          <ButtonLink
+            href={`/${rec.citySlug}/${rec.spotId}`}
+            variant="secondary"
+            size="sm"
+            className="shrink-0"
+          >
+            View space
+          </ButtonLink>
+        ) : null}
       </div>
     </li>
   );

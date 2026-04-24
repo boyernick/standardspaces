@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { Camera, ChevronRight } from "lucide-react";
 import { getInitials } from "@/lib/initials";
@@ -481,10 +482,39 @@ export default function ProfileClient({
       {/* Grid */}
       {activeTab === "attended" ? (
         attendedEvents.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-sm text-neutral-400 dark:text-neutral-500" style={fontCalibre}>
-              No events yet
+          <div className="px-6 pt-4 pb-10 text-center">
+            <div className="mx-auto mb-6 w-full max-w-[480px] aspect-[16/9] relative">
+              <Image
+                src="/empty-states/events-nullstate.png"
+                alt=""
+                aria-hidden="true"
+                fill
+                sizes="480px"
+                className="object-contain select-none pointer-events-none dark:opacity-40 dark:mix-blend-screen"
+                style={{
+                  WebkitMaskImage:
+                    "radial-gradient(ellipse at center, black 35%, transparent 78%)",
+                  maskImage:
+                    "radial-gradient(ellipse at center, black 35%, transparent 78%)",
+                }}
+              />
+            </div>
+            <h3 className="text-base font-medium">No events yet</h3>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
+              {isOwn
+                ? "Events you RSVP yes to will show up here."
+                : "Nothing on their calendar yet."}
             </p>
+            {isOwn && (
+              <div className="mt-6">
+                <ButtonLink
+                  href={`/${citySlugFromName(profile.city || "Miami")}?events=1`}
+                  variant="secondary"
+                >
+                  Browse events
+                </ButtonLink>
+              </div>
+            )}
           </div>
         ) : (
           // iOS-style list rows. Thumb (64px) · title + date · chevron,

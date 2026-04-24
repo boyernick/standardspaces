@@ -36,6 +36,10 @@ export type MyRecommendation = {
   status: string;
   created_at: string;
   scraped_data: Record<string, unknown> | null;
+  // Resolved server-side for published rows so the hub can deep-link to
+  // the live space. Null for not-yet-published rows.
+  spotId: string | null;
+  citySlug: string | null;
 };
 
 /**
@@ -69,7 +73,46 @@ export async function getMyRecommendations(): Promise<MyRecommendation[]> {
     console.error("getMyRecommendations: failed to load", error);
     return [];
   }
-  return (data ?? []) as MyRecommendation[];
+
+  const rows = (data ?? []) as Omit<MyRecommendation, "spotId" | "citySlug">[];
+
+  // Resolve spot deep-links for published rows. Recommendations don't
+  // carry a spot_id back-reference today, so we match URL → spots.website
+  // (normalized) in a single query. Admin client because `spots` rows are
+  // scoped by RLS and we only need id/website here.
+  const published = rows.filter((r) => r.status === "published");
+  const spotByNormalizedUrl = new Map<string, string>();
+  if (published.length > 0) {
+    const admin = createAdminClient();
+    const { data: spotRows } = await admin
+      .from("spots")
+      .select("id, website");
+    for (const s of spotRows ?? []) {
+      const n = s.website ? normalizeUrl(s.website as string) : null;
+      if (n) spotByNormalizedUrl.set(n, s.id as string);
+    }
+  }
+
+  return rows.map((r) => {
+    let spotId: string | null = null;
+    if (r.status === "published") {
+      const candidates = [r.url, ...(r.additional_urls ?? [])]
+        .map(normalizeUrl)
+        .filter((v): v is string => !!v);
+      for (const c of candidates) {
+        const hit = spotByNormalizedUrl.get(c);
+        if (hit) {
+          spotId = hit;
+          break;
+        }
+      }
+    }
+    return {
+      ...r,
+      spotId,
+      citySlug: spotId ? citySlugFromName(r.city) : null,
+    };
+  });
 }
 
 export type DuplicateCheckResult =

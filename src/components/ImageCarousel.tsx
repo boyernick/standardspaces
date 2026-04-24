@@ -31,6 +31,9 @@ export default function ImageCarousel({
   priority = false,
   sizes = "(min-width: 1024px) 40vw, (min-width: 640px) 50vw, 100vw",
 }: ImageCarouselProps) {
+  // Card carousels cap at 3 — the hero set on a listing page is the place
+  // for the full gallery; cards just need enough to signal "there's more".
+  const displayImages = images.slice(0, 3);
   const [current, setCurrent] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -38,7 +41,7 @@ export default function ImageCarousel({
   const swiped = useRef(false);
   const directionLocked = useRef<"horizontal" | "vertical" | null>(null);
 
-  const count = images.length;
+  const count = displayImages.length;
 
   const prev = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -113,7 +116,7 @@ export default function ImageCarousel({
         className="flex h-full transition-transform duration-300 ease-out"
         style={{ transform: `translateX(-${current * 100}%)` }}
       >
-        {images.map((src, i) => {
+        {displayImages.map((src, i) => {
           const isFirst = i === 0;
           const isPriority = isFirst && priority;
           return (
@@ -169,7 +172,7 @@ export default function ImageCarousel({
       {/* Dot indicators */}
       {count > 1 && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-[3px]">
-          {images.map((_, i) => (
+          {displayImages.map((_, i) => (
             <div
               key={i}
               className={`w-[5px] h-[5px] rounded-full transition-colors ${

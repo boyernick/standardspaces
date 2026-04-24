@@ -14,7 +14,7 @@ import CheckInButton from "@/components/CheckInButton";
 import FavoriteButton from "@/components/FavoriteButton";
 import WishlistButton from "@/components/WishlistButton";
 import { NewBadge } from "@/lib/new-badge";
-import { ChevronDown, Map as MapIcon, List, X, MapPin, Search, Calendar, SlidersHorizontal, Maximize2, Minimize2 } from "lucide-react";
+import { ChevronDown, Map as MapIcon, List, X, MapPin, Search, Calendar, Maximize2, Minimize2 } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -932,7 +932,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                   {/* Watercolor illustration — same composition / mask as the
                       "No spaces in this area" state so the two empty states
                       feel cohesive across the Events and Spaces filters. */}
-                  <div className="mx-auto mb-2 w-full max-w-[480px] aspect-[16/9] relative">
+                  <div className="mx-auto mb-6 w-full max-w-[480px] aspect-[16/9] relative">
                     <Image
                       src="/empty-states/events-nullstate.png"
                       alt=""
@@ -994,9 +994,26 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               </div>
             </div>
           ) : filteredRaw.length === 0 ? (
-            <div className="px-6 py-24 text-center">
-              <div className="h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-5 bg-ink-100">
-                <SlidersHorizontal size={22} strokeWidth={1.5} className="text-neutral-500 dark:text-neutral-400" />
+            <div className="px-6 pt-4 pb-10 text-center">
+              <div className="mx-auto mb-6 w-full max-w-[480px] aspect-[16/9] relative">
+                <Image
+                  src="/empty-states/nofilter-nullstate.png"
+                  alt=""
+                  aria-hidden="true"
+                  fill
+                  sizes="480px"
+                  // Source PNG ships with a solid sky-blue field; `multiply`
+                  // lets the cream surface punch through the lighter wash so
+                  // only the ink details read. Dark mode flips to `screen`
+                  // against the near-black surface for the same effect.
+                  className="object-contain select-none pointer-events-none opacity-80 mix-blend-multiply dark:opacity-40 dark:mix-blend-screen"
+                  style={{
+                    WebkitMaskImage:
+                      "radial-gradient(ellipse at center, black 25%, transparent 72%)",
+                    maskImage:
+                      "radial-gradient(ellipse at center, black 25%, transparent 72%)",
+                  }}
+                />
               </div>
               <h3 className="text-base font-medium">No spaces match</h3>
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 max-w-xs mx-auto">
@@ -1017,7 +1034,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
                     only — the text below carries the meaning. Served through
                     next/image so the 2MB PNG source ships as a right-sized
                     WebP/AVIF on mobile. */}
-                <div className="mx-auto mb-2 w-full max-w-[480px] aspect-[16/9] relative">
+                <div className="mx-auto mb-6 w-full max-w-[480px] aspect-[16/9] relative">
                   <Image
                     src="/empty-states/nospaces-nullstate.png"
                     alt=""

@@ -244,10 +244,6 @@ export default function ReviewForm({
               alt={name}
               className="h-full w-full object-cover"
             />
-            <div className="absolute top-4 left-4 flex items-center gap-1.5 rounded-full bg-white/95 dark:bg-neutral-950/90 px-3 py-1.5 text-xs font-medium text-neutral-900 dark:text-white shadow-sm backdrop-blur">
-              <CheckCircle size={14} className="text-green-600 dark:text-green-400" />
-              Live on the map
-            </div>
           </div>
         ) : (
           <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">

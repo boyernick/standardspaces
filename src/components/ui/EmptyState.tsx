@@ -29,7 +29,7 @@ export default function EmptyState({
   return (
     <div className="px-6 py-24 text-center">
       {image ? (
-        <div className="mx-auto mb-2 w-full max-w-[480px] aspect-[16/9] relative">
+        <div className="mx-auto mb-6 w-full max-w-[480px] aspect-[16/9] relative">
           <Image
             src={image.src}
             alt={image.alt ?? ""}

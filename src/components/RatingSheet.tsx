@@ -34,7 +34,10 @@ export default function RatingSheet({
 }) {
   const [step, setStep] = useState<Step>("bucket");
   const [bucket, setBucket] = useState<Bucket | null>(null);
-  const [pool, setPool] = useState<{ spot: Spot }[]>([]);
+  // Pool carries `bucket_rank` so we can translate filtered-pool positions
+  // back to the full-bucket rank space when category-filtered comparisons
+  // skip over rows the new space shouldn't outrank wholesale.
+  const [pool, setPool] = useState<{ spot: Spot; bucketRank: number }[]>([]);
   const [targetSpot, setTargetSpot] = useState<Spot | null>(null);
   const [lo, setLo] = useState(0);
   const [hi, setHi] = useState(0);
@@ -86,7 +89,6 @@ export default function RatingSheet({
       setSubmitting(true);
       await submitRating(spotId, chosenBucket, rank);
       setSubmitting(false);
-      // Close immediately once the server write lands — no score reveal.
       onClose();
     },
     [spotId, onClose],
@@ -94,22 +96,37 @@ export default function RatingSheet({
 
   async function handleBucketPick(b: Bucket) {
     setBucket(b);
-    const list = await getBucketPool(b, spotId);
-    setPool(list);
-    if (list.length === 0) {
+    const list = await getBucketPool(b, spotId, targetSpot?.category ?? []);
+    const mapped = list.map((x) => ({
+      spot: x.spot,
+      bucketRank: x.rating.bucket_rank,
+    }));
+    setPool(mapped);
+    if (mapped.length === 0) {
       // First rating in this bucket: no comparison needed, land at rank 1
       // (also the only slot). scoreForRank collapses to the bucket midpoint.
       await finalize(b, 1);
       return;
     }
     setLo(0);
-    setHi(list.length); // inclusive upper bound on the new slot index
+    setHi(mapped.length); // inclusive upper bound on the new slot index
     setStep("compare");
+  }
+
+  // Translate a 1-indexed position in the (potentially category-filtered)
+  // pool to a rank in the full bucket. When the pool is unfiltered this is
+  // an identity map; when it's filtered we insert the new space directly
+  // adjacent to its category-peer without reshuffling unrelated rows.
+  function filteredRankToBucketRank(filteredRank: number): number {
+    if (pool.length === 0) return 1;
+    if (filteredRank <= 0) return pool[0].bucketRank;
+    if (filteredRank <= pool.length) return pool[filteredRank - 1].bucketRank;
+    return pool[pool.length - 1].bucketRank + 1;
   }
 
   function endCompareWithRank(rank: number) {
     if (!bucket) return;
-    finalize(bucket, rank);
+    finalize(bucket, filteredRankToBucketRank(rank));
   }
 
   function onChooseNew() {

@@ -94,10 +94,17 @@ export async function getSpotForCompare(
  *
  * Excludes `excludeSpotId` (the space being rated/re-rated) so the compare
  * pool never includes the candidate itself.
+ *
+ * When the candidate spot's categories are provided, narrows the pool to
+ * prior ratings that share at least one primary category — comparing a
+ * speakeasy to a sushi bar is noise even when they sit in the same bucket.
+ * Falls back to the unfiltered bucket when no same-category ratings exist so
+ * the flow still has something to compare against.
  */
 export async function getBucketPool(
   bucket: Bucket,
   excludeSpotId?: string,
+  matchCategories?: string[],
 ): Promise<{ rating: UserRating; spot: Spot }[]> {
   const supabase = await createClient();
   const {
@@ -119,7 +126,7 @@ export async function getBucketPool(
   const spots = await getSpotsByIds(rows.map((r) => r.spot_id));
   const spotMap = new Map(spots.map((s) => [s.id, s]));
 
-  return rows
+  const all = rows
     .map((r) => {
       const spot = spotMap.get(r.spot_id);
       if (!spot) return null;
@@ -134,6 +141,13 @@ export async function getBucketPool(
       };
     })
     .filter((x): x is { rating: UserRating; spot: Spot } => x !== null);
+
+  if (!matchCategories || matchCategories.length === 0) return all;
+  const target = new Set(matchCategories);
+  const sameCategory = all.filter((x) =>
+    (x.spot.category ?? []).some((c) => target.has(c)),
+  );
+  return sameCategory.length > 0 ? sameCategory : all;
 }
 
 /**
