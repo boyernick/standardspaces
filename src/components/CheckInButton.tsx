@@ -5,6 +5,7 @@ import { CircleCheck, Heart } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { checkIn, uncheckIn, moveWishlistToFavorite } from "@/app/actions/saves";
 import RatingSheet from "@/components/RatingSheet";
+import Toast from "@/components/ui/Toast";
 
 export default function CheckInButton({
   spotId,
@@ -26,6 +27,7 @@ export default function CheckInButton({
   const [isWishlisted, setIsWishlisted] = useState(initialWishlisted ?? false);
   const [showPrompt, setShowPrompt] = useState(false);
   const [rateOpen, setRateOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [resolvedName, setResolvedName] = useState(spotName ?? "");
 
   useEffect(() => {
@@ -87,6 +89,7 @@ export default function CheckInButton({
       setShowPrompt(true);
     } else {
       setJustCheckedIn(false);
+      setToastMessage("Checked in");
     }
   }
 
@@ -95,12 +98,18 @@ export default function CheckInButton({
     setJustCheckedIn(false);
     setIsWishlisted(false);
     startTransition(async () => { await moveWishlistToFavorite(spotId); });
+    setToastMessage("Checked in");
   }
 
   function handleDismissPrompt() {
     setShowPrompt(false);
     setJustCheckedIn(false);
+    setToastMessage("Checked in");
   }
+
+  const successToast = (
+    <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
+  );
 
   if (variant === "pill") {
     const label = justCheckedIn ? "Checked in!" : isChecked ? "Visited" : "Check in";
@@ -126,6 +135,7 @@ export default function CheckInButton({
           open={rateOpen}
           onClose={handleRateClose}
         />
+        {successToast}
       </>
     );
   }
@@ -200,6 +210,7 @@ export default function CheckInButton({
           open={rateOpen}
           onClose={handleRateClose}
         />
+        {successToast}
       </div>
     );
   }
@@ -220,6 +231,7 @@ export default function CheckInButton({
         open={rateOpen}
         onClose={handleRateClose}
       />
+      {successToast}
     </>
   );
 }

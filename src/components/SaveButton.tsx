@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { toggleWishlist } from "@/app/actions/saves";
+import Toast from "@/components/ui/Toast";
 
 /**
  * Secondary-pill "Save" toggle for the space detail toolbar. Replaces the
@@ -27,12 +27,6 @@ export default function SaveButton({
   const [loaded, setLoaded] = useState(hasInitial);
   const [isPending, startTransition] = useTransition();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastMounted, setToastMounted] = useState(false);
-
-  // Portal target gate — avoid SSR `document` reference.
-  useEffect(() => {
-    setToastMounted(true);
-  }, []);
 
   // Hydrate initial state from the user's wishlist so the label matches
   // reality on return visits. Skipped when the parent already passed
@@ -57,14 +51,6 @@ export default function SaveButton({
     })();
   }, [spotId, hasInitial]);
 
-  // Auto-dismiss the toast after a short window. Short enough that it
-  // doesn't overlap the next interaction, long enough to read.
-  useEffect(() => {
-    if (!toastMessage) return;
-    const t = setTimeout(() => setToastMessage(null), 2200);
-    return () => clearTimeout(t);
-  }, [toastMessage]);
-
   function handleClick() {
     // Optimistic flip + toast so the tap feels instant. We re-sync from
     // the server response in case the row was ahead of local state.
@@ -87,17 +73,7 @@ export default function SaveButton({
       >
         {saved ? "Saved" : "Save"}
       </button>
-      {toastMounted && toastMessage &&
-        createPortal(
-          <div
-            role="status"
-            aria-live="polite"
-            className="fixed left-1/2 -translate-x-1/2 bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-[120] px-4 py-2 rounded-full bg-neutral-900/95 text-white text-sm font-medium shadow-lg animate-[fadeSlideDown_180ms_ease-out] dark:bg-white/95 dark:text-neutral-900"
-          >
-            {toastMessage}
-          </div>,
-          document.body,
-        )}
+      <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
     </>
   );
 }
