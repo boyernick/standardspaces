@@ -10,16 +10,18 @@ import Navbar from "@/components/Navbar";
 import SpotGallery from "@/components/SpotGallery";
 import SpotLocationMap from "@/components/SpotLocationMap";
 import ShareButton from "@/components/ShareButton";
-import FavoriteButtonClient from "@/components/FavoriteButtonClient";
-import WishlistButtonClient from "@/components/WishlistButtonClient";
-import CheckInButton from "@/components/CheckInButton";
+import SpotActionBar from "@/components/SpotActionBar";
 import SpotRatingInline from "@/components/SpotRatingInline";
 import { createClient } from "@/lib/supabase/server";
 import { getSpotAggregate } from "@/app/actions/ratings";
-import { Clock, Shirt, Car, MapPin, Newspaper, Smartphone, Globe, AtSign, CalendarCheck } from "lucide-react";
+import {
+  Clock, Shirt, Car, MapPin, Newspaper, Smartphone, Globe, AtSign,
+  CalendarCheck, DollarSign,
+} from "lucide-react";
 import { FadeIn, GalleryReveal, SectionReveal } from "@/components/ListingAnimations";
 import { NewBadge } from "@/lib/new-badge";
 import TrackView from "@/components/TrackView";
+import PlanVisitMore from "@/components/PlanVisitMore";
 
 // Force dynamic rendering — cannot statically prerender because <Navbar />
 // reads cookies via next/headers for the per-user avatar + badge counts.
@@ -176,22 +178,30 @@ function getOpenStatus(hours: string): string | null {
     if (period === "AM" && h === 12) h = 0;
     return h * 60 + min;
   }
-  function parseRange(timeStr: string): { open: number; close: number; openStr: string; closeStr: string } | null {
-    const p = timeStr.split(/[-–]/);
-    if (p.length !== 2) return null;
-    const open = parseTime(p[0]);
-    const close = parseTime(p[1]);
-    if (open === null || close === null) return null;
-    return { open, close, openStr: p[0].trim(), closeStr: p[1].trim() };
+  type Range = { open: number; close: number; openStr: string; closeStr: string };
+  // Some venues split service windows per day ("11:30AM–3PM, 5:30PM–10PM"
+  // for lunch + dinner). Parse each comma-separated segment independently.
+  function parseRanges(timeStr: string): Range[] {
+    const ranges: Range[] = [];
+    for (const seg of timeStr.split(/\s*,\s*/)) {
+      const p = seg.split(/[-–]/);
+      if (p.length !== 2) continue;
+      const open = parseTime(p[0]);
+      const close = parseTime(p[1]);
+      if (open === null || close === null) continue;
+      ranges.push({ open, close, openStr: p[0].trim(), closeStr: p[1].trim() });
+    }
+    return ranges;
   }
 
   // Overnight carry-over: if yesterday had an overnight block (e.g. Sat 10PM–2AM)
   // and we're still inside its tail past midnight, we're still open.
   const yTimes = dayMap.get(yesterday);
   if (yTimes && yTimes.toLowerCase() !== "closed") {
-    const y = parseRange(yTimes);
-    if (y && y.close <= y.open && currentMinutes < y.close) {
-      return `Open now · Closes at ${y.closeStr}`;
+    for (const y of parseRanges(yTimes)) {
+      if (y.close <= y.open && currentMinutes < y.close) {
+        return `Open now · Closes at ${y.closeStr}`;
+      }
     }
   }
 
@@ -200,19 +210,24 @@ function getOpenStatus(hours: string): string | null {
     return compact ? `Closed · ${compact}` : "Closed";
   }
 
-  const t = parseRange(todayTimes);
-  if (t) {
-    const isOvernight = t.close <= t.open;
-    if (isOvernight) {
-      if (currentMinutes >= t.open || currentMinutes < t.close) {
+  const ranges = parseRanges(todayTimes);
+  if (ranges.length > 0) {
+    for (const t of ranges) {
+      const isOvernight = t.close <= t.open;
+      if (isOvernight) {
+        if (currentMinutes >= t.open || currentMinutes < t.close) {
+          return `Open now · Closes at ${t.closeStr}`;
+        }
+      } else if (currentMinutes >= t.open && currentMinutes < t.close) {
         return `Open now · Closes at ${t.closeStr}`;
       }
-      return `Closed · Opens at ${t.openStr}`;
     }
-    if (currentMinutes >= t.open && currentMinutes < t.close) {
-      return `Open now · Closes at ${t.closeStr}`;
-    }
-    return `Closed · Opens at ${t.openStr}`;
+    // Not currently inside any range — surface the next upcoming open time today.
+    const upcoming = ranges
+      .filter((t) => currentMinutes < t.open)
+      .sort((a, b) => a.open - b.open)[0];
+    if (upcoming) return `Closed · Opens at ${upcoming.openStr}`;
+    return "Closed";
   }
 
   return compact ?? todayTimes;
@@ -340,7 +355,7 @@ export default async function SpotPage({
   const spotNamesMap = { [spot.id]: spot.name };
   const citySlug = spot.city.toLowerCase().replace(/ /g, "-");
 
-  const hasPlanVisit = spot.hours || spot.dressCode || spot.parking || spot.reservations || spot.menuUrl || spot.instagram || spot.website || spot.phone;
+  const hasPlanVisit = spot.bookingUrl || spot.hours || spot.dressCode || spot.parking || spot.reservations || spot.menuUrl || spot.instagram || spot.website || spot.phone || spot.priceRange;
 
   const bookingLabel = spot.bookingPlatform === "Resy"
     ? "Reserve on Resy"
@@ -351,25 +366,6 @@ export default async function SpotPage({
     : spot.category.includes("hotels")
     ? "Book a stay"
     : "Book now";
-
-  // Primary action for the bottom action bar. Booking wins; fall back to
-  // the space's website, then Instagram, and finally Google Maps directions
-  // (available for every space with an address) so the bar always has a CTA.
-  const primaryAction = spot.bookingUrl
-    ? { href: spot.bookingUrl, label: bookingLabel }
-    : spot.website
-    ? { href: spot.website, label: "Visit website" }
-    : spot.instagram
-    ? {
-        href: `https://instagram.com/${spot.instagram.replace("@", "")}`,
-        label: "View on Instagram",
-      }
-    : spot.address
-    ? {
-        href: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(spot.address)}`,
-        label: "Get directions",
-      }
-    : null;
 
   return (
     <div className="h-[100dvh] flex flex-col bg-surface">
@@ -415,7 +411,7 @@ export default async function SpotPage({
             <div className="pt-7 pb-2 space-y-3">
               {spot.vibes && spot.vibes.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {spot.vibes.map((vibe) => (
+                  {spot.vibes.slice(0, 3).map((vibe) => (
                     <span key={vibe} className="text-xs px-2.5 py-1 rounded-full border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400">
                       {vibe}
                     </span>
@@ -469,33 +465,24 @@ export default async function SpotPage({
               <hr className="my-8 border-neutral-200 dark:border-neutral-800" />
               <div>
                 <h2 className="text-lg font-semibold mb-6">Plan your visit</h2>
+                {/* Hoisted row: the three highest-signal facts (Book,
+                    Menu, Hours) render always. Everything else (price,
+                    website, IG, phone, dress code, reservations copy,
+                    parking) lives inside the See-more disclosure below so
+                    the top of the page isn't a wall of metadata. */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-6">
+                  {spot.bookingUrl && (
+                    <div>
+                      <CalendarCheck size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Reservations</p>
+                      <a href={spot.bookingUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline underline-offset-2">{bookingLabel}</a>
+                    </div>
+                  )}
                   {spot.menuUrl && (
                     <div>
                       <Newspaper size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
                       <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Menu</p>
-                      <a href={spot.menuUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline underline-offset-2">View full menu</a>
-                    </div>
-                  )}
-                  {spot.website && (
-                    <div>
-                      <Globe size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
-                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Website</p>
-                      <a href={spot.website} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline underline-offset-2">View website</a>
-                    </div>
-                  )}
-                  {spot.instagram && (
-                    <div>
-                      <AtSign size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
-                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Instagram</p>
-                      <a href={`https://instagram.com/${spot.instagram.replace("@", "")}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline underline-offset-2">@{spot.instagram.replace("@", "")}</a>
-                    </div>
-                  )}
-                  {spot.phone && (
-                    <div>
-                      <Smartphone size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
-                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Phone</p>
-                      <a href={`tel:${spot.phone}`} className="text-sm font-medium hover:underline underline-offset-2">{spot.phone}</a>
+                      <a href={spot.menuUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline underline-offset-2">View menu</a>
                     </div>
                   )}
                   {spot.hours && (
@@ -505,28 +492,60 @@ export default async function SpotPage({
                       <p className="text-sm font-medium">{getOpenStatus(spot.hours)}</p>
                     </div>
                   )}
-                  {spot.dressCode && (
-                    <div>
-                      <Shirt size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
-                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Dress code</p>
-                      <p className="text-sm font-medium">{spot.dressCode}</p>
-                    </div>
-                  )}
-                  {spot.reservations && (
-                    <div>
-                      <CalendarCheck size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
-                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Reservations</p>
-                      <p className="text-sm font-medium">{spot.reservations}</p>
-                    </div>
-                  )}
-                  {spot.parking && (
-                    <div>
-                      <Car size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
-                      <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Parking</p>
-                      <p className="text-sm font-medium">{spot.parking}</p>
-                    </div>
-                  )}
                 </div>
+                {(spot.priceRange || spot.website || spot.instagram || spot.phone || spot.dressCode || spot.reservations || spot.parking) && (
+                  <PlanVisitMore>
+                    {spot.priceRange && (
+                      <div>
+                        <DollarSign size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Price</p>
+                        <p className="text-sm font-medium">{spot.priceRange}</p>
+                      </div>
+                    )}
+                    {spot.website && (
+                      <div>
+                        <Globe size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Website</p>
+                        <a href={spot.website} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline underline-offset-2">View website</a>
+                      </div>
+                    )}
+                    {spot.instagram && (
+                      <div>
+                        <AtSign size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Instagram</p>
+                        <a href={`https://instagram.com/${spot.instagram.replace("@", "")}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline underline-offset-2">@{spot.instagram.replace("@", "")}</a>
+                      </div>
+                    )}
+                    {spot.phone && (
+                      <div>
+                        <Smartphone size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Phone</p>
+                        <a href={`tel:${spot.phone}`} className="text-sm font-medium hover:underline underline-offset-2">{spot.phone}</a>
+                      </div>
+                    )}
+                    {spot.dressCode && (
+                      <div>
+                        <Shirt size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Dress code</p>
+                        <p className="text-sm font-medium">{spot.dressCode}</p>
+                      </div>
+                    )}
+                    {spot.reservations && !spot.bookingUrl && (
+                      <div>
+                        <CalendarCheck size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Reservations</p>
+                        <p className="text-sm font-medium">{spot.reservations}</p>
+                      </div>
+                    )}
+                    {spot.parking && (
+                      <div>
+                        <Car size={18} strokeWidth={1.5} className="text-neutral-400 dark:text-neutral-500 mb-2" />
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Parking</p>
+                        <p className="text-sm font-medium">{spot.parking}</p>
+                      </div>
+                    )}
+                  </PlanVisitMore>
+                )}
               </div>
             </SectionReveal>
           )}
@@ -596,25 +615,9 @@ export default async function SpotPage({
               spotSubtitle={[spot.neighborhood, spot.city].filter(Boolean).join(" · ")}
               variant="icon"
             />
-            {isAuthenticated && (
-              <>
-                <WishlistButtonClient spotId={spot.id} size="icon" />
-                <FavoriteButtonClient spotId={spot.id} size="icon" />
-                <CheckInButton spotId={spot.id} spotName={spot.name} variant="icon" />
-              </>
-            )}
           </div>
           {isAuthenticated ? (
-            primaryAction && (
-              <a
-                href={primaryAction.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-auto inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white hover:border-neutral-400 dark:hover:border-neutral-600 transition-[border-color] duration-[var(--duration-fast)] active:scale-[0.98]"
-              >
-                {primaryAction.label}
-              </a>
-            )
+            <SpotActionBar spotId={spot.id} spotName={spot.name} />
           ) : (
             // Shared-link viewer: replace the member toolbar buttons with
             // the two conversion CTAs. Sign-in preserves where they were
