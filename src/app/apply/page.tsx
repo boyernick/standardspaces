@@ -473,9 +473,65 @@ function ApplyForm() {
   );
 }
 
+/** Static SSR shell for /apply.
+ *
+ * The form itself ("use client") only mounts after hydration, which means
+ * the initial HTML response carries no SMS-consent copy. Twilio's toll-free
+ * verification reviewers fetch the page without executing JS — when the
+ * disclosure isn't in the SSR HTML they reject with reason 30491
+ * ("Website Is Password Protected or Requires Login"). This fallback
+ * hard-codes the same heading + consent paragraph the client form renders
+ * so the opt-in evidence is present in the initial HTTP response. */
+function ApplyShell() {
+  return (
+    <div
+      className="flex min-h-screen items-center justify-center"
+      style={{ backgroundColor: "var(--color-surface)" }}
+    >
+      <div className="w-full max-w-sm px-6">
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-6">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="Standard Spaces" className="h-6 w-6 dark:invert" />
+          </div>
+          <h1
+            className="text-xl font-medium mb-1"
+            style={{ fontFamily: "var(--font-martina), Georgia, serif" }}
+          >
+            Apply to join
+          </h1>
+          <p
+            className="text-sm text-neutral-500 dark:text-neutral-400"
+            style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}
+          >
+            Standard Spaces is a members-only, curated guide.
+          </p>
+        </div>
+        <p
+          id="sms-consent"
+          className="pt-1 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400 text-center"
+          style={{ fontFamily: "var(--font-calibre), system-ui, sans-serif" }}
+        >
+          By submitting your phone number you agree to receive a sign-in
+          code and occasional account updates (application status, event
+          reminders, referrals) by SMS from Standard Spaces. Msg &amp;
+          data rates may apply. Reply STOP to opt out, HELP for help.{" "}
+          <Link
+            href="/privacy#sms-consent"
+            className="underline underline-offset-2 hover:text-neutral-700 dark:hover:text-neutral-300"
+          >
+            Privacy Policy
+          </Link>
+          .
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function ApplyPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<ApplyShell />}>
       <ApplyForm />
     </Suspense>
   );
