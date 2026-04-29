@@ -16,7 +16,7 @@ export default function Tabs<T extends string>({
   onChange: (id: T) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 border-b border-neutral-200 dark:border-neutral-800 mb-6">
+    <div className="flex items-center gap-1 mb-6">
       {tabs.map((t) => {
         const isActive = value === t.id;
         return (

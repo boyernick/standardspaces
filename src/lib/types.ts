@@ -143,7 +143,7 @@ export const VIBES: string[] = [
   "Date night",
   "Special occasion",
   "Business dinner",
-  "Power lunch",
+  "Business lunch",
   "Brunch",
   "Late night",
   "Sunday funday",
@@ -184,7 +184,7 @@ export const TOP_VIBES: string[] = [
   "Romantic",
   "Solo friendly",
   "Local favorite",
-  "Power lunch",
+  "Business lunch",
 ];
 
 // Editorial order — drives the city-page filter pill row left-to-right.

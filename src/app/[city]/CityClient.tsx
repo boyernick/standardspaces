@@ -9,6 +9,9 @@ import { isSpotNew } from "@/lib/new-badge";
 import UpcomingEventsStrip from "@/components/UpcomingEventsStrip";
 import dynamic from "next/dynamic";
 const SpotMap = dynamic(() => import("@/components/Map"), { ssr: false });
+// Lazy-load the menu so its Supabase / search plumbing only ships when a
+// mobile user actually taps the bottom search bar.
+const CommandMenu = dynamic(() => import("@/components/CommandMenu"), { ssr: false });
 import ImageCarousel from "@/components/ImageCarousel";
 import CheckInButton from "@/components/CheckInButton";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -146,6 +149,14 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
   const [hoveredSpotId, setHoveredSpotId] = useState<string | null>(null);
   const [neighborhoodOpen, setNeighborhoodOpen] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
+
+  // Mobile-only bottom-bar search. Owns its own state mirror of the
+  // navbar's pattern (open + query) so the dropdown can render anchored
+  // to the bottom bar's input.
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [mobileSearchQuery, setMobileSearchQuery] = useState("");
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
+  const mobileSearchWrapRef = useRef<HTMLDivElement>(null);
   // Desktop-only: hide the side panel cards and give the map the full width,
   // with the filter pills overlaid at the top. Mobile has its own map/list
   // toggle (`mobileView`) so this flag only takes effect at the `split:`
@@ -273,6 +284,37 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
   const [panelScrolled, setPanelScrolled] = useState(false);
   const bottomBarRef = useRef<HTMLDivElement>(null);
   const [mapHeight, setMapHeight] = useState<number | null>(null);
+
+  // Click-outside / Escape close the mobile search dropdown.
+  useEffect(() => {
+    if (!mobileSearchOpen) return;
+    function onMouseDown(e: MouseEvent) {
+      if (
+        mobileSearchWrapRef.current &&
+        !mobileSearchWrapRef.current.contains(e.target as Node)
+      ) {
+        setMobileSearchOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        mobileSearchInputRef.current?.blur();
+        setMobileSearchOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [mobileSearchOpen]);
+
+  // Close after navigating to a result.
+  useEffect(() => {
+    setMobileSearchOpen(false);
+    setMobileSearchQuery("");
+  }, [pathname]);
 
   useEffect(() => {
     if (!neighborhoodOpen) return;
@@ -1249,13 +1291,32 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
       {/* Mobile bottom bar */}
       <div ref={bottomBarRef} className="split:hidden fixed bottom-0 inset-x-0 z-30 bg-surface border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
-            className="flex-1 flex items-center gap-2 px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-full text-neutral-400 dark:text-neutral-500"
-          >
-            <Search size={15} strokeWidth={2} />
-            Search
-          </button>
+          <div ref={mobileSearchWrapRef} className="flex-1 relative">
+            <Search
+              size={15}
+              strokeWidth={2}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400 pointer-events-none"
+            />
+            <input
+              ref={mobileSearchInputRef}
+              type="text"
+              value={mobileSearchQuery}
+              onChange={(e) => {
+                setMobileSearchQuery(e.target.value);
+                if (!mobileSearchOpen) setMobileSearchOpen(true);
+              }}
+              onFocus={() => setMobileSearchOpen(true)}
+              placeholder="Search for spaces and members"
+              className="w-full h-10 pl-9 pr-3 leading-10 text-sm border border-neutral-200 dark:border-neutral-800 rounded-full bg-transparent text-neutral-900 dark:text-white placeholder-neutral-500 dark:placeholder-neutral-400 caret-brand-500 outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
+            />
+            <CommandMenu
+              open={mobileSearchOpen}
+              onClose={() => setMobileSearchOpen(false)}
+              query={mobileSearchQuery}
+              setQuery={setMobileSearchQuery}
+              placement="above"
+            />
+          </div>
           <button
             onClick={() => {
               setMapMounted(true);

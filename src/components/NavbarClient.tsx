@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useRouter, usePathname } from "next/navigation";
 import { Menu, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -10,6 +11,10 @@ import { getPendingReferralCount } from "@/app/actions/referrals";
 import { getUnreadNotificationCount } from "@/app/actions/notifications";
 import { getAdminPendingCount } from "@/app/actions/admin";
 import { getInitials } from "@/lib/initials";
+
+// Lazy-load the dropdown's heavy result-rendering / Supabase plumbing — it
+// only ships once the user actually focuses the search bar.
+const CommandMenu = dynamic(() => import("./CommandMenu"), { ssr: false });
 
 // useLayoutEffect warns when it runs during SSR. This is a client component,
 // but Next.js still renders it on the server for the initial HTML — so fall
@@ -43,6 +48,10 @@ export default function NavbarClient({
   const pathname = usePathname();
   const citySlug = pathname.split("/")[1] || "miami";
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchWrapRef = useRef<HTMLDivElement>(null);
   const [isAdmin, setIsAdmin] = useState(initialIsAdmin ?? false);
   const [pendingReferrals, setPendingReferrals] = useState(initialPendingReferrals ?? 0);
   const [unreadNotifs, setUnreadNotifs] = useState(initialUnreadNotifs ?? 0);
@@ -68,6 +77,41 @@ export default function NavbarClient({
   const [scrolled, setScrolled] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
+
+  // Cmd+K / Ctrl+K focuses the search input. Escape blurs and closes the
+  // dropdown. Click-outside closes too. Centralizing all three here keeps
+  // the menu component itself dumb (controlled).
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        setSearchOpen(true);
+      } else if (e.key === "Escape" && searchOpen) {
+        searchInputRef.current?.blur();
+        setSearchOpen(false);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    function onMouseDown(e: MouseEvent) {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [searchOpen]);
+
+  // Close the dropdown after a successful navigation.
+  useEffect(() => {
+    setSearchOpen(false);
+    setSearchQuery("");
+  }, [pathname]);
 
   // Fallback hydration from localStorage for the rare case this component
   // mounts without server-prefetched initial props. When props are present,
@@ -209,14 +253,33 @@ export default function NavbarClient({
 
         </div>
 
-        {/* Center: Search (desktop) */}
-        <button
-          onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
-          className="hidden md:flex items-center gap-1.5 h-9 w-[280px] pl-3 pr-2.5 text-sm border border-neutral-200 dark:border-neutral-800 rounded-full bg-transparent text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-600 transition-colors"
-        >
-          <Search size={14} strokeWidth={2} />
-          Search
-        </button>
+        {/* Center: Search (desktop). The input drives the dropdown directly —
+            no modal — so what you type is the menu's source of truth. */}
+        <div ref={searchWrapRef} className="hidden md:block relative w-[320px]">
+          <Search
+            size={14}
+            strokeWidth={2}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400 pointer-events-none"
+          />
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              if (!searchOpen) setSearchOpen(true);
+            }}
+            onFocus={() => setSearchOpen(true)}
+            placeholder="Search for spaces and members"
+            className="w-full h-9 pl-8 pr-3 leading-9 text-sm border border-neutral-200 dark:border-neutral-800 rounded-full bg-transparent text-neutral-900 dark:text-white placeholder-neutral-500 dark:placeholder-neutral-400 caret-brand-500 outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
+          />
+          <CommandMenu
+            open={searchOpen}
+            onClose={() => setSearchOpen(false)}
+            query={searchQuery}
+            setQuery={setSearchQuery}
+          />
+        </div>
 
         {/* Right: User menu */}
         <div className="flex-1 flex justify-end">

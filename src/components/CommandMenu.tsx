@@ -4,10 +4,10 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
-import { CATEGORY_LABELS, CATEGORY_ORDER, TOP_VIBES, Category, Spot, EventRecord } from "@/lib/types";
+import { CATEGORY_LABELS, CATEGORY_ORDER, Category, Spot, EventRecord } from "@/lib/types";
 import { citySlugFromName } from "@/lib/cities";
 import { NewBadge } from "@/lib/new-badge";
-import { Search, MapPin, X, Calendar, Loader2 } from "lucide-react";
+import { Search, MapPin, Calendar, Loader2 } from "lucide-react";
 import { getInitials } from "@/lib/initials";
 
 function Highlight({ text, query }: { text: string; query: string }) {
@@ -37,14 +37,28 @@ type Member = {
 type SemanticHit = { id: string; similarity: number };
 
 interface CommandMenuProps {
-  /** Start the menu already open. Used by CommandMenuGate so the very first
-   *  ⌘K (which triggered the lazy-mount) still feels like an instant open. */
-  initialOpen?: boolean;
+  /** Whether the dropdown is visible. Owned by the parent (the navbar). */
+  open: boolean;
+  /** Close the dropdown. Called when an item is picked or focus leaves. */
+  onClose: () => void;
+  /** Current query text. The parent's `<input>` is the source of truth. */
+  query: string;
+  /** Update the query (used when a vibe/category/neighborhood is tapped to
+   *  fill the input). */
+  setQuery: (q: string) => void;
+  /** Where the dropdown sits relative to its parent. Desktop navbar uses
+   *  "below" (default); the mobile bottom bar uses "above" so the panel
+   *  grows upward into the screen instead of off the bottom edge. */
+  placement?: "below" | "above";
 }
 
-export default function CommandMenu({ initialOpen = false }: CommandMenuProps = {}) {
-  const [open, setOpen] = useState(initialOpen);
-  const [query, setQuery] = useState("");
+export default function CommandMenu({
+  open,
+  onClose,
+  query,
+  setQuery,
+  placement = "below",
+}: CommandMenuProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [spots, setSpots] = useState<Spot[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -53,7 +67,6 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
   const [semanticLoading, setSemanticLoading] = useState(false);
   const [semanticError, setSemanticError] = useState<string | null>(null);
   const semanticCache = useRef<Map<string, SemanticHit[]>>(new Map());
-  const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -75,8 +88,8 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
     let cancelled = false;
     createClient()
       .from("spots")
-      .select("id, name, category, vibes, neighborhood, city, images")
-      .order("name")
+      .select("id, name, category, vibes, neighborhood, city, images, created_at")
+      .order("created_at", { ascending: false })
       .then(({ data }) => {
         if (cancelled || !data) return;
         setSpots(data.map((r: Record<string, unknown>) => ({
@@ -87,6 +100,7 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
           neighborhood: r.neighborhood as string,
           city: r.city as string,
           images: r.images as string[],
+          created_at: r.created_at as string,
         } as Spot)));
       });
     return () => { cancelled = true; };
@@ -194,8 +208,19 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
     return out;
   }, [semantic, spots, results]);
 
+  // Five most-recently added spaces (DB sort = created_at desc). Surfaced as
+  // "Recently added" in the empty state, and also fed into `flatItems` so
+  // arrow keys can navigate them.
+  const recentSpots = useMemo(() => spots.slice(0, 5), [spots]);
+
+
   const flatItems = useMemo(() => {
     const all: Array<{ type: string; value: string }> = [];
+    if (!query.trim()) {
+      // Empty state — let arrow keys navigate the Trending list.
+      for (const s of recentSpots) all.push({ type: "spot", value: s.id });
+      return all;
+    }
     for (const m of matchingMembers) all.push({ type: "member", value: m.id });
     for (const e of matchingEvents) all.push({ type: "event", value: e.id });
     for (const n of matchingNeighborhoods) all.push({ type: "neighborhood", value: n });
@@ -203,31 +228,39 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
     for (const s of results) all.push({ type: "spot", value: s.id });
     for (const s of relatedSpots) all.push({ type: "spot", value: s.id });
     return all;
-  }, [matchingMembers, matchingEvents, matchingNeighborhoods, matchingCategories, results, relatedSpots]);
+  }, [query, recentSpots, matchingMembers, matchingEvents, matchingNeighborhoods, matchingCategories, results, relatedSpots]);
 
   const hasQuery = query.trim().length > 0;
   const hasResults = flatItems.length > 0;
 
+  // Arrow / Enter navigation is captured at the document level (only when the
+  // menu is open) so it works regardless of which element inside the menu has
+  // focus — clicking on the result list used to drop focus from the input
+  // and break keyboard nav.
   useEffect(() => {
+    if (!open) return;
     function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if (e.key === "ArrowDown") {
         e.preventDefault();
-        setOpen((o) => !o);
+        setSelectedIndex((i) => Math.min(i + 1, Math.max(flatItems.length - 1, 0)));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((i) => Math.max(i - 1, 0));
+      } else if (e.key === "Enter") {
+        const item = flatItems[selectedIndex];
+        if (item) {
+          e.preventDefault();
+          selectItem(item);
+        }
       }
-      if (e.key === "Escape") setOpen(false);
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, flatItems, selectedIndex]);
 
-  useEffect(() => {
-    if (open) {
-      setQuery("");
-      setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
-  }, [open]);
-
+  // Reset highlight to first row whenever the result set changes (typing,
+  // dataset refresh, etc.). Keeps the keyboard cursor predictable.
   useEffect(() => { setSelectedIndex(0); }, [flatItems]);
 
   // Semantic search — debounced, only fires when substring results are thin.
@@ -301,42 +334,28 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
     el?.scrollIntoView({ block: "nearest" });
   }, [selectedIndex]);
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelectedIndex((i) => Math.min(i + 1, flatItems.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelectedIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const item = flatItems[selectedIndex];
-      if (item) selectItem(item);
-    }
-  }
-
   function selectItem(item: { type: string; value: string }) {
     if (item.type === "spot") {
       const spot = spots.find((s) => s.id === item.value);
       if (spot) {
-        setOpen(false);
+        onClose();
         router.push(`/${citySlugFromName(spot.city)}/${spot.id}`);
       }
     } else if (item.type === "member") {
-      setOpen(false);
+      onClose();
       router.push(`/members/${item.value}`);
     } else if (item.type === "event") {
-      setOpen(false);
+      onClose();
       router.push(`/events/${item.value}`);
     } else {
+      // Tapping a category/neighborhood/vibe fills the parent input. The
+      // navbar input keeps focus because we never moved it.
       setQuery(item.type === "category" ? CATEGORY_LABELS[item.value as Category] : item.value);
-      inputRef.current?.focus();
     }
   }
 
   function handleQuickFilter(value: string) {
     setQuery(value);
-    inputRef.current?.focus();
   }
 
   if (!open) return null;
@@ -345,73 +364,40 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[max(0.75rem,env(safe-area-inset-top))] md:pt-[10vh] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0"
-      onClick={() => setOpen(false)}
+      className={`absolute left-0 right-0 z-50 rounded-2xl shadow-[0_24px_64px_-12px_rgba(0,0,0,0.55)] dark:shadow-[0_24px_64px_-12px_rgba(0,0,0,0.85)] overflow-hidden ${
+        placement === "above" ? "bottom-full mb-2" : "top-full mt-2"
+      }`}
+      style={{
+        backgroundColor: "var(--color-surface)",
+        animation: `${placement === "above" ? "command-in-up" : "command-in"} 0.2s cubic-bezier(0.25,0.1,0.25,1)`,
+      }}
     >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" style={{ animation: "fadeIn 0.15s ease-out" }} />
-
-      <div
-        className="relative flex flex-col w-full max-w-lg mx-3 md:mx-0 h-full md:h-auto bg-surface rounded-2xl shadow-2xl dark:shadow-neutral-900/50 overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-        style={{ animation: "command-in 0.2s cubic-bezier(0.25,0.1,0.25,1)" }}
-      >
-        {/* Search input — large and prominent */}
-        <div className="relative px-5 pt-3 pb-3">
-          <Search size={18} strokeWidth={2} className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-300 dark:text-neutral-600" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Search spaces and members"
-            className="w-full pl-7 pr-8 py-3 text-base bg-transparent outline-none placeholder-neutral-400 dark:placeholder-neutral-500 border-b border-neutral-100 dark:border-neutral-800"
-          />
-          <button
-            onClick={() => { if (query) { setQuery(""); inputRef.current?.focus(); } else { setOpen(false); } }}
-            className="absolute right-5 top-1/2 -translate-y-1/2 text-neutral-300 dark:text-neutral-600 hover:text-neutral-500 dark:hover:text-neutral-400 transition-colors"
-          >
-            <X size={18} strokeWidth={2} />
-          </button>
-        </div>
-
+      <div className="flex flex-col max-h-[480px]">
         {/* Content */}
-        <div ref={listRef} className="flex-1 md:flex-none md:max-h-[400px] overflow-y-auto scrollbar-hide">
+        <div ref={listRef} className="flex-1 overflow-y-auto scrollbar-hide">
           {!hasQuery ? (
-            <div className="px-5 pb-5 space-y-4">
-              {/* Vibes — single scrollable row */}
-              <div>
-                <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mb-2">
-                  Vibes
-                </p>
-                <div className="flex gap-1.5 overflow-x-auto scrollbar-hide -mx-5 px-5">
-                  {TOP_VIBES.map((vibe) => (
-                    <button
-                      key={vibe}
-                      onClick={() => handleQuickFilter(vibe)}
-                      className="px-3 py-1.5 text-xs rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-500 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-600 hover:text-neutral-900 dark:hover:text-white transition-colors whitespace-nowrap shrink-0"
-                    >
-                      {vibe}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Trending — with thumbnails */}
+            <div className="px-5 pt-3 pb-3 space-y-4">
+              {/* Trending in Miami — newest spaces first */}
               {spots.length > 0 && (
                 <div>
-                  <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mb-2">
-                    Trending
+                  <p
+                    className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 mb-3"
+                    style={{ fontFamily: "var(--font-martina), Georgia, serif" }}
+                  >
+                    Trending in Miami
                   </p>
-                  <div className="-mx-5">
-                    {spots.slice(0, 5).map((spot) => (
+                  <div className="-mx-3">
+                    {recentSpots.map((spot, idx) => {
+                      const isSelected = idx === selectedIndex;
+                      return (
                       <button
                         key={spot.id}
-                        onClick={() => {
-                          setOpen(false);
-                          router.push(`/${citySlugFromName(spot.city)}/${spot.id}`);
-                        }}
-                        className="w-full text-left px-5 py-2.5 flex items-center gap-3 hover:bg-ink-100 transition-colors"
+                        data-selected={isSelected}
+                        onClick={() => selectItem({ type: "spot", value: spot.id })}
+                        onMouseEnter={() => setSelectedIndex(idx)}
+                        className={`w-full text-left px-3 py-2.5 flex items-center gap-3 rounded-lg transition-colors ${
+                          isSelected ? "bg-ink-100" : ""
+                        }`}
                       >
                         {spot.images?.[0] && (
                           <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100 dark:bg-neutral-800">
@@ -428,7 +414,8 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
                           </p>
                         </div>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -446,12 +433,12 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
               </p>
             </div>
           ) : (
-            <div className="pb-3" style={{ animation: "fadeIn 0.15s ease-out" }}>
+            <div className="pt-2 pb-3" style={{ animation: "fadeIn 0.15s ease-out" }}>
               {/* Member matches */}
               {matchingMembers.length > 0 && (
                 <div>
-                  <div className="px-5 pt-2 pb-1.5">
-                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Members</p>
+                  <div className="px-5 pt-3 pb-3">
+                    <p className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>Members</p>
                   </div>
                   {matchingMembers.map((member) => {
                     const idx = flatIdx++;
@@ -463,7 +450,7 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
                         data-selected={isSelected}
                         onClick={() => selectItem({ type: "member", value: member.id })}
                         onMouseEnter={() => setSelectedIndex(idx)}
-                        className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
+                        className={`w-full text-left px-3 py-2.5 flex items-center gap-3 rounded-lg transition-colors ${
                           isSelected ? "bg-ink-100" : ""
                         }`}
                       >
@@ -471,7 +458,7 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
                           <Image src={member.avatar_url} alt="" width={32} height={32} sizes="32px" className="w-8 h-8 rounded-full object-cover shrink-0" />
                         ) : (
                           <div
-                            className="w-8 h-8 rounded-full bg-surface-dark dark:bg-[#F7F7F3] border border-neutral-200 dark:border-neutral-800 flex items-center justify-center shrink-0 text-xs text-[#F7F7F3] dark:text-surface-dark"
+                            className="w-8 h-8 rounded-full bg-ink-100 flex items-center justify-center shrink-0 text-[10px] font-medium text-neutral-400 dark:text-neutral-500"
                             style={{ fontFamily: "var(--font-martina), Georgia, serif" }}
                           >
                             {getInitials(name)}
@@ -494,8 +481,8 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
               {/* Event matches */}
               {matchingEvents.length > 0 && (
                 <div>
-                  <div className="px-5 pt-2 pb-1.5">
-                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Events</p>
+                  <div className="px-5 pt-3 pb-3">
+                    <p className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>Events</p>
                   </div>
                   {matchingEvents.map((event) => {
                     const idx = flatIdx++;
@@ -511,7 +498,7 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
                         data-selected={isSelected}
                         onClick={() => selectItem({ type: "event", value: event.id })}
                         onMouseEnter={() => setSelectedIndex(idx)}
-                        className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
+                        className={`w-full text-left px-3 py-2.5 flex items-center gap-3 rounded-lg transition-colors ${
                           isSelected ? "bg-ink-100" : ""
                         }`}
                       >
@@ -539,8 +526,8 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
               {/* Neighborhood matches */}
               {matchingNeighborhoods.length > 0 && (
                 <div>
-                  <div className="px-5 pt-2 pb-1.5">
-                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Neighborhoods</p>
+                  <div className="px-5 pt-3 pb-3">
+                    <p className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>Neighborhoods</p>
                   </div>
                   {matchingNeighborhoods.map((n) => {
                     const idx = flatIdx++;
@@ -552,7 +539,7 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
                         data-selected={isSelected}
                         onClick={() => handleQuickFilter(n)}
                         onMouseEnter={() => setSelectedIndex(idx)}
-                        className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
+                        className={`w-full text-left px-3 py-2.5 flex items-center gap-3 rounded-lg transition-colors ${
                           isSelected ? "bg-ink-100" : ""
                         }`}
                       >
@@ -570,8 +557,8 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
               {/* Category matches */}
               {matchingCategories.length > 0 && (
                 <div>
-                  <div className="px-5 pt-2 pb-1.5">
-                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Categories</p>
+                  <div className="px-5 pt-3 pb-3">
+                    <p className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>Categories</p>
                   </div>
                   {matchingCategories.map((c) => {
                     const idx = flatIdx++;
@@ -583,7 +570,7 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
                         data-selected={isSelected}
                         onClick={() => handleQuickFilter(CATEGORY_LABELS[c])}
                         onMouseEnter={() => setSelectedIndex(idx)}
-                        className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
+                        className={`w-full text-left px-3 py-2.5 flex items-center gap-3 rounded-lg transition-colors ${
                           isSelected ? "bg-ink-100" : ""
                         }`}
                       >
@@ -601,8 +588,8 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
               {/* Spot results — with thumbnails */}
               {results.length > 0 && (
                 <div>
-                  <div className="px-5 pt-2 pb-1.5">
-                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Spaces</p>
+                  <div className="px-5 pt-3 pb-3">
+                    <p className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>Spaces</p>
                   </div>
                   {results.map((spot) => {
                     const idx = flatIdx++;
@@ -613,7 +600,7 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
                         data-selected={isSelected}
                         onClick={() => selectItem({ type: "spot", value: spot.id })}
                         onMouseEnter={() => setSelectedIndex(idx)}
-                        className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
+                        className={`w-full text-left px-3 py-2.5 flex items-center gap-3 rounded-lg transition-colors ${
                           isSelected ? "bg-ink-100" : ""
                         }`}
                       >
@@ -659,8 +646,8 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
               {/* Semantic "Related" — vibe/intent matches not caught by substring */}
               {relatedSpots.length > 0 && (
                 <div>
-                  <div className="px-5 pt-2 pb-1.5">
-                    <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500">Related</p>
+                  <div className="px-5 pt-3 pb-3">
+                    <p className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500" style={{ fontFamily: "var(--font-martina), Georgia, serif" }}>Related</p>
                   </div>
                   {relatedSpots.map((spot) => {
                     const idx = flatIdx++;
@@ -671,7 +658,7 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
                         data-selected={isSelected}
                         onClick={() => selectItem({ type: "spot", value: spot.id })}
                         onMouseEnter={() => setSelectedIndex(idx)}
-                        className={`w-full text-left px-5 py-2.5 flex items-center gap-3 transition-colors ${
+                        className={`w-full text-left px-3 py-2.5 flex items-center gap-3 rounded-lg transition-colors ${
                           isSelected ? "bg-ink-100" : ""
                         }`}
                       >
@@ -697,11 +684,16 @@ export default function CommandMenu({ initialOpen = false }: CommandMenuProps = 
             </div>
           )}
         </div>
+
       </div>
 
       <style>{`
         @keyframes command-in {
           from { opacity: 0; transform: scale(0.96) translateY(-12px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes command-in-up {
+          from { opacity: 0; transform: scale(0.96) translateY(12px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
         }
         @keyframes fadeIn {
