@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Navbar from "@/components/Navbar";
 import EditListingForm from "./EditListingForm";
@@ -9,7 +8,6 @@ export default async function EditListingPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireAdmin();
   const { id } = await params;
 
   const supabase = createAdminClient();

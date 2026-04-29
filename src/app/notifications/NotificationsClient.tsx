@@ -210,7 +210,7 @@ function NotificationItem({ row, unread, index }: { row: NotificationRow; unread
           />
         ) : r.actorName ? (
           <div
-            className="w-10 h-10 rounded-full bg-surface-dark dark:bg-[#F7F7F3] border border-neutral-200 dark:border-neutral-800 flex items-center justify-center shrink-0 text-sm text-[#F7F7F3] dark:text-surface-dark"
+            className="w-10 h-10 rounded-full bg-ink-100 flex items-center justify-center shrink-0 text-xs font-medium text-black dark:text-white"
             style={{ fontFamily: "var(--font-martina), Georgia, serif" }}
           >
             {getInitials(r.actorName)}

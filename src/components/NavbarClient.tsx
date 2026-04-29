@@ -245,7 +245,7 @@ export default function NavbarClient({
               <Image src={avatarUrl} alt="" width={28} height={28} sizes="28px" priority className="w-7 h-7 rounded-full object-cover" />
             ) : avatarUrl === null ? (
               <div
-                className="w-7 h-7 rounded-full bg-surface-dark dark:bg-[#F7F7F3] border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-[11px] text-[#F7F7F3] dark:text-surface-dark"
+                className="w-7 h-7 rounded-full bg-ink-100 flex items-center justify-center text-[11px] font-medium text-black dark:text-white"
                 style={{ fontFamily: "var(--font-martina), Georgia, serif" }}
               >
                 {getInitials(displayName)}

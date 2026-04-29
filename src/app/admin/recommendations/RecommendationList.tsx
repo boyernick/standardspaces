@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useMemo } from "react";
+import { Sparkles, Search } from "lucide-react";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import EmptyState from "@/components/ui/EmptyState";
 
 type Recommendation = {
   id: string;
@@ -17,15 +19,7 @@ type Recommendation = {
   processed_at: string | null;
 };
 
-type StatusFilter = "all" | "pending" | "processing" | "scraped" | "published";
-
-const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  processing: "bg-blue-100 text-blue-800",
-  scraped: "bg-purple-100 text-purple-800",
-  published: "bg-green-100 text-green-800",
-  failed: "bg-red-100 text-red-800",
-};
+type StatusFilter = "all" | "pending" | "scraped";
 
 const fontCalibre = { fontFamily: "var(--font-calibre), system-ui, sans-serif" };
 
@@ -36,17 +30,26 @@ export default function RecommendationList({
 }) {
   const [recommendations, setRecommendations] = useState(initial);
   const [filter, setFilter] = useState<StatusFilter>("scraped");
+  const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
-  const filtered =
-    filter === "all" ? recommendations : recommendations.filter((r) => r.status === filter);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return recommendations.filter((r) => {
+      if (filter !== "all" && r.status !== filter) return false;
+      if (!q) return true;
+      const haystack = [r.name, r.url, r.category, r.neighborhood, r.notes]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [recommendations, filter, query]);
 
   const counts = {
     all: recommendations.length,
     pending: recommendations.filter((r) => r.status === "pending").length,
-    processing: recommendations.filter((r) => r.status === "processing").length,
     scraped: recommendations.filter((r) => r.status === "scraped").length,
-    published: recommendations.filter((r) => r.status === "published").length,
   };
 
   async function handleRescrape(id: string, url: string) {
@@ -90,8 +93,20 @@ export default function RecommendationList({
 
   return (
     <div>
+      <div className="relative mb-4">
+        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search recommendations..."
+          className="w-full pl-10 pr-4 py-2.5 text-sm border border-black/10 dark:border-white/10 rounded-lg text-black dark:text-white focus:outline-none focus:border-black/30 dark:focus:border-white/30 placeholder:text-black/40 dark:placeholder:text-white/40 transition-colors"
+          style={fontCalibre}
+        />
+      </div>
+
       <div className="flex flex-wrap gap-2 mb-6" style={fontCalibre}>
-        {(["scraped", "pending", "processing", "published", "all"] as StatusFilter[]).map((f) => (
+        {(["scraped", "pending", "all"] as StatusFilter[]).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -107,113 +122,88 @@ export default function RecommendationList({
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-sm text-black/40 dark:text-white/40" style={fontCalibre}>
-          No recommendations.
-        </p>
+        <EmptyState
+          icon={Sparkles}
+          title="No recommendations"
+          body={
+            filter === "all"
+              ? "Submitted recommendations will show up here."
+              : `Nothing in the “${filter}” bucket right now.`
+          }
+        />
       ) : (
         <div className="space-y-3">
           {filtered.map((rec) => {
             const thumb = rec.scraped_images?.[0];
-            const photoCount = rec.scraped_images?.length ?? 0;
+            const isBusy = busy === rec.id;
             return (
               <div
                 key={rec.id}
-                className="border border-black/10 dark:border-white/10 rounded-lg p-4 flex items-start gap-4"
+                className="border border-black/10 dark:border-white/10 rounded-2xl p-4 flex flex-wrap sm:flex-nowrap items-center gap-4"
               >
-                <div
-                  className="w-14 h-14 rounded-md shrink-0 bg-neutral-100 dark:bg-neutral-800 bg-cover bg-center"
-                  style={thumb ? { backgroundImage: `url(${thumb})` } : undefined}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate text-black dark:text-white" style={fontCalibre}>
-                        {rec.name || "Untitled"}
-                      </p>
-                      <a
-                        href={rec.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-black/50 dark:text-white/50 hover:text-brand-500 break-all"
-                        style={fontCalibre}
-                      >
-                        {rec.url}
-                      </a>
+                <div className="w-14 h-14 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 shrink-0">
+                  {thumb ? (
+                    <img
+                      src={thumb}
+                      alt={rec.name ?? ""}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-neutral-300 dark:text-neutral-600 text-xs">
+                      No img
                     </div>
-                    <span
-                      className={`shrink-0 text-xs px-2 py-0.5 rounded-full ${
-                        STATUS_STYLES[rec.status] ?? "bg-neutral-100 text-neutral-700"
-                      }`}
-                      style={fontCalibre}
-                    >
-                      {rec.status}
-                    </span>
-                  </div>
-
-                  {(rec.category || rec.neighborhood) && (
-                    <p className="text-xs text-black/40 dark:text-white/40 mt-1" style={fontCalibre}>
-                      {[rec.category, rec.neighborhood].filter(Boolean).join(" · ")}
-                    </p>
                   )}
-
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate text-black dark:text-white" style={fontCalibre}>
+                    {rec.name || "Untitled"}
+                  </p>
+                  <a
+                    href={rec.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white break-all transition-colors"
+                    style={fontCalibre}
+                  >
+                    {rec.url}
+                  </a>
                   {rec.notes && (
-                    <p className="text-xs text-black/50 dark:text-white/50 mt-1 italic line-clamp-2" style={fontCalibre}>
+                    <p className="text-xs text-black/50 dark:text-white/50 mt-1 italic line-clamp-1" style={fontCalibre}>
                       &ldquo;{rec.notes}&rdquo;
                     </p>
                   )}
-
-                  <div className="flex items-center gap-3 mt-2 text-xs text-black/30 dark:text-white/30" style={fontCalibre}>
-                    <span>
-                      {new Date(rec.created_at).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
-                    <span>·</span>
-                    <span>
-                      {photoCount} photo{photoCount !== 1 ? "s" : ""}
-                    </span>
-                    {rec.additional_urls && rec.additional_urls.length > 0 && (
-                      <>
-                        <span>·</span>
-                        <span>
-                          {rec.additional_urls.length} extra link
-                          {rec.additional_urls.length !== 1 ? "s" : ""}
-                        </span>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {(rec.status === "scraped" || rec.status === "published") && (
-                      <Link
-                        href={`/admin/review/${rec.id}`}
-                        className="px-3 py-1.5 text-xs font-medium text-white bg-black dark:bg-white dark:text-black rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
-                        style={fontCalibre}
-                      >
-                        {rec.status === "published" ? "View" : "Review & publish"}
-                      </Link>
-                    )}
-                    {rec.status !== "processing" && (
-                      <button
-                        onClick={() => handleRescrape(rec.id, rec.url)}
-                        disabled={busy === rec.id}
-                        className="px-3 py-1.5 text-xs font-medium text-black/60 dark:text-white/60 border border-black/15 dark:border-white/15 rounded-lg hover:border-black/30 dark:hover:border-white/30 transition-colors disabled:opacity-50"
-                        style={fontCalibre}
-                      >
-                        {busy === rec.id ? "..." : "Re-scrape"}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete(rec.id)}
-                      disabled={busy === rec.id}
-                      className="px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:border-red-300 transition-colors disabled:opacity-50"
-                      style={fontCalibre}
+                </div>
+                <div className="flex items-stretch gap-2 w-full sm:w-auto sm:shrink-0">
+                  {(rec.status === "scraped" || rec.status === "published") && (
+                    <ButtonLink
+                      href={`/admin/review/${rec.id}`}
+                      variant="primary"
+                      size="sm"
+                      className="flex-1 py-2.5 text-sm sm:flex-none sm:py-1.5 sm:text-xs"
                     >
-                      Delete
-                    </button>
-                  </div>
+                      {rec.status === "published" ? "View" : "Review"}
+                    </ButtonLink>
+                  )}
+                  {rec.status !== "processing" && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleRescrape(rec.id, rec.url)}
+                      disabled={isBusy}
+                      className="flex-1 py-2.5 text-sm sm:flex-none sm:py-1.5 sm:text-xs"
+                    >
+                      {isBusy ? "…" : "Re-scrape"}
+                    </Button>
+                  )}
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => handleDelete(rec.id)}
+                    disabled={isBusy}
+                    className="flex-1 py-2.5 text-sm sm:flex-none sm:py-1.5 sm:text-xs"
+                  >
+                    Delete
+                  </Button>
                 </div>
               </div>
             );

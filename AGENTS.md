@@ -15,6 +15,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 # Color rules
 
 - **Never use the hero orange brand color unless explicitly instructed.** The brand orange (`#FD5304` / `var(--color-brand-500)` and related brand-* tokens) is reserved — don't reach for it as an accent, hover, focus ring, badge, pill, link color, or numbered-marker fill on your own initiative. Use neutrals (`neutral-*`, `bg-surface`, `ink-*`) by default. If a new surface genuinely needs the brand color, ask first.
+- **Never hardcode a white background on a component.** No `bg-white`, no `bg-white dark:bg-neutral-900`, no `bg-[#fff]`. The page surface is set by `bg-surface` (which adapts to light/dark) and components should sit on it transparently. If a component genuinely needs to lift off the surface, use `bg-ink-100` / `bg-neutral-100 dark:bg-neutral-900` *only when there's a real reason* (popover, modal, sticky header) — and ask if you're not sure. Bordered cards, list items, and tiles should leave the bg unset.
 
 # Button rules
 

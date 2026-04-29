@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { Search } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 type Application = {
   id: string;
@@ -18,9 +20,28 @@ type Application = {
 export default function ApplicationList({ applications: initial }: { applications: Application[] }) {
   const [applications, setApplications] = useState(initial);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [query, setQuery] = useState("");
   const [processing, setProcessing] = useState<string | null>(null);
 
-  const filtered = filter === "all" ? applications : applications.filter((a) => a.status === filter);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return applications.filter((a) => {
+      if (filter !== "all" && a.status !== filter) return false;
+      if (!q) return true;
+      const haystack = [
+        a.first_name,
+        a.last_name,
+        a.phone,
+        a.instagram,
+        a.referred_by_name,
+        a.referred_by_phone,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [applications, filter, query]);
 
   async function handleAction(id: string, action: "approve" | "reject") {
     setProcessing(id);
@@ -48,6 +69,18 @@ export default function ApplicationList({ applications: initial }: { application
 
   return (
     <div>
+      <div className="relative mb-4">
+        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search applications..."
+          className="w-full pl-10 pr-4 py-2.5 text-sm border border-black/10 dark:border-white/10 rounded-lg text-black dark:text-white focus:outline-none focus:border-black/30 dark:focus:border-white/30 placeholder:text-black/40 dark:placeholder:text-white/40 transition-colors"
+          style={fontCalibre}
+        />
+      </div>
+
       <div className="flex gap-2 mb-6" style={fontCalibre}>
         {(["pending", "approved", "rejected", "all"] as const).map((f) => (
           <button
@@ -67,7 +100,7 @@ export default function ApplicationList({ applications: initial }: { application
       ) : (
         <div className="space-y-3">
           {filtered.map((app) => (
-            <div key={app.id} className="border border-black/10 dark:border-white/10 rounded-lg p-4 bg-white dark:bg-neutral-900">
+            <div key={app.id} className="border border-black/10 dark:border-white/10 rounded-lg p-4">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-black dark:text-white" style={fontCalibre}>{app.first_name} {app.last_name}</p>
@@ -112,22 +145,22 @@ export default function ApplicationList({ applications: initial }: { application
               </p>
               {app.status === "pending" && (
                 <div className="flex gap-2 mt-3">
-                  <button
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={() => handleAction(app.id, "approve")}
                     disabled={processing === app.id}
-                    className="px-3 py-1.5 text-xs font-medium text-white bg-black dark:bg-white dark:text-black rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors disabled:opacity-50"
-                    style={fontCalibre}
                   >
-                    {processing === app.id ? "..." : "Approve & send SMS"}
-                  </button>
-                  <button
+                    {processing === app.id ? "…" : "Approve & send SMS"}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => handleAction(app.id, "reject")}
                     disabled={processing === app.id}
-                    className="px-3 py-1.5 text-xs font-medium text-black/60 dark:text-white/60 border border-black/15 dark:border-white/15 rounded-lg hover:border-black/30 dark:hover:border-white/30 transition-colors disabled:opacity-50"
-                    style={fontCalibre}
                   >
                     Reject
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>

@@ -1,13 +1,10 @@
-import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import PageShell from "@/components/ui/PageShell";
 import Navbar from "@/components/Navbar";
-import PageHeader from "@/components/ui/PageHeader";
+import AdminSectionNav from "@/components/admin/SectionNav";
 import MembersList from "./MembersList";
 
 export default async function AdminMembersPage() {
-  await requireAdmin();
-
   const supabase = createAdminClient();
   const { data: members } = await supabase
     .from("profiles")
@@ -15,8 +12,8 @@ export default async function AdminMembersPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <PageShell navbar={<Navbar />} maxWidth="md">
-      <PageHeader title="Members" />
+    <PageShell navbar={<Navbar />} maxWidth="lg">
+      <AdminSectionNav />
       <MembersList members={members ?? []} />
     </PageShell>
   );

@@ -185,7 +185,7 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
       const referredName = metaName || name;
       return {
         icon: "sparkles",
-        title: <>{bold(referredName)} just became a member</>,
+        title: <>{bold(referredName)} is now a member</>,
         body: "Your referral was approved",
         href: actorHref,
         actorAvatar: avatar,

@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAdmin } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
 import ReviewForm from "./ReviewForm";
 
@@ -22,7 +21,6 @@ export default async function AdminReviewPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireAdmin();
   const { id } = await params;
   const rec = await getRecommendation(id);
 
