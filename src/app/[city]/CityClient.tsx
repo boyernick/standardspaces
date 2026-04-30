@@ -1322,7 +1322,7 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               setMapMounted(true);
               setMobileView(mobileView === "list" ? "map" : "list");
             }}
-            className="flex items-center justify-center w-[70px] py-2.5 border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 text-neutral-600 dark:text-neutral-400 text-sm font-medium rounded-full shrink-0 transition-colors"
+            className="flex items-center justify-center w-[70px] h-10 border border-neutral-200 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 text-neutral-600 dark:text-neutral-400 text-sm font-medium rounded-full shrink-0 transition-colors"
           >
             {mobileView === "list" ? "Map" : "List"}
           </button>
