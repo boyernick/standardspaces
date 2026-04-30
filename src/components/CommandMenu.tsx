@@ -370,8 +370,13 @@ export default function CommandMenu({
 
   return (
     <div
-      className={`absolute left-0 right-0 z-50 rounded-2xl shadow-[0_24px_64px_-12px_rgba(0,0,0,0.55)] dark:shadow-[0_24px_64px_-12px_rgba(0,0,0,0.85)] overflow-hidden ${
-        placement === "above" ? "bottom-full mb-2" : "top-full mt-2"
+      className={`z-50 rounded-2xl shadow-[0_24px_64px_-12px_rgba(0,0,0,0.55)] dark:shadow-[0_24px_64px_-12px_rgba(0,0,0,0.85)] overflow-hidden ${
+        placement === "above"
+          // Mobile drop-up: pop out of the input wrapper and span the
+          // viewport so the panel doesn't get squeezed by the
+          // adjacent Map toggle.
+          ? "fixed left-2 right-2 bottom-[calc(env(safe-area-inset-bottom)+72px)]"
+          : "absolute top-full left-0 right-0 mt-2"
       }`}
       style={{
         backgroundColor: "var(--color-surface)",
