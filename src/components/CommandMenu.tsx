@@ -93,6 +93,12 @@ export default function CommandMenu({
       .then(({ data }) => {
         if (cancelled || !data) return;
         setSpots(data.map((r: Record<string, unknown>) => ({
+          // Only the fields the menu actually reads. The wider `Spot`
+          // type has description/address/lng/lat that we never touch
+          // here, so we go through `unknown` to assert the partial
+          // shape — same pattern the menu has used since it was a
+          // modal, just made explicit now that `created_at` got added
+          // and TypeScript started enforcing the gap.
           id: r.id as string,
           name: r.name as string,
           category: r.category as Category[],
@@ -101,7 +107,7 @@ export default function CommandMenu({
           city: r.city as string,
           images: r.images as string[],
           created_at: r.created_at as string,
-        } as Spot)));
+        }) as unknown as Spot));
       });
     return () => { cancelled = true; };
   }, [open]);
