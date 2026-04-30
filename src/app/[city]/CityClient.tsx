@@ -1307,7 +1307,11 @@ export default function CityClient({ spots: allSpots, favoritedSpotIds = [], wis
               }}
               onFocus={() => setMobileSearchOpen(true)}
               placeholder="Search for spaces and members"
-              className="w-full h-10 pl-9 pr-3 leading-10 text-sm border border-neutral-200 dark:border-neutral-800 rounded-full bg-transparent text-neutral-900 dark:text-white placeholder-neutral-500 dark:placeholder-neutral-400 caret-brand-500 outline-none focus:border-neutral-400 dark:focus:border-neutral-600 transition-colors"
+              className={`w-full h-10 pl-9 pr-3 leading-10 text-sm border border-neutral-200 dark:border-neutral-800 rounded-full text-neutral-900 dark:text-white placeholder-neutral-500 dark:placeholder-neutral-400 caret-brand-500 outline-none transition-[background-color,box-shadow] ${
+                mobileSearchOpen
+                  ? "bg-[var(--color-surface)] shadow-[0_8px_24px_-8px_rgba(0,0,0,0.22)] dark:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.55)]"
+                  : "bg-transparent"
+              }`}
             />
             <CommandMenu
               open={mobileSearchOpen}
