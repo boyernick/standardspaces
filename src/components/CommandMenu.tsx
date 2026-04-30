@@ -378,7 +378,13 @@ export default function CommandMenu({
         animation: `${placement === "above" ? "command-in-up" : "command-in"} 0.2s cubic-bezier(0.25,0.1,0.25,1)`,
       }}
     >
-      <div className="flex flex-col max-h-[480px]">
+      <div
+        className={`flex flex-col ${
+          placement === "above"
+            ? "max-h-[calc(100dvh-140px)]"
+            : "max-h-[480px]"
+        }`}
+      >
         {/* Content */}
         <div ref={listRef} className="flex-1 overflow-y-auto scrollbar-hide">
           {!hasQuery ? (
