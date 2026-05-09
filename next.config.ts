@@ -25,6 +25,14 @@ const nextConfig: NextConfig = {
     authInterrupts: true,
   },
   images: {
+    // Bypass Vercel's image optimizer — the project hit the Hobby-plan
+    // OPTIMIZED_IMAGE_REQUEST quota and uncached variants started 402'ing,
+    // which surfaced as broken-image icons across the city feed cards.
+    // Supabase's render endpoint isn't an option on the Free plan, so we
+    // serve originals straight from the public bucket. The carousel only
+    // shows 1–3 images per card so the egress hit is bounded; revisit if
+    // we move avatars/OG to <Image> at scale.
+    unoptimized: true,
     remotePatterns: [
       // Supabase storage — user uploads (avatars, spot photos, event covers).
       { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
