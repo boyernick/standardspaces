@@ -309,7 +309,7 @@ export default function NavbarClient({
             )}
             <Menu size={14} strokeWidth={2} className="text-neutral-600 dark:text-neutral-400" />
             {avatarUrl ? (
-              <Image src={avatarUrl} alt="" width={28} height={28} sizes="28px" priority className="w-7 h-7 rounded-full object-cover" />
+              <Image src={avatarUrl} alt="" width={28} height={28} sizes="28px" priority className="w-7 h-7 rounded-full object-cover border border-neutral-200 dark:border-neutral-700" />
             ) : avatarUrl === null ? (
               <div
                 className="w-7 h-7 rounded-full bg-ink-100 flex items-center justify-center text-[11px] font-medium text-black dark:text-white"
