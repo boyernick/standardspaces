@@ -37,6 +37,9 @@ type Stats = {
 
 type Tab = "favorites" | "checkins" | "wishlist" | "attended";
 
+const MAX_AVATAR_FILE_SIZE = 6 * 1024 * 1024;
+const ALLOWED_AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 export default function ProfileClient({
   profile,
   stats,
@@ -87,10 +90,26 @@ export default function ProfileClient({
   const inputStyle = "w-full px-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-transparent text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors";
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
 
-    setAvatarPreview(URL.createObjectURL(file));
+    setError("");
+
+    if (!ALLOWED_AVATAR_TYPES.has(file.type)) {
+      setError("Choose a JPEG, PNG, or WebP image.");
+      input.value = "";
+      return;
+    }
+
+    if (file.size > MAX_AVATAR_FILE_SIZE) {
+      setError("Choose an image smaller than 6 MB.");
+      input.value = "";
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreview(previewUrl);
     setUploading(true);
 
     const formData = new FormData();
@@ -98,17 +117,23 @@ export default function ProfileClient({
 
     try {
       const res = await fetch("/api/profile/upload-avatar", { method: "POST", body: formData });
-      if (res.ok) {
-        const data = await res.json();
+      const data = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+
+      if (res.ok && data?.url) {
         setAvatarUrl(data.url);
+        setAvatarPreview(data.url);
       } else {
+        setError(data?.error || "Upload failed. Please try again.");
         setAvatarPreview(avatarUrl);
       }
     } catch {
+      setError("Upload failed. Please try again.");
       setAvatarPreview(avatarUrl);
+    } finally {
+      URL.revokeObjectURL(previewUrl);
+      input.value = "";
+      setUploading(false);
     }
-
-    setUploading(false);
   }
 
   async function handleSave() {
@@ -209,7 +234,9 @@ export default function ProfileClient({
               )}
               <button
                 type="button"
+                aria-label="Change profile picture"
                 onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
                 className="absolute bottom-0 right-0 w-7 h-7 bg-neutral-900 dark:bg-white rounded-full flex items-center justify-center shadow-lg"
               >
                 <Camera size={12} className="text-white dark:text-neutral-900" />

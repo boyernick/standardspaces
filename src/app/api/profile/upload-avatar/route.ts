@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+// Supabase recommends standard uploads for files up to 6 MB. Keeping the
+// avatar cap at that boundary accepts typical phone photos without moving a
+// small profile-picture upload onto the resumable-upload path.
+const MAX_FILE_SIZE = 6 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 // Derive the on-disk extension from the validated MIME type, never
 // from the user-supplied filename (which allowed `evil.jpg.svg` to
@@ -33,7 +36,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: "File too large. Max 2MB." }, { status: 400 });
+      return NextResponse.json({ error: "File too large. Max 6 MB." }, { status: 400 });
     }
 
     const ext = EXT_FOR_TYPE[file.type];
@@ -44,7 +47,9 @@ export async function POST(req: NextRequest) {
       .from("avatars")
       .upload(path, buffer, {
         contentType: file.type,
-        upsert: true,
+        // `path` includes a fresh timestamp, so this is always a new object.
+        // Avoiding upsert means the user's storage policy only needs INSERT.
+        upsert: false,
       });
 
     if (uploadError) {
