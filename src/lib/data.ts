@@ -99,9 +99,11 @@ export async function getSpotsByIds(ids: string[]): Promise<Spot[]> {
     return [];
   }
 
-  // Preserve the order of the input IDs
+  // Preserve the order of the input IDs. Map.get() returns undefined
+  // (not null) for missing keys, so drop undefined — otherwise deleted
+  // or otherwise-missing spots slip through typed as Spot and crash callers.
   const mapped = new Map((data ?? []).map((row) => [row.id as string, mapRow(row)]));
-  return ids.map((id) => mapped.get(id)).filter((s): s is Spot => s !== null);
+  return ids.map((id) => mapped.get(id)).filter((s): s is Spot => s !== undefined);
 }
 
 export async function searchSpots(query: string, limit = 10): Promise<Spot[]> {
