@@ -104,13 +104,17 @@ export default function SettingsClient({ phone, city, smsNotifications, notifica
                 </p>
               </div>
               <button
+                type="button"
+                role="switch"
+                aria-checked={row.value}
+                aria-label={row.label}
                 onClick={row.onToggle}
-                className={`relative w-10 h-6 rounded-full transition-colors ${
-                  row.value ? "bg-neutral-900 dark:bg-white" : "bg-neutral-200 dark:bg-neutral-700"
+                className={`relative shrink-0 w-10 h-6 rounded-full transition-colors ${
+                  row.value ? "bg-neutral-900 dark:bg-neutral-200" : "bg-neutral-200 dark:bg-neutral-700"
                 }`}
               >
-                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                  row.value ? "left-[18px]" : "left-0.5"
+                <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-surface shadow transition-transform ${
+                  row.value ? "translate-x-4" : "translate-x-0"
                 }`} />
               </button>
             </div>
@@ -146,14 +150,17 @@ export default function SettingsClient({ phone, city, smsNotifications, notifica
               </p>
             </div>
             <button
+              type="button"
+              role="switch"
+              aria-checked={themeMode === "dark"}
               onClick={handleThemeChange}
               aria-label="Toggle dark mode"
-              className={`relative w-10 h-6 rounded-full transition-colors ${
-                themeMode === "dark" ? "bg-neutral-900 dark:bg-white" : "bg-neutral-200 dark:bg-neutral-700"
+              className={`relative shrink-0 w-10 h-6 rounded-full transition-colors ${
+                themeMode === "dark" ? "bg-neutral-900 dark:bg-neutral-200" : "bg-neutral-200 dark:bg-neutral-700"
               }`}
             >
-              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                themeMode === "dark" ? "left-[18px]" : "left-0.5"
+              <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-surface shadow transition-transform ${
+                themeMode === "dark" ? "translate-x-4" : "translate-x-0"
               }`} />
             </button>
           </div>

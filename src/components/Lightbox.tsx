@@ -111,17 +111,17 @@ export default function Lightbox({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] bg-black"
+      className="fixed inset-0 z-[100] bg-surface"
       style={{ animation: "lightbox-fade-in 0.2s ease-out" }}
     >
       <button
         onClick={onClose}
-        className="absolute top-4 left-4 z-20 p-2.5 rounded-full bg-black/40 text-white/80 backdrop-blur-lg hover:bg-black/60 hover:text-white transition-all"
+        className="absolute top-4 left-4 z-20 p-2.5 rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-ink-100 transition-all"
       >
         <X size={20} strokeWidth={2} />
       </button>
 
-      <div className="absolute top-4 right-4 z-20 text-sm text-white/60 font-medium tabular-nums">
+      <div className="absolute top-4 right-4 z-20 text-sm text-neutral-500 dark:text-neutral-400 font-medium tabular-nums">
         {index + 1} / {images.length}
       </div>
 
@@ -172,7 +172,7 @@ export default function Lightbox({
       {index > 0 && (
         <button
           onClick={goPrev}
-          className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-black/40 text-white/80 backdrop-blur-lg hover:bg-black/60 hover:text-white transition-all"
+          className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-ink-100 hover:text-neutral-900 dark:hover:text-neutral-100 transition-all"
         >
           <ChevronLeft size={24} strokeWidth={2} />
         </button>
@@ -181,7 +181,7 @@ export default function Lightbox({
       {index < images.length - 1 && (
         <button
           onClick={goNext}
-          className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-black/40 text-white/80 backdrop-blur-lg hover:bg-black/60 hover:text-white transition-all"
+          className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-ink-100 hover:text-neutral-900 dark:hover:text-neutral-100 transition-all"
         >
           <ChevronRight size={24} strokeWidth={2} />
         </button>
@@ -207,7 +207,7 @@ export default function Lightbox({
         >
           {!loaded && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="w-8 h-8 border-2 border-neutral-300 border-t-neutral-700 dark:border-neutral-700 dark:border-t-neutral-300 rounded-full animate-spin" />
             </div>
           )}
           <img
@@ -227,7 +227,7 @@ export default function Lightbox({
         // z-20 puts the thumbnail strip above the z-10 click-zone; without
         // this the big dismiss overlay covers the strip and swallows every
         // thumbnail click as a backdrop dismiss.
-        <div className="absolute bottom-0 inset-x-0 z-20 bg-gradient-to-t from-black/60 to-transparent pt-10 pb-4 px-4">
+        <div className="absolute bottom-0 inset-x-0 z-20 bg-gradient-to-t from-surface to-transparent pt-10 pb-4 px-4">
           <div className="flex items-center justify-center gap-2">
             {thumbs.map((src, i) => {
               const realIdx = thumbStart + i;
@@ -242,7 +242,7 @@ export default function Lightbox({
                   }}
                   className={`shrink-0 rounded-md overflow-hidden transition-all duration-200 ${
                     isCurrent
-                      ? "w-16 h-16 ring-2 ring-white brightness-110"
+                      ? "w-16 h-16 ring-2 ring-neutral-700 dark:ring-neutral-300 brightness-110"
                       : "w-14 h-14 brightness-50 hover:brightness-75"
                   }`}
                 >
