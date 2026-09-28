@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Lock, Calendar, CalendarPlus, Clock, Users, Shirt, Globe, AtSign, Smartphone } from "lucide-react";
+import { Lock, MapPin, Calendar, CalendarPlus, Clock, Users, Shirt, Globe, AtSign, Smartphone } from "lucide-react";
 import { FadeIn, GalleryReveal, SectionReveal } from "@/components/ListingAnimations";
 import ShareButton from "@/components/ShareButton";
 import SpotGallery from "@/components/SpotGallery";
@@ -258,18 +258,29 @@ export default function EventClient({
         {/* Header */}
         <FadeIn delay={0.1}>
           <div className="pt-7 pb-2 space-y-3">
-            {(spot?.vibes?.length || event.visibility === "private" || isCancelled || isHidden) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {spot && (
+                <Link
+                  href={`/${spot.city}/${spot.id}`}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-neutral-200 dark:border-neutral-700 text-xs text-neutral-600 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors"
+                >
+                  <MapPin size={13} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
+                  {spot.name}
+                </Link>
+              )}
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-neutral-200 dark:border-neutral-700 text-xs text-neutral-600 dark:text-neutral-400">
+                <Calendar size={13} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
+                {whenLabel}
+              </span>
+              {event.visibility === "private" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-neutral-200 dark:border-neutral-700 text-xs text-neutral-600 dark:text-neutral-400">
+                  <Lock size={13} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
+                  Private
+                </span>
+              )}
+            </div>
+            {(isCancelled || isHidden) && (
               <div className="flex flex-wrap gap-2">
-                {spot?.vibes?.map((vibe) => (
-                  <span key={vibe} className="text-xs px-2.5 py-1 rounded-full border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400">
-                    {vibe}
-                  </span>
-                ))}
-                {event.visibility === "private" && (
-                  <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400">
-                    <Lock size={11} /> Private
-                  </span>
-                )}
                 {isCancelled && (
                   <span className="text-xs px-2.5 py-1 rounded-full border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400">
                     Cancelled
@@ -285,19 +296,6 @@ export default function EventClient({
 
             <div>
               <h1 className="text-[26px] font-semibold tracking-tight">{event.title}</h1>
-              {spot && (
-                <div className="text-[15px] text-neutral-600 dark:text-neutral-400 leading-relaxed mt-1">
-                  <Link href={`/${spot.city}/${spot.id}`} className="hover:underline">
-                    {spot.name}
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* When — prominent so the time is impossible to miss */}
-            <div className="flex items-center gap-2 text-[15px] text-neutral-900 dark:text-white">
-              <Calendar size={16} strokeWidth={1.75} className="text-neutral-400 dark:text-neutral-500" />
-              <span className="font-medium">{whenLabel}</span>
             </div>
 
             {event.description && <ExpandableDescription text={event.description} />}
@@ -486,13 +484,6 @@ export default function EventClient({
       <div className="shrink-0 bg-surface border-t border-neutral-200 dark:border-neutral-800 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <div className="flex items-center gap-1">
-            <ShareButton
-              title="Share event"
-              spotName={event.title}
-              spotImage={event.cover_image_url || event.images?.[0]}
-              spotSubtitle={event.city}
-              variant="icon"
-            />
             <a
               href={`/api/events/${event.id}/ics`}
               download
@@ -502,6 +493,13 @@ export default function EventClient({
             >
               <CalendarPlus size={16} strokeWidth={2} className="text-neutral-600 dark:text-neutral-300" />
             </a>
+            <ShareButton
+              title="Share event"
+              spotName={event.title}
+              spotImage={event.cover_image_url || event.images?.[0]}
+              spotSubtitle={event.city}
+              variant="icon"
+            />
           </div>
           <div className="ml-auto flex items-center gap-2">
             {!isCancelled && !isHidden && viewerId && (
@@ -516,7 +514,9 @@ export default function EventClient({
               ) : isPaid ? (
                 <button
                   disabled
-                  className="px-6 py-2.5 rounded-lg text-sm font-medium bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 opacity-50"
+                  className={`px-6 py-2.5 rounded-lg text-sm font-medium bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 ${
+                    event.id === "510bbca7-dfab-45c5-94df-6aad6082b489" ? "opacity-100" : "opacity-50"
+                  }`}
                   title="Paid checkout coming soon"
                 >
                   Buy ticket · ${(event.price_cents / 100).toFixed(0)}
