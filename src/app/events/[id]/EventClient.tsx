@@ -48,7 +48,7 @@ function ExpandableDescription({ text }: { text: string }) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    // Measure against the collapsed clientHeight (line-clamp applied)
+    // Measure against the collapsed three-line height.
     setOverflows(el.scrollHeight - el.clientHeight > 1);
   }, [text]);
 
@@ -57,7 +57,7 @@ function ExpandableDescription({ text }: { text: string }) {
       <p
         ref={ref}
         className={`text-[15px] text-neutral-600 dark:text-neutral-400 leading-relaxed whitespace-pre-wrap ${
-          expanded ? "" : "line-clamp-3"
+          expanded ? "" : "max-h-[3lh] overflow-hidden"
         }`}
       >
         {text}
