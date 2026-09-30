@@ -108,6 +108,7 @@ export default function EventClient({
   const isCancelled = event.status === "cancelled";
   const isHidden = event.status === "hidden";
   const isPaid = event.price_cents > 0;
+  const ticketButtonEnabled = event.id === "181936a2-0b19-4e6d-a1be-1a9f251b594a";
   const isFull = event.capacity != null && goingCount >= event.capacity;
 
   // Sort: connected members first, then host, then everyone else
@@ -513,9 +514,9 @@ export default function EventClient({
                 </button>
               ) : isPaid ? (
                 <button
-                  disabled
+                  disabled={!ticketButtonEnabled}
                   className={`px-6 py-2.5 rounded-lg text-sm font-medium bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 ${
-                    event.id === "510bbca7-dfab-45c5-94df-6aad6082b489" ? "opacity-100" : "opacity-50"
+                    ticketButtonEnabled || event.id === "510bbca7-dfab-45c5-94df-6aad6082b489" ? "opacity-100" : "opacity-50"
                   }`}
                   title="Paid checkout coming soon"
                 >
